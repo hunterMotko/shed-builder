@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"net/http"
@@ -8,10 +9,50 @@ import (
 	"time"
 )
 
-// Placement represents a door or window placement on the shed
+// priceTable maps "WxLxH" to base price in dollars.
+var priceTable = map[string]float64{
+	// Standard — 10ft wall height
+	"10x12x10": 4689, "10x16x10": 5189, "10x20x10": 5689,
+	"12x12x10": 5589, "12x16x10": 6089, "12x20x10": 6589, "12x24x10": 7089,
+	// Deluxe — 11ft wall height
+	"10x12x11": 5789, "10x16x11": 6389, "10x20x11": 6989,
+	"12x12x11": 5989, "12x16x11": 6389, "12x20x11": 7189,
+	"12x24x11": 7789, "12x26x11": 8389, "12x32x11": 8989,
+	"14x20x11": 11189, "14x24x11": 11789, "14x28x11": 12389,
+	"14x32x11": 12989, "14x36x11": 13589,
+	"16x24x11": 12189, "16x28x11": 12789, "16x32x11": 13389, "16x36x11": 13989,
+	// Special — 12ft wall height
+	"14x28x12": 13189, "16x36x12": 14789,
+}
+
+// addOnPrices maps add-on keys to dollar amounts.
+var addOnPrices = map[string]float64{
+	"garage_door_6x7":        450,
+	"garage_door_8x7":        500,
+	"garage_door_additional": 600,
+	"entry_door_steel":       375,
+	"entry_door_nine_light":  425,
+	"window_vinyl_slide":     275, // per window
+	"window_octagon":         85,
+	"skylight_per_ft":        5,
+	"shutters_per_pair":      70,
+	"ramp_small":             275,
+	"ramp_large":             325,
+	"vent_octagon":           85,
+}
+
+// lookupBasePrice returns the catalog price for the given dimensions.
+// Returns (price, true) if found, (0, false) if not a valid catalog combo.
+func lookupBasePrice(width, length, wallHeight int) (float64, bool) {
+	key := fmt.Sprintf("%dx%dx%d", width, length, wallHeight)
+	price, ok := priceTable[key]
+	return price, ok
+}
+
+// Placement represents a door or window placement on the shed.
 type Placement struct {
 	ID          string  `json:"id"`
-	Type        string  `json:"type"` // "door" or "window"
+	Type        string  `json:"type"` // "door", "window", "garage_door", "swing_barn_door", "entry_door"
 	Wall        string  `json:"wall"` // "front", "back", "left", "right"
 	NormalizedX float64 `json:"normalizedX"`
 	NormalizedY float64 `json:"normalizedY"`
@@ -20,36 +61,110 @@ type Placement struct {
 	RotationZ   float64 `json:"rotationZ,omitempty"`
 }
 
-// Design represents a shed configuration
-type Design struct {
-	ID        string       `json:"id"`
-	Width     int          `json:"width"`
-	Length    int          `json:"length"`
-	Style     string       `json:"style"`
-	Color     string       `json:"color"`
-	RoofColor string       `json:"roofColor"`
-	TrimColor string       `json:"trimColor"`
-	Placements []*Placement `json:"placements"`
-	Price     float64      `json:"price"`
-	CreatedAt string       `json:"createdAt"`
+// AddOnConfig holds the client-supplied add-on state.
+// We re-derive price server-side for security; we just store the state.
+type AddOnConfig struct {
+	Enabled bool   `json:"enabled"`
+	Size    string `json:"size,omitempty"`
+	Count   int    `json:"count,omitempty"`
+	Type    string `json:"type,omitempty"`
+	Pairs   int    `json:"pairs,omitempty"`
+	RunningFt float64 `json:"runningFt,omitempty"`
 }
 
-// In-memory storage
+// AddOns holds all add-on states.
+type AddOns struct {
+	GarageDoor     AddOnConfig `json:"garageDoor"`
+	AdditionalDoor AddOnConfig `json:"additionalDoor"`
+	EntryDoor      AddOnConfig `json:"entryDoor"`
+	VinylWindows   AddOnConfig `json:"vinylWindows"`
+	OctagonWindow  AddOnConfig `json:"octagonWindow"`
+	Skylight       AddOnConfig `json:"skylight"`
+	Shutters       AddOnConfig `json:"shutters"`
+	Ramp           AddOnConfig `json:"ramp"`
+	OctagonVent    AddOnConfig `json:"octagonVent"`
+}
+
+// calculateAddOnTotal derives total add-on price from the AddOns state.
+func calculateAddOnTotal(ao AddOns) float64 {
+	total := 0.0
+
+	if ao.GarageDoor.Enabled {
+		if ao.GarageDoor.Size == "8x7" {
+			total += addOnPrices["garage_door_8x7"]
+		} else {
+			total += addOnPrices["garage_door_6x7"]
+		}
+	}
+	if ao.AdditionalDoor.Enabled {
+		total += addOnPrices["garage_door_additional"]
+	}
+	if ao.EntryDoor.Enabled {
+		if ao.EntryDoor.Type == "nine_light" {
+			total += addOnPrices["entry_door_nine_light"]
+		} else {
+			total += addOnPrices["entry_door_steel"]
+		}
+	}
+	if ao.VinylWindows.Enabled {
+		count := ao.VinylWindows.Count
+		if count < 1 {
+			count = 1
+		}
+		total += addOnPrices["window_vinyl_slide"] * float64(count)
+	}
+	if ao.OctagonWindow.Enabled {
+		total += addOnPrices["window_octagon"]
+	}
+	if ao.Skylight.Enabled {
+		ft := ao.Skylight.RunningFt
+		if ft <= 0 {
+			ft = 8
+		}
+		total += addOnPrices["skylight_per_ft"] * ft
+	}
+	if ao.Shutters.Enabled {
+		pairs := ao.Shutters.Pairs
+		if pairs < 1 {
+			pairs = 1
+		}
+		total += addOnPrices["shutters_per_pair"] * float64(pairs)
+	}
+	if ao.Ramp.Enabled {
+		if ao.Ramp.Size == "large" {
+			total += addOnPrices["ramp_large"]
+		} else {
+			total += addOnPrices["ramp_small"]
+		}
+	}
+	if ao.OctagonVent.Enabled {
+		total += addOnPrices["vent_octagon"]
+	}
+
+	return total
+}
+
+// Design represents a shed configuration.
+type Design struct {
+	ID         string       `json:"id"`
+	Width      int          `json:"width"`
+	Length     int          `json:"length"`
+	WallHeight int          `json:"wallHeight"`
+	Style      string       `json:"style"`
+	Color      string       `json:"color"`
+	RoofColor  string       `json:"roofColor"`
+	TrimColor  string       `json:"trimColor"`
+	Placements []*Placement `json:"placements"`
+	AddOns     AddOns       `json:"addOns"`
+	Price      float64      `json:"price"`
+	CreatedAt  string       `json:"createdAt"`
+}
+
+// In-memory storage.
 var (
 	designStore = make(map[string]*Design)
 	mu          sync.RWMutex
 )
-
-// calculatePrice computes the price based on dimensions and style
-func calculatePrice(width, length int, style string) float64 {
-	basePrice := float64((width * length)) * 10.0 // $10 per sq ft
-
-	if style == "Barn" {
-		basePrice += 500.0 // Barn style surcharge
-	}
-
-	return basePrice
-}
 
 // POST /api/save-design
 func saveDesign(c *gin.Context) {
@@ -59,35 +174,46 @@ func saveDesign(c *gin.Context) {
 		return
 	}
 
-	// Validate input
-	if input.Width < 8 || input.Width > 20 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Width must be between 8-20 ft"})
+	// Default wallHeight to 10 if not supplied
+	if input.WallHeight == 0 {
+		input.WallHeight = 10
+	}
+
+	// Validate combo against price table
+	basePrice, valid := lookupBasePrice(input.Width, input.Length, input.WallHeight)
+	if !valid {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": fmt.Sprintf(
+				"Invalid combination: %dx%dx%d is not in the catalog",
+				input.Width, input.Length, input.WallHeight,
+			),
+		})
 		return
 	}
-	if input.Length < 8 || input.Length > 24 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Length must be between 8-24 ft"})
-		return
-	}
+
 	if input.Style != "Gable" && input.Style != "Barn" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Style must be 'Gable' or 'Barn'"})
 		return
 	}
 
-	// Create design with ID and calculated price
+	// Server-side price calculation (ignore client price for base)
+	serverPrice := basePrice + calculateAddOnTotal(input.AddOns)
+
 	design := &Design{
 		ID:         uuid.New().String(),
 		Width:      input.Width,
 		Length:     input.Length,
+		WallHeight: input.WallHeight,
 		Style:      input.Style,
 		Color:      input.Color,
 		RoofColor:  input.RoofColor,
 		TrimColor:  input.TrimColor,
 		Placements: input.Placements,
-		Price:      input.Price,
+		AddOns:     input.AddOns,
+		Price:      serverPrice,
 		CreatedAt:  time.Now().Format(time.RFC3339),
 	}
 
-	// Store design
 	mu.Lock()
 	designStore[design.ID] = design
 	mu.Unlock()
@@ -111,7 +237,7 @@ func getDesign(c *gin.Context) {
 	c.JSON(http.StatusOK, design)
 }
 
-// GET /api/designs (list all designs)
+// GET /api/designs
 func listDesigns(c *gin.Context) {
 	mu.RLock()
 	designs := make([]*Design, 0, len(designStore))

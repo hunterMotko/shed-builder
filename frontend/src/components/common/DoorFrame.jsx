@@ -57,28 +57,30 @@ export const DoorFrame = ({
 			rotation = [0, 0, 0];
 	}
 
+	// Group origin is at the CENTER of the opening (matching CSG localY).
+	// All trim offsets are relative to that center.
 	return (
 		<group position={position} rotation={rotation}>
-			{/* Top trim */}
-			<mesh castShadow>
+			{/* Top trim — sits above the opening center by elemHeight/2 */}
+			<mesh position={[0, elemHeight / 2 + trimWidth / 2, 0]} castShadow>
 				<boxGeometry args={[elemWidth + trimWidth * 2, trimWidth, trimWidth]} />
 				<meshStandardMaterial color={trimColor} roughness={0.4} metalness={0.25} />
 			</mesh>
 
-			{/* Bottom trim */}
-			<mesh position={[0, -elemHeight - trimWidth, 0]} castShadow>
+			{/* Bottom trim — sits below the opening center by elemHeight/2 */}
+			<mesh position={[0, -(elemHeight / 2 + trimWidth / 2), 0]} castShadow>
 				<boxGeometry args={[elemWidth + trimWidth * 2, trimWidth, trimWidth]} />
 				<meshStandardMaterial color={trimColor} roughness={0.4} metalness={0.25} />
 			</mesh>
 
-			{/* Left trim */}
-			<mesh position={[-(elemWidth / 2 + trimWidth / 2), -elemHeight / 2, 0]} castShadow>
+			{/* Left trim — centered vertically at group origin */}
+			<mesh position={[-(elemWidth / 2 + trimWidth / 2), 0, 0]} castShadow>
 				<boxGeometry args={[trimWidth, elemHeight + trimWidth * 2, trimWidth]} />
 				<meshStandardMaterial color={trimColor} roughness={0.4} metalness={0.25} />
 			</mesh>
 
-			{/* Right trim */}
-			<mesh position={[elemWidth / 2 + trimWidth / 2, -elemHeight / 2, 0]} castShadow>
+			{/* Right trim — centered vertically at group origin */}
+			<mesh position={[elemWidth / 2 + trimWidth / 2, 0, 0]} castShadow>
 				<boxGeometry args={[trimWidth, elemHeight + trimWidth * 2, trimWidth]} />
 				<meshStandardMaterial color={trimColor} roughness={0.4} metalness={0.25} />
 			</mesh>

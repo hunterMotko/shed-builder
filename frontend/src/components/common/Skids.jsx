@@ -1,142 +1,65 @@
 import * as THREE from 'three';
-import { STANDARD_FOUNDATION } from '../../utils/roofGeometry';
+
+// 4×4 nominal lumber: 3.5" actual = ~0.292 ft, rounded to 0.333 for visual clarity
+const SKID_SIZE = 0.333;
+// Nominal floor deck thickness (~1.5" T&G planks)
+const FLOOR_THICKNESS = 0.125;
+const NUM_SKIDS = 5;
 
 /**
- * Skids (Foundation) Component
+ * Skids + Floor Foundation Component
  *
- * Renders individual skid beams that ground the shed structure.
- * Multiple separate beams (3-4) provide realistic construction detail.
- * Reusable across both Gable and Gambrel styles.
+ * Renders 5 longitudinal 4×4 pressure-treated skid beams running the full shed
+ * length, evenly spaced across the width, topped with a floor deck panel.
+ *
+ * Coordinate convention (matches ShedWall):
+ *   Y = 0  — shed floor / top of deck / bottom of walls
+ *   Y < 0  — below floor (skids, ground)
  */
 export const Skids = ({
 	width,
 	length,
-	wallHeight,
-	foundationHeight = STANDARD_FOUNDATION.height,
-	foundationOverhang = STANDARD_FOUNDATION.overhang,
-	foundationColor = STANDARD_FOUNDATION.color,
+	foundationColor = '#6B4C2A', // pressure-treated wood tone
 }) => {
-	// Skid dimensions (realistic proportions)
-	const skidWidth = 0.333; // ~4 inches
-	const skidDepth = 0.5; // ~6 inches
-	const skidHeight = foundationHeight;
-
-	// Calculate the overhang for proper positioning
-	const halfWidth = width / 2;
-	const halfLength = length / 2;
-
-	// Create 3 or 4 evenly-spaced skid beams
-	// For 3 beams: front, center, back
-	// Spacing calculated to span the full length with even gaps
-	const numSkids = 3;
-	const skidPositions = [];
-	const spacing = length / (numSkids - 1);
-
-	for (let i = 0; i < numSkids; i++) {
-		skidPositions.push(-halfLength + i * spacing);
-	}
-
+	// Floor deck: thin panel sitting just below Y=0 so its top face is flush with wall bottoms
+	const floorY = -FLOOR_THICKNESS / 2;
+	// Skids run under the floor; their tops touch the floor bottom
+	const skidY = -FLOOR_THICKNESS - SKID_SIZE / 2;
+	// 5 beams evenly spread across the full shed width
+	const xPositions = Array.from({ length: NUM_SKIDS }, (_, i) =>
+		-width / 2 + i * (width / (NUM_SKIDS - 1))
+	);
 	return (
-		<group name="skidsGroup" position={[0, -wallHeight / 2 - skidHeight / 2, 0]}>
-			{/* Front-left skid beam */}
-			<mesh position={[-halfWidth - skidWidth / 2, 0, skidPositions[0]]} castShadow receiveShadow>
-				<boxGeometry args={[skidWidth, skidHeight, skidDepth]} />
+		<group name="foundationGroup">
+			{/* Floor deck */}
+			<mesh
+				position={[0, floorY, 0]}
+				receiveShadow
+			>
+				<boxGeometry args={[width, FLOOR_THICKNESS, length]} />
 				<meshStandardMaterial
-					color={foundationColor}
-					roughness={0.7}
+					color="#C8A96E"
+					roughness={0.85}
 					metalness={0.0}
 				/>
 			</mesh>
 
-			{/* Front-center skid beam */}
-			<mesh position={[0, 0, skidPositions[0]]} castShadow receiveShadow>
-				<boxGeometry args={[skidWidth, skidHeight, skidDepth]} />
-				<meshStandardMaterial
-					color={foundationColor}
-					roughness={0.7}
-					metalness={0.0}
-				/>
-			</mesh>
-
-			{/* Front-right skid beam */}
-			<mesh position={[halfWidth + skidWidth / 2, 0, skidPositions[0]]} castShadow receiveShadow>
-				<boxGeometry args={[skidWidth, skidHeight, skidDepth]} />
-				<meshStandardMaterial
-					color={foundationColor}
-					roughness={0.7}
-					metalness={0.0}
-				/>
-			</mesh>
-
-			{/* Center-left skid beam */}
-			<mesh position={[-halfWidth - skidWidth / 2, 0, skidPositions[1]]} castShadow receiveShadow>
-				<boxGeometry args={[skidWidth, skidHeight, skidDepth]} />
-				<meshStandardMaterial
-					color={foundationColor}
-					roughness={0.7}
-					metalness={0.0}
-				/>
-			</mesh>
-
-			{/* Center-center skid beam */}
-			<mesh position={[0, 0, skidPositions[1]]} castShadow receiveShadow>
-				<boxGeometry args={[skidWidth, skidHeight, skidDepth]} />
-				<meshStandardMaterial
-					color={foundationColor}
-					roughness={0.7}
-					metalness={0.0}
-				/>
-			</mesh>
-
-			{/* Center-right skid beam */}
-			<mesh position={[halfWidth + skidWidth / 2, 0, skidPositions[1]]} castShadow receiveShadow>
-				<boxGeometry args={[skidWidth, skidHeight, skidDepth]} />
-				<meshStandardMaterial
-					color={foundationColor}
-					roughness={0.7}
-					metalness={0.0}
-				/>
-			</mesh>
-
-			{/* Back-left skid beam */}
-			<mesh position={[-halfWidth - skidWidth / 2, 0, skidPositions[2]]} castShadow receiveShadow>
-				<boxGeometry args={[skidWidth, skidHeight, skidDepth]} />
-				<meshStandardMaterial
-					color={foundationColor}
-					roughness={0.7}
-					metalness={0.0}
-				/>
-			</mesh>
-
-			{/* Back-center skid beam */}
-			<mesh position={[0, 0, skidPositions[2]]} castShadow receiveShadow>
-				<boxGeometry args={[skidWidth, skidHeight, skidDepth]} />
-				<meshStandardMaterial
-					color={foundationColor}
-					roughness={0.7}
-					metalness={0.0}
-				/>
-			</mesh>
-
-			{/* Back-right skid beam */}
-			<mesh position={[halfWidth + skidWidth / 2, 0, skidPositions[2]]} castShadow receiveShadow>
-				<boxGeometry args={[skidWidth, skidHeight, skidDepth]} />
-				<meshStandardMaterial
-					color={foundationColor}
-					roughness={0.7}
-					metalness={0.0}
-				/>
-			</mesh>
+			{/* 5 longitudinal 4×4 skid beams */}
+			{xPositions.map((x, i) => (
+				<mesh
+					key={i}
+					position={[x, skidY, 0]}
+					castShadow
+					receiveShadow
+				>
+					<boxGeometry args={[SKID_SIZE, SKID_SIZE, length]} />
+					<meshStandardMaterial
+						color={foundationColor}
+						roughness={0.8}
+						metalness={0.0}
+					/>
+				</mesh>
+			))}
 		</group>
 	);
 };
-
-/**
- * PropTypes documentation:
- * - width: Shed width in feet
- * - length: Shed length in feet
- * - wallHeight: Wall height in feet
- * - foundationHeight: Foundation height in feet (default: 1.5)
- * - foundationOverhang: Overhang on all sides in feet (default: 0.5)
- * - foundationColor: Foundation color hex code (default: #8B7355)
- */

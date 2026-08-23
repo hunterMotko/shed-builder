@@ -105,22 +105,22 @@ export const WindowObject = ({ placement, shedDimensions, trimColor = '#654321',
 
       {/* Horizontal Muntins (horizontal dividers) */}
       {Array.from({ length: gridY - 1 }).map((_, i) => {
-        const yPos = (-(gridY - 1) * elemHeight) / (2 * gridY) + (i + 1) * (elemHeight / gridY);
+        const yPos = -elemHeight / 2 + (i + 1) * (elemHeight / gridY);
         return (
           <mesh key={`h-muntin-${i}`} position={[0, yPos, 0.04]}>
             <boxGeometry args={[elemWidth, 0.04, 0.025]} />
-            <meshStandardMaterial color="#8B7355" roughness={0.6} />
+            <meshStandardMaterial color={trimColor} roughness={0.6} />
           </mesh>
         );
       })}
 
       {/* Vertical Muntins (vertical dividers) */}
       {Array.from({ length: gridX - 1 }).map((_, i) => {
-        const xPos = (-(gridX - 1) * elemWidth) / (2 * gridX) + (i + 1) * (elemWidth / gridX);
+        const xPos = -elemWidth / 2 + (i + 1) * (elemWidth / gridX);
         return (
           <mesh key={`v-muntin-${i}`} position={[xPos, 0, 0.04]}>
             <boxGeometry args={[0.04, elemHeight, 0.025]} />
-            <meshStandardMaterial color="#8B7355" roughness={0.6} />
+            <meshStandardMaterial color={trimColor} roughness={0.6} />
           </mesh>
         );
       })}

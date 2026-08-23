@@ -1,166 +1,151 @@
-import axios from 'axios';
+import { useState } from 'react';
 import { useShedStore } from '../store/shedStore';
-import { DimensionsSection } from './controls/DimensionsSection';
-import { StyleSection } from './controls/StyleSection';
-import { ColorSection } from './controls/ColorSection';
+import { useDesignPersistence } from '../hooks/useDesignPersistence';
+import { DimensionsSection }     from './controls/DimensionsSection';
+import { StyleSection }          from './controls/StyleSection';
 import { TrimAndDetailsSection } from './controls/TrimAndDetailsSection';
-import { PriceDisplay } from './controls/PriceDisplay';
-import { ActionButtons } from './controls/ActionButtons';
-import { PlacementList } from './PlacementList';
+import { ColorSection }          from './controls/ColorSection';
+import { AddOnsSection }         from './controls/AddOnsSection';
+import { ActionButtons }         from './controls/ActionButtons';
+import { lookupBasePrice, getAddOnLineItems } from '../utils/pricingUtils';
 
-const API_BASE_URL = 'http://localhost:8080/api';
+const TABS = [
+  { id: 'dimensions', label: 'Size' },
+  { id: 'style',      label: 'Style' },
+  { id: 'colors',     label: 'Colors' },
+  { id: 'addons',     label: 'Add-Ons' },
+];
 
-export const ControlPanel = () => {
-  const {
-    width,
-    length,
-    style,
-    color,
-    roofColor,
-    price,
-    setWidth,
-    setLength,
-    setStyle,
-    setColor,
-    setRoofColor,
-    setPrice,
-    getConfig,
-    reset,
-  } = useShedStore();
+export const ControlPanel = ({ onClose }) => {
+  const [activeTab, setActiveTab] = useState('dimensions');
 
-  const calculatePrice = (w, l, s) => {
-    const basePrice = w * l * 10; // $10 per sq ft
-    const total = s === 'Barn' ? basePrice + 500 : basePrice;
-    return total.toFixed(2);
-  };
+  const { style, color, roofColor, setStyle, setColor, setRoofColor,
+          width, length, wallHeight, addOns, reset } = useShedStore();
+  const { save, load, isLoading } = useDesignPersistence();
 
-  const handleDimensionChange = (newWidth, newLength, newStyle) => {
-    const newPrice = calculatePrice(newWidth, newLength, newStyle);
-    setPrice(parseFloat(newPrice));
-  };
+  const base     = lookupBasePrice(width, length, wallHeight) ?? 0;
+  const addOnAmt = getAddOnLineItems(addOns).reduce((s, i) => s + i.amount, 0);
+  const total    = base + addOnAmt;
 
-  const handleWidthChange = (newWidth) => {
-    setWidth(newWidth);
-    handleDimensionChange(newWidth, length, style);
-  };
-
-  const handleLengthChange = (newLength) => {
-    setLength(newLength);
-    handleDimensionChange(width, newLength, style);
-  };
-
-  const handleStyleChange = (newStyle) => {
-    setStyle(newStyle);
-    handleDimensionChange(width, length, newStyle);
-  };
-
-  const handleColorChange = (newColor) => {
-    setColor(newColor);
-  };
-
-  const handleRoofColorChange = (newRoofColor) => {
-    setRoofColor(newRoofColor);
-  };
-
-  const handleSaveDesign = async () => {
+  const handleSave = async () => {
     try {
-      const config = getConfig();
-      const response = await axios.post(`${API_BASE_URL}/save-design`, config);
-      alert(`Design saved! ID: ${response.data.id}\nPrice: $${response.data.price.toFixed(2)}`);
-    } catch (error) {
-      console.error('Error saving design:', error);
-      alert('Failed to save design');
+      const saved = await save();
+      alert(`Design saved!\nID: ${saved.id}\nPrice: $${saved.price?.toFixed(2) ?? total}`);
+    } catch (e) {
+      alert(`Save failed: ${e.userMessage || e.message}`);
     }
   };
 
-  const handleLoadDesign = async () => {
-    const id = prompt('Enter design ID to load:');
-    if (!id) return;
-
+  const handleLoad = async () => {
+    const id = prompt('Enter design ID:');
+    if (!id?.trim()) return;
     try {
-      const response = await axios.get(`${API_BASE_URL}/design/${id}`);
-      const design = response.data;
-      setWidth(design.width);
-      setLength(design.length);
-      setStyle(design.style);
-      setColor(design.color);
-      setRoofColor(design.roofColor);
-      setPrice(design.price);
-      alert('Design loaded successfully!');
-    } catch (error) {
-      console.error('Error loading design:', error);
-      alert('Failed to load design');
+      await load(id.trim());
+    } catch (e) {
+      alert(`Load failed: ${e.userMessage || e.message}`);
     }
   };
 
   return (
-    <div className="flex flex-col h-full bg-gradient-to-b from-gray-50 to-gray-100 overflow-y-auto">
-      {/* Header */}
-      <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-5 shadow-sm z-10">
-        <h1 className="text-2xl font-bold text-gray-900">Shed Configurator</h1>
-        <p className="text-sm text-gray-500 mt-1">Customize your shed design in real time</p>
+    <div style={{
+      width: '100%', height: '100%',
+      display: 'flex', flexDirection: 'column',
+      backgroundColor: '#1e293b',
+      userSelect: 'none',
+    }}>
+
+      {/* ── Header ─────────────────────────────────────────────── */}
+      <div style={{
+        height: 52, flexShrink: 0,
+        display: 'flex', alignItems: 'center',
+        padding: '0 12px', gap: 8,
+        borderBottom: '1px solid #334155',
+      }}>
+        <button
+          onClick={onClose}
+          title="Close panel"
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            color: '#64748b', fontSize: 18, lineHeight: 1,
+            padding: '4px 6px', borderRadius: 4,
+            transition: 'color 120ms',
+          }}
+          onMouseEnter={(e) => e.target.style.color = '#94a3b8'}
+          onMouseLeave={(e) => e.target.style.color = '#64748b'}
+        >
+          ‹
+        </button>
+        <span style={{ flex: 1, color: '#cbd5e1', fontSize: 13, fontWeight: 600, letterSpacing: '0.01em' }}>
+          Shed Designer
+        </span>
+        <span style={{ color: '#4ade80', fontSize: 15, fontWeight: 700 }}>
+          ${total.toLocaleString()}
+        </span>
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 px-6 py-6 space-y-6">
-        {/* Dimensions Section */}
-        <DimensionsSection
-          width={width}
-          length={length}
-          onWidthChange={handleWidthChange}
-          onLengthChange={handleLengthChange}
-        />
-
-        {/* Style Section */}
-        <StyleSection
-          style={style}
-          onStyleChange={handleStyleChange}
-        />
-
-        {/* Colors Section */}
-        <div className="space-y-4">
-          <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">
-            Colors
-          </h2>
-
-          {/* Siding Color */}
-          <ColorSection
-            label="Siding Color"
-            currentColor={color}
-            onColorChange={handleColorChange}
-            colorType="siding"
-          />
-
-          {/* Roof Color */}
-          <ColorSection
-            label="Roof Color"
-            currentColor={roofColor}
-            onColorChange={handleRoofColorChange}
-            colorType="roof"
-          />
-        </div>
-
-        {/* Trim & Details Section */}
-        <TrimAndDetailsSection />
-
-        {/* Doors & Windows Section */}
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-4">
-            Doors & Windows
-          </h2>
-          <PlacementList />
-        </div>
-
-        {/* Price Display */}
-        <PriceDisplay price={price} style={style} width={width} length={length} />
+      {/* ── Tab strip ──────────────────────────────────────────── */}
+      <div style={{
+        display: 'flex', flexShrink: 0,
+        backgroundColor: '#0f172a',
+        borderBottom: '1px solid #1e293b',
+      }}>
+        {TABS.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            style={{
+              flex: 1, padding: '10px 4px',
+              border: 'none', background: 'none', cursor: 'pointer',
+              fontSize: 11, fontWeight: activeTab === tab.id ? 600 : 400,
+              color: activeTab === tab.id ? '#93c5fd' : '#64748b',
+              borderBottom: `2px solid ${activeTab === tab.id ? '#3b82f6' : 'transparent'}`,
+              transition: 'color 150ms, border-color 150ms',
+              letterSpacing: '0.03em',
+            }}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
-      {/* Footer - Actions */}
-      <div className="border-t border-gray-200 bg-white px-6 py-4 sticky bottom-0">
+      {/* ── Tab content ────────────────────────────────────────── */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '16px 14px' }}>
+        <div className="tab-panel" key={activeTab}>
+          {activeTab === 'dimensions' && (
+            <DimensionsSection />
+          )}
+
+          {activeTab === 'style' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+              <StyleSection style={style} onStyleChange={setStyle} />
+              <TrimAndDetailsSection />
+            </div>
+          )}
+
+          {activeTab === 'colors' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+              <ColorSection label="Siding Color" currentColor={color} onColorChange={setColor} colorType="siding" />
+              <ColorSection label="Roof Color" currentColor={roofColor} onColorChange={setRoofColor} colorType="roof" />
+            </div>
+          )}
+
+          {activeTab === 'addons' && (
+            <AddOnsSection />
+          )}
+        </div>
+      </div>
+
+      {/* ── Footer actions ─────────────────────────────────────── */}
+      <div style={{
+        flexShrink: 0,
+        padding: '12px 14px',
+        borderTop: '1px solid #334155',
+      }}>
         <ActionButtons
-          onSave={handleSaveDesign}
-          onLoad={handleLoadDesign}
+          onSave={handleSave}
+          onLoad={handleLoad}
           onReset={reset}
+          isLoading={isLoading}
         />
       </div>
     </div>

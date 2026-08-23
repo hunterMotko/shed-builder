@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>frontend</title>
+  </head>
+  <body>
+<div id="app"></div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.164.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.164.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xbfd1e5);
+
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
+camera.position.set(6, 4, 8);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.getElementById("app").appendChild(renderer.domElement);
+
+// Lighting
+scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.2));
+const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+dirLight.position.set(5, 10, 7);
+scene.add(dirLight);
+
+// SHED BODY -------------------------------------------------------------
+const shedWidth = 4;
+const shedDepth = 3;
+const shedHeight = 2.2;
+
+const bodyGeo = new THREE.BoxGeometry(shedWidth, shedHeight, shedDepth);
+const bodyMat = new THREE.MeshStandardMaterial({ color: 0x8e8e8e });
+const body = new THREE.Mesh(bodyGeo, bodyMat);
+scene.add(body);
+
+// ROOF ------------------------------------------------------------------
+const roofHeight = 1.2;         // height from top of wall to ridge
+const overhang = 0.3;           // eaves
+
+// roof panel width matches shed width + overhang on both sides
+const roofWidth = shedWidth + overhang * 2;
+// slope length (depth)
+const roofDepth = shedDepth + overhang * 2;
+
+// Each side is a single PlaneGeometry
+const roofGeo = new THREE.PlaneGeometry(roofWidth, roofDepth);
+
+const roofMat = new THREE.MeshStandardMaterial({
+  color: 0xa03333,
+  side: THREE.DoubleSide
+});
+
+// Left roof panel
+const roofLeft = new THREE.Mesh(roofGeo, roofMat);
+roofLeft.rotation.x = -Math.PI / 2;     // make horizontal
+roofLeft.rotation.z = Math.atan(roofHeight / (roofDepth / 2));  // tilt
+roofLeft.position.y = shedHeight + roofHeight / 2;
+roofLeft.position.z = 0;
+scene.add(roofLeft);
+
+// Right roof panel
+const roofRight = new THREE.Mesh(roofGeo, roofMat);
+roofRight.rotation.x = -Math.PI / 2;
+roofRight.rotation.z = -Math.atan(roofHeight / (roofDepth / 2));
+roofRight.position.y = shedHeight + roofHeight / 2;
+roofRight.position.z = 0;
+scene.add(roofRight);
+
+// Controls
+const controls = new OrbitControls(camera, renderer.domElement);
+
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+animate();
+
+// Resize
+window.addEventListener("resize", () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+  </body>
+</html>

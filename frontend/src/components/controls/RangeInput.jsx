@@ -1,53 +1,39 @@
-/**
- * RangeInput Component
- *
- * Accessible range slider with visual feedback
- * Features:
- * - Proper ARIA labels for screen readers
- * - Visual track fill indicator
- * - Responsive styling
- * - Keyboard accessible
- */
-
 export const RangeInput = ({
-  id,
-  min,
-  max,
-  value,
-  onChange,
-  step = 1,
-  ariaLabel,
+	id,
+	min,
+	max,
+	value,
+	onChange,
+	step = 1,
+	ariaLabel,
 }) => {
-  // Calculate percentage for visual track fill
-  const percentage = ((value - min) / (max - min)) * 100;
+	const percentage = ((value - min) / (max - min)) * 100;
+	const handleChange = (e) => {
+		onChange(parseInt(e.target.value, 10));
+	};
 
-  const handleChange = (e) => {
-    onChange(parseInt(e.target.value, 10));
-  };
+	return (
+		<div className="relative">
+			{/* Visual track background */}
+			<div className="absolute h-2 bg-gray-200 rounded-full w-full top-3 pointer-events-none" />
+			{/* Visual track fill (shows progress) */}
+			<div
+				className="absolute h-2 bg-blue-600 rounded-full top-3 pointer-events-none transition-all ease-out"
+				style={{ width: `${percentage}%` }}
+				aria-hidden="true"
+			/>
 
-  return (
-    <div className="relative">
-      {/* Visual track background */}
-      <div className="absolute h-2 bg-gray-200 rounded-full w-full top-3 pointer-events-none" />
-
-      {/* Visual track fill (shows progress) */}
-      <div
-        className="absolute h-2 bg-blue-600 rounded-full top-3 pointer-events-none transition-all ease-out"
-        style={{ width: `${percentage}%` }}
-        aria-hidden="true"
-      />
-
-      {/* Range input slider */}
-      <input
-        id={id}
-        type="range"
-        min={min}
-        max={max}
-        value={value}
-        onChange={handleChange}
-        step={step}
-        aria-label={ariaLabel}
-        className="
+			{/* Range input slider */}
+			<input
+				id={id}
+				type="range"
+				min={min}
+				max={max}
+				value={value}
+				onChange={handleChange}
+				step={step}
+				aria-label={ariaLabel}
+				className="
           relative
           w-full
           h-2
@@ -85,7 +71,7 @@ export const RangeInput = ({
           focus:ring-blue-500
           focus:ring-offset-2
         "
-      />
-    </div>
-  );
+			/>
+		</div>
+	);
 };

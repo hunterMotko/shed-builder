@@ -228,6 +228,71 @@ class CSGShedModifier {
   }
 
   /**
+   * Compute the cutout position and size in a single wall's LOCAL coordinate space.
+   * Works for all four sides — the geometry is always a flat slab centered at origin,
+   * so localZ = 0 punches through the center of the wall thickness.
+   *
+   * @param {Object} placement - {normalizedX, normalizedY, width, height}
+   * @param {'front'|'back'|'left'|'right'} side - Wall side
+   * @param {Object} shedDimensions - {width, length, wallHeight}
+   * @param {number} wallThickness - Wall slab thickness (default 0.5 ft)
+   * @returns {{position: THREE.Vector3, size: {width, height, depth}}}
+   */
+  getLocalCoordinatesForWall(placement, side, shedDimensions, wallThickness = 0.5) {
+    const { wallHeight } = shedDimensions;
+    // Front/back span the full shed width; left/right span length minus two corner thicknesses
+    const localGeomWidth = (side === 'front' || side === 'back')
+      ? shedDimensions.width
+      : shedDimensions.length - wallThickness * 2;
+
+    return {
+      position: new THREE.Vector3(
+        -localGeomWidth / 2 + placement.normalizedX * localGeomWidth,
+        -wallHeight / 2 + placement.normalizedY * wallHeight,
+        0
+      ),
+      size: {
+        width:  placement.width,
+        height: placement.height,
+        depth:  wallThickness + 0.1,
+      },
+    };
+  }
+
+  /**
+   * Apply placements to a single wall's geometry using local-space CSG.
+   * Use this instead of applyAllPlacements when walls are rendered individually.
+   *
+   * @param {THREE.BufferGeometry} baseGeometry - The wall slab geometry (centered at origin)
+   * @param {Array} placements - Placements for THIS wall only
+   * @param {'front'|'back'|'left'|'right'} side - Wall side
+   * @param {Object} shedDimensions - {width, length, wallHeight}
+   * @param {number} wallThickness - Wall slab thickness
+   * @returns {THREE.BufferGeometry} Modified geometry with holes cut
+   */
+  applyWallPlacements(baseGeometry, placements, side, shedDimensions, wallThickness = 0.5) {
+    if (!placements || placements.length === 0) return baseGeometry;
+
+    let resultGeometry = baseGeometry.clone();
+    for (const placement of placements) {
+      const localCoords = this.getLocalCoordinatesForWall(placement, side, shedDimensions, wallThickness);
+      const cutBox = new THREE.BoxGeometry(
+        localCoords.size.width,
+        localCoords.size.height,
+        localCoords.size.depth
+      );
+      const cutMesh = new THREE.Mesh(cutBox, new THREE.MeshStandardMaterial({ visible: false }));
+      cutMesh.position.copy(localCoords.position);
+      try {
+        resultGeometry = this.subtractOpening(resultGeometry, placement, shedDimensions);
+      } catch (err) {
+        console.error(`Wall CSG failed on ${side} for placement ${placement.id}:`, err);
+      }
+    }
+    return resultGeometry;
+  }
+
+  /**
    * Dispose resources (cleanup)
    */
   dispose() {

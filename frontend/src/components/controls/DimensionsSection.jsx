@@ -1,55 +1,99 @@
-export const DimensionsSection = ({ width, length, onWidthChange, onLengthChange }) => {
+import { useShedStore } from '../../store/shedStore';
+import {
+  CATALOG_WIDTHS,
+  getAvailableHeights,
+  getAvailableLengths,
+  getShedTier,
+} from '../../utils/pricingUtils';
+
+const TIER_STYLE = {
+  Standard: { background: 'rgba(30,58,138,0.5)',  color: '#93c5fd' },
+  Deluxe:   { background: 'rgba(88,28,135,0.5)',  color: '#d8b4fe' },
+  Special:  { background: 'rgba(120,53,15,0.5)',  color: '#fbbf24' },
+};
+
+const SELECT = {
+  width: '100%',
+  background: '#334155',
+  color: '#e2e8f0',
+  border: '1px solid #475569',
+  borderRadius: 6,
+  padding: '8px 10px',
+  fontSize: 13,
+  outline: 'none',
+  cursor: 'pointer',
+};
+
+const LABEL = {
+  display: 'block',
+  color: '#94a3b8',
+  fontSize: 11,
+  fontWeight: 600,
+  textTransform: 'uppercase',
+  letterSpacing: '0.06em',
+  marginBottom: 6,
+};
+
+export const DimensionsSection = () => {
+  const width      = useShedStore((s) => s.width);
+  const length     = useShedStore((s) => s.length);
+  const wallHeight = useShedStore((s) => s.wallHeight);
+  const setWidth      = useShedStore((s) => s.setWidth);
+  const setLength     = useShedStore((s) => s.setLength);
+  const setWallHeight = useShedStore((s) => s.setWallHeight);
+
+  const availableHeights = getAvailableHeights(width);
+  const availableLengths = getAvailableLengths(width, wallHeight);
+  const tier = getShedTier(wallHeight);
+  const tierStyle = TIER_STYLE[tier] ?? TIER_STYLE.Standard;
+
   return (
-    <div className="bg-white rounded-lg p-5 border border-gray-200 shadow-sm">
-      <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4">
-        Dimensions
-      </h2>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div>
+        <label style={LABEL}>Width</label>
+        <select style={SELECT} value={width} onChange={(e) => setWidth(parseInt(e.target.value, 10))}>
+          {CATALOG_WIDTHS.map((w) => (
+            <option key={w} value={w}>{w} ft</option>
+          ))}
+        </select>
+      </div>
 
-      <div className="space-y-5">
-        {/* Width Control */}
-        <div>
-          <div className="flex justify-between items-center mb-2">
-            <label className="text-sm font-medium text-gray-700">Width</label>
-            <span className="text-lg font-semibold text-blue-600">{width} ft</span>
-          </div>
-          <input
-            type="range"
-            min="8"
-            max="20"
-            value={width}
-            onChange={(e) => onWidthChange(parseInt(e.target.value))}
-            className="w-full h-2 bg-gray-300 rounded-lg appearance-none cursor-pointer accent-blue-600"
-          />
-          <div className="flex justify-between text-xs text-gray-500 mt-2">
-            <span>8 ft</span>
-            <span>20 ft</span>
-          </div>
-        </div>
+      <div>
+        <label style={LABEL}>Length</label>
+        <select style={SELECT} value={length} onChange={(e) => setLength(parseInt(e.target.value, 10))}>
+          {availableLengths.map((l) => (
+            <option key={l} value={l}>{l} ft</option>
+          ))}
+        </select>
+      </div>
 
-        {/* Length Control */}
-        <div>
-          <div className="flex justify-between items-center mb-2">
-            <label className="text-sm font-medium text-gray-700">Length</label>
-            <span className="text-lg font-semibold text-blue-600">{length} ft</span>
-          </div>
-          <input
-            type="range"
-            min="8"
-            max="24"
-            value={length}
-            onChange={(e) => onLengthChange(parseInt(e.target.value))}
-            className="w-full h-2 bg-gray-300 rounded-lg appearance-none cursor-pointer accent-blue-600"
-          />
-          <div className="flex justify-between text-xs text-gray-500 mt-2">
-            <span>8 ft</span>
-            <span>24 ft</span>
-          </div>
-        </div>
+      <div>
+        <label style={LABEL}>Wall Height</label>
+        <select style={SELECT} value={wallHeight} onChange={(e) => setWallHeight(parseInt(e.target.value, 10))}>
+          {availableHeights.map((h) => (
+            <option key={h} value={h}>{h} ft — {getShedTier(h)}</option>
+          ))}
+        </select>
+      </div>
 
-        {/* Size Info */}
-        <div className="text-xs text-gray-700 bg-blue-50 p-3 rounded-md border border-blue-100">
-          <span className="font-semibold">Size:</span> {width} × {length} ft = <span className="font-bold text-blue-600">{width * length} sq ft</span>
-        </div>
+      {/* Summary chip */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        background: 'rgba(30,58,138,0.2)',
+        border: '1px solid rgba(59,130,246,0.25)',
+        borderRadius: 8,
+        padding: '8px 12px',
+        marginTop: 2,
+      }}>
+        <span style={{ color: '#93c5fd', fontSize: 12 }}>
+          {width} × {length} × {wallHeight} ft &nbsp;·&nbsp; {width * length} sq ft
+        </span>
+        <span style={{
+          padding: '2px 8px', borderRadius: 10, fontSize: 11, fontWeight: 600,
+          ...tierStyle,
+        }}>
+          {tier}
+        </span>
       </div>
     </div>
   );

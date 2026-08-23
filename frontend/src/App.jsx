@@ -1,271 +1,166 @@
+import { useState, Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Grid } from '@react-three/drei';
-import { Suspense, useState } from 'react';
+import { OrbitControls } from '@react-three/drei';
 import { BarnShed } from './components/BarnShed/BarnShed';
 import { GableShed } from './components/GableShed/GableShed';
+import { ControlPanel } from './components/ControlPanel';
+import { ComponentPreview } from './pages/ComponentPreview';
+import { ReferenceMatch } from './pages/ReferenceMatch';
 import { useShedStore } from './store/shedStore';
+import { lookupBasePrice, getAddOnLineItems, getShedTier } from './utils/pricingUtils';
 import './App.css';
 
-function App() {
-  const {
-    width,
-    length,
-    style,
-    color,
-    roofColor,
-    trimColor,
-    placements,
-    setWidth,
-    setLength,
-    setStyle,
-    setColor,
-    setRoofColor,
-    setTrimColor,
-  } = useShedStore();
+const NAV_H  = 48;
+const DRAWER = 320;
 
-  const [price, setPrice] = useState(0);
+const navBtn = (active) => ({
+  background: 'none',
+  border: 'none',
+  cursor: 'pointer',
+  fontSize: 14,
+  fontWeight: active ? 600 : 400,
+  color: active ? '#93c5fd' : '#94a3b8',
+  padding: '4px 12px',
+  borderRadius: 4,
+});
 
-  // Calculate price: $10 per sq ft + $500 for Barn style
-  const calculatePrice = (w, l, s) => {
-    const baseArea = w * l;
-    const basePrice = baseArea * 10;
-    const styleAddon = s === 'Barn' ? 500 : 0;
-    return basePrice + styleAddon;
-  };
+export default function App() {
+  const [page, setPage]           = useState('configurator');
+  const [drawerOpen, setDrawerOpen] = useState(true);
 
-  const handleDimensionChange = (newWidth, newLength, newStyle) => {
-    setPrice(calculatePrice(newWidth, newLength, newStyle));
-  };
+  const { width, length, wallHeight, style, color, roofColor, addOns } = useShedStore();
 
-  const handleWidthChange = (e) => {
-    const newWidth = parseInt(e.target.value);
-    setWidth(newWidth);
-    handleDimensionChange(newWidth, length, style);
-  };
-
-  const handleLengthChange = (e) => {
-    const newLength = parseInt(e.target.value);
-    setLength(newLength);
-    handleDimensionChange(width, newLength, style);
-  };
-
-  const handleStyleChange = (e) => {
-    const newStyle = e.target.value;
-    setStyle(newStyle);
-    handleDimensionChange(width, length, newStyle);
-  };
-
-  const handleSaveDesign = async () => {
-    const config = {
-      width,
-      length,
-      style,
-      color,
-      roofColor,
-      trimColor,
-      placements,
-      price,
-    };
-
-    try {
-      const response = await fetch('http://localhost:8080/api/save-design', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(config),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        alert(`Design saved! ID: ${data.id}`);
-      } else {
-        alert('Failed to save design');
-      }
-    } catch (error) {
-      console.error('Error saving design:', error);
-      alert('Error saving design: ' + error.message);
-    }
-  };
+  // Price for canvas overlay
+  const base      = lookupBasePrice(width, length, wallHeight) ?? 0;
+  const addOnTotal = getAddOnLineItems(addOns).reduce((s, i) => s + i.amount, 0);
+  const total     = base + addOnTotal;
+  const tier      = getShedTier(wallHeight);
 
   return (
-    <div className="w-full h-screen flex gap-4 bg-gray-900 p-4">
-      {/* Controls Panel */}
-      <div className="w-96 bg-gray-800 rounded-lg p-6 overflow-y-auto shadow-lg">
-        <h1 className="text-3xl font-bold text-white mb-8">Shed Configurator</h1>
+    <div style={{ width: '100%', height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
-        {/* Dimensions Section */}
-        <div className="mb-8 pb-6 border-b border-gray-700">
-          <h2 className="text-lg font-semibold text-gray-200 mb-4">Dimensions</h2>
+      {/* ── Nav bar ─────────────────────────────────────────────── */}
+      <nav style={{
+        height: NAV_H, flexShrink: 0,
+        backgroundColor: '#0f172a',
+        display: 'flex', alignItems: 'center',
+        padding: '0 16px', gap: 8,
+        boxShadow: '0 1px 4px rgba(0,0,0,0.5)',
+      }}>
+        <span style={{ color: '#f1f5f9', fontWeight: 700, fontSize: 15, marginRight: 16 }}>
+          Shed Designer
+        </span>
+        <button style={navBtn(page === 'configurator')} onClick={() => setPage('configurator')}>
+          Configurator
+        </button>
+        <button style={navBtn(page === 'preview')} onClick={() => setPage('preview')}>
+          Component Preview
+        </button>
+        <button style={navBtn(page === 'reference')} onClick={() => setPage('reference')}>
+          Reference Match
+        </button>
+      </nav>
 
-          {/* Width Control */}
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-200 mb-2">
-              Width: {width} ft
-            </label>
-            <input
-              type="range"
-              min="8"
-              max="20"
-              value={width}
-              onChange={handleWidthChange}
-              className="w-full"
-            />
+      {/* ── Page content ────────────────────────────────────────── */}
+      {page === 'configurator' ? (
+        <div style={{ flex: 1, display: 'flex', overflow: 'hidden', backgroundColor: '#5B8DB8' }}>
+
+          {/* Sliding drawer */}
+          <div style={{
+            width: drawerOpen ? DRAWER : 0,
+            flexShrink: 0,
+            overflow: 'hidden',
+            transition: 'width 280ms cubic-bezier(0.4, 0, 0.2, 1)',
+          }}>
+            <div style={{ width: DRAWER, height: '100%' }}>
+              <ControlPanel onClose={() => setDrawerOpen(false)} />
+            </div>
           </div>
 
-          {/* Length Control */}
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-200 mb-2">
-              Length: {length} ft
-            </label>
-            <input
-              type="range"
-              min="8"
-              max="24"
-              value={length}
-              onChange={handleLengthChange}
-              className="w-full"
-            />
-          </div>
-        </div>
+          {/* Canvas area */}
+          <div style={{ flex: 1, position: 'relative' }}>
 
-        {/* Style & Colors Section */}
-        <div className="mb-8 pb-6 border-b border-gray-700">
-          <h2 className="text-lg font-semibold text-gray-200 mb-4">Style & Colors</h2>
-
-          {/* Style Selection */}
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-200 mb-2">
-              Roof Style
-            </label>
-            <select
-              value={style}
-              onChange={handleStyleChange}
-              className="w-full px-3 py-2 bg-gray-700 text-white rounded border border-gray-600"
+            {/* Toggle tab — left edge of canvas */}
+            <button
+              onClick={() => setDrawerOpen((o) => !o)}
+              className={drawerOpen ? '' : 'toggle-pulse'}
+              title={drawerOpen ? 'Close panel' : 'Open panel'}
+              aria-expanded={drawerOpen}
+              aria-label={drawerOpen ? 'Close configuration panel' : 'Open configuration panel'}
+              style={{
+                position: 'absolute', left: 0, top: '50%',
+                transform: 'translateY(-50%)',
+                zIndex: 10,
+                width: 24, height: 56,
+                background: '#334155',
+                border: 'none',
+                borderRadius: '0 8px 8px 0',
+                cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
             >
-              <option value="Gable">Gable</option>
-              <option value="Barn">Barn (Gambrel)</option>
-            </select>
-          </div>
+              <svg
+                width="12" height="12" viewBox="0 0 12 12" fill="none"
+                style={{
+                  color: '#93c5fd',
+                  transform: drawerOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                  transition: 'transform 250ms cubic-bezier(0.4, 0, 0.2, 1)',
+                }}
+              >
+                <path d="M4 2l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
 
-          {/* Siding Color */}
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-200 mb-2">
-              Siding Color
-            </label>
-            <div className="flex gap-3 items-center">
-              <input
-                type="color"
-                value={color}
-                onChange={(e) => setColor(e.target.value)}
-                className="w-12 h-10 rounded cursor-pointer"
-              />
-              <span className="text-xs text-gray-400">{color}</span>
-            </div>
-          </div>
+            {/* 3D Canvas */}
+            <Canvas camera={{ position: [25, 20, 25], fov: 50 }} style={{ width: '100%', height: '100%' }}>
+              <ambientLight intensity={0.6} />
+              <pointLight position={[15, 20, 10]} intensity={1} />
+              <pointLight position={[-15, 20, -10]} intensity={0.5} />
+              <Suspense fallback={null}>
+                {style === 'Barn' ? (
+                  <BarnShed width={width} length={length} wallHeight={wallHeight} color={color} roofColor={roofColor} />
+                ) : (
+                  <GableShed width={width} length={length} wallHeight={wallHeight} color={color} roofColor={roofColor} />
+                )}
+              </Suspense>
+              <OrbitControls />
+            </Canvas>
 
-          {/* Roof Color */}
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-200 mb-2">
-              Roof Color
-            </label>
-            <div className="flex gap-3 items-center">
-              <input
-                type="color"
-                value={roofColor}
-                onChange={(e) => setRoofColor(e.target.value)}
-                className="w-12 h-10 rounded cursor-pointer"
-              />
-              <span className="text-xs text-gray-400">{roofColor}</span>
-            </div>
-          </div>
-
-          {/* Trim Color */}
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-200 mb-2">
-              Trim Color
-            </label>
-            <div className="flex gap-3 items-center">
-              <input
-                type="color"
-                value={trimColor}
-                onChange={(e) => setTrimColor(e.target.value)}
-                className="w-12 h-10 rounded cursor-pointer"
-              />
-              <span className="text-xs text-gray-400">{trimColor}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Price & Summary Section */}
-        <div className="mb-8 pb-6 border-b border-gray-700">
-          <h2 className="text-lg font-semibold text-gray-200 mb-4">Summary</h2>
-          <div className="space-y-3 text-sm text-gray-300">
-            <p>
-              <span className="text-gray-400">Style:</span>
-              <span className="float-right font-medium">{style}</span>
-            </p>
-            <p>
-              <span className="text-gray-400">Dimensions:</span>
-              <span className="float-right font-medium">
-                {width}ft W × {length}ft L
+            {/* Price overlay bar */}
+            <div
+              aria-live="polite"
+              style={{
+                position: 'absolute', bottom: 20, left: '50%',
+                transform: 'translateX(-50%)',
+                backdropFilter: 'blur(10px)',
+                backgroundColor: 'rgba(15, 23, 42, 0.78)',
+                border: '1px solid rgba(148,163,184,0.15)',
+                borderRadius: 32,
+                padding: '9px 24px',
+                display: 'flex', alignItems: 'center', gap: 16,
+                whiteSpace: 'nowrap',
+                pointerEvents: 'none',
+              }}
+            >
+              <span style={{ color: '#94a3b8', fontSize: 13 }}>
+                {width} × {length} × {wallHeight} ft &nbsp;·&nbsp; {tier}
               </span>
-            </p>
-            <p>
-              <span className="text-gray-400">Area:</span>
-              <span className="float-right font-medium">{width * length} sq ft</span>
-            </p>
-            <p>
-              <span className="text-gray-400">Doors/Windows:</span>
-              <span className="float-right font-medium">{placements.length}</span>
-            </p>
-            <div className="pt-3 border-t border-gray-700">
-              <p>
-                <span className="text-white font-semibold">Estimated Price:</span>
-                <span className="float-right font-bold text-green-400 text-lg">
-                  ${price.toLocaleString()}
-                </span>
-              </p>
+              <span style={{ color: '#4ade80', fontSize: 16, fontWeight: 700 }}>
+                ${total.toLocaleString()}
+              </span>
+              <span style={{ color: '#64748b', fontSize: 12 }}>est.</span>
             </div>
           </div>
         </div>
-
-        {/* Action Buttons */}
-        <div className="flex gap-3">
-          <button
-            onClick={handleSaveDesign}
-            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded transition"
-          >
-            Save Design
-          </button>
-          <button
-            onClick={() => useShedStore.getState().reset()}
-            className="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded transition"
-          >
-            Reset
-          </button>
+      ) : page === 'preview' ? (
+        <div style={{ flex: 1, overflow: 'hidden' }}>
+          <ComponentPreview />
         </div>
-      </div>
-
-      {/* 3D Canvas */}
-      <div className="flex-1 bg-gray-950 rounded-lg overflow-hidden shadow-lg">
-        <Canvas camera={{ position: [25, 20, 25], fov: 50 }}>
-          <ambientLight intensity={0.6} />
-          <pointLight position={[15, 20, 10]} intensity={1} />
-          <pointLight position={[-15, 20, -10]} intensity={0.5} />
-
-          <Suspense fallback={null}>
-            {style === 'Barn' ? (
-              <BarnShed width={width} length={length} color={color} roofColor={roofColor} />
-            ) : (
-              <GableShed width={width} length={length} color={color} roofColor={roofColor} />
-            )}
-          </Suspense>
-
-          <Grid infiniteGrid />
-          <OrbitControls />
-        </Canvas>
-      </div>
+      ) : (
+        <div style={{ flex: 1, overflow: 'hidden' }}>
+          <ReferenceMatch />
+        </div>
+      )}
     </div>
   );
 }
-
-export default App;

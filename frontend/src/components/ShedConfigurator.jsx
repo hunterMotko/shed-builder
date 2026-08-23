@@ -5,7 +5,7 @@ import { GableShed } from './GableShed/GableShed';
  * ShedConfigurator
  *
  * Router component that renders the appropriate shed style based on configuration.
- * Handles style switching between Gambrel (Barn) and Gable roof configurations.
+ * Handles style switching between Barn (Barn) and Gable roof configurations.
  *
  * This component replaces the original monolithic ShedUltraRefined by delegating
  * to style-specific implementations while maintaining the same interface.
@@ -20,7 +20,7 @@ export const ShedConfigurator = ({
 	onShedMeshReady = null,
 }) => {
 	// Route to appropriate style-specific component
-	if (style === 'Gambrel') {
+	if (style === 'Barn') {
 		return (
 			<BarnShed
 				width={width}

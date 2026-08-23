@@ -1,164 +1,101 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import * as THREE from 'three';
 
-/**
- * Ultra-refined door with trim frame, recessed panel, and hardware detail
- * Implements professional construction detailing
- */
 export const DoorObject = ({
   placement,
   shedDimensions,
   trimColor = '#654321',
   wallColor = '#8B4513',
 }) => {
-  const {
-    width: elemWidth,
-    height: elemHeight,
-    normalizedX,
-    normalizedY,
-    wall,
-  } = placement;
-
+  const { width: elemWidth, height: elemHeight, normalizedX, normalizedY, wall } = placement;
   const { width, length, wallHeight } = shedDimensions;
   const halfWidth = width / 2;
   const halfLength = length / 2;
 
-  // Calculate world position
   const position = useMemo(() => {
-    let pos;
     switch (wall) {
-      case 'front':
-        pos = new THREE.Vector3(
-          -halfWidth + normalizedX * width,
-          -wallHeight / 2 + normalizedY * wallHeight,
-          halfLength + 0.3
-        );
-        break;
-      case 'back':
-        pos = new THREE.Vector3(
-          -halfWidth + normalizedX * width,
-          -wallHeight / 2 + normalizedY * wallHeight,
-          -halfLength - 0.3
-        );
-        break;
-      case 'left':
-        pos = new THREE.Vector3(
-          -halfWidth - 0.3,
-          -wallHeight / 2 + normalizedY * wallHeight,
-          -halfLength + normalizedX * length
-        );
-        break;
-      case 'right':
-        pos = new THREE.Vector3(
-          halfWidth + 0.3,
-          -wallHeight / 2 + normalizedY * wallHeight,
-          -halfLength + normalizedX * length
-        );
-        break;
-      default:
-        pos = new THREE.Vector3(0, 0, 0);
+      case 'front':  return new THREE.Vector3(-halfWidth + normalizedX * width, -wallHeight / 2 + normalizedY * wallHeight, halfLength + 0.3);
+      case 'back':   return new THREE.Vector3(-halfWidth + normalizedX * width, -wallHeight / 2 + normalizedY * wallHeight, -halfLength - 0.3);
+      case 'left':   return new THREE.Vector3(-halfWidth - 0.3, -wallHeight / 2 + normalizedY * wallHeight, -halfLength + normalizedX * length);
+      case 'right':  return new THREE.Vector3(halfWidth + 0.3, -wallHeight / 2 + normalizedY * wallHeight, -halfLength + normalizedX * length);
+      default:       return new THREE.Vector3(0, 0, 0);
     }
-    return pos;
   }, [normalizedX, normalizedY, wall, width, length, wallHeight, halfWidth, halfLength]);
 
-  // Calculate rotation for side walls
   const rotation = useMemo(() => {
-    switch (wall) {
-      case 'left':
-        return [0, Math.PI / 2, 0];
-      case 'right':
-        return [0, -Math.PI / 2, 0];
-      default:
-        return [0, 0, 0];
-    }
+    if (wall === 'left')  return [0, Math.PI / 2, 0];
+    if (wall === 'right') return [0, -Math.PI / 2, 0];
+    return [0, 0, 0];
   }, [wall]);
+
+  const W = elemWidth;
+  const H = elemHeight;
+  const slab      = 0.09;   // door thickness
+  const stileW    = 0.15;   // frame stile/rail width
+  const botRailH  = 0.22;   // bottom rail (taller for kick plate look)
+  const midRailH  = 0.12;   // middle rail that divides upper/lower panels
+  const frameZ    = 0.025;  // how proud the trim frame sits above slab
+
+  // Mid rail slightly above vertical center (represents ~42" lock rail on a 7ft door)
+  const midRailY = H * 0.09;
+
+  // 3 hinge positions: top, middle, bottom
+  const hingeYs = [H / 2 - 0.3, midRailY, -(H / 2 - 0.3)];
 
   return (
     <group position={position} rotation={rotation}>
-      {/* ===== OUTER DOOR SLAB (Trim Color) ===== */}
-      <mesh position={[0, 0, 0]} castShadow receiveShadow>
-        <boxGeometry args={[elemWidth - 0.05, elemHeight - 0.05, 0.05]} />
-        <meshStandardMaterial
-          color={trimColor}
-          roughness={0.35}
-          metalness={0.2}
-        />
+      {/* ── Main door slab (door body color) ── */}
+      <mesh castShadow receiveShadow>
+        <boxGeometry args={[W, H, slab]} />
+        <meshStandardMaterial color={wallColor} roughness={0.65} metalness={0.02} />
       </mesh>
 
-      {/* ===== RECESSED PANEL AREA ===== */}
-      {/* Main recessed panel - uses wall color for contrast */}
-      <mesh position={[0, 0, 0.08]} castShadow receiveShadow>
-        <boxGeometry args={[elemWidth - 0.15, elemHeight - 0.15, 0.06]} />
-        <meshStandardMaterial color={wallColor} roughness={0.5} />
+      {/* ── Raised trim frame members ── */}
+      {/* Top rail */}
+      <mesh position={[0, H / 2 - stileW / 2, slab / 2 + frameZ / 2]} castShadow>
+        <boxGeometry args={[W, stileW, frameZ]} />
+        <meshStandardMaterial color={trimColor} roughness={0.5} />
+      </mesh>
+      {/* Bottom rail */}
+      <mesh position={[0, -(H / 2 - botRailH / 2), slab / 2 + frameZ / 2]} castShadow>
+        <boxGeometry args={[W, botRailH, frameZ]} />
+        <meshStandardMaterial color={trimColor} roughness={0.5} />
+      </mesh>
+      {/* Middle rail */}
+      <mesh position={[0, midRailY, slab / 2 + frameZ / 2]} castShadow>
+        <boxGeometry args={[W, midRailH, frameZ]} />
+        <meshStandardMaterial color={trimColor} roughness={0.5} />
+      </mesh>
+      {/* Left stile */}
+      <mesh position={[-(W / 2 - stileW / 2), 0, slab / 2 + frameZ / 2]} castShadow>
+        <boxGeometry args={[stileW, H, frameZ]} />
+        <meshStandardMaterial color={trimColor} roughness={0.5} />
+      </mesh>
+      {/* Right stile */}
+      <mesh position={[(W / 2 - stileW / 2), 0, slab / 2 + frameZ / 2]} castShadow>
+        <boxGeometry args={[stileW, H, frameZ]} />
+        <meshStandardMaterial color={trimColor} roughness={0.5} />
       </mesh>
 
-      {/* Upper panel detail - simulates 6-panel door */}
-      <mesh position={[0, elemHeight / 2 - 0.4, 0.12]} castShadow>
-        <boxGeometry args={[elemWidth - 0.25, elemHeight / 2 - 0.5, 0.02]} />
-        <meshStandardMaterial
-          color={wallColor}
-          roughness={0.6}
-          metalness={0.05}
-        />
+      {/* ── Door knob (right side, between mid and bottom rail) ── */}
+      {/* Backplate */}
+      <mesh position={[W / 2 - stileW / 2, midRailY - 0.55, slab / 2 + 0.018]}>
+        <cylinderGeometry args={[0.038, 0.038, 0.018, 12]} />
+        <meshStandardMaterial color="#C0A030" metalness={0.85} roughness={0.15} />
+      </mesh>
+      {/* Knob sphere */}
+      <mesh position={[W / 2 - stileW / 2, midRailY - 0.55, slab / 2 + 0.055]}>
+        <sphereGeometry args={[0.05, 12, 8]} />
+        <meshStandardMaterial color="#C0A030" metalness={0.85} roughness={0.15} />
       </mesh>
 
-      {/* Lower panel detail */}
-      <mesh position={[0, -elemHeight / 2 + 0.4, 0.12]} castShadow>
-        <boxGeometry args={[elemWidth - 0.25, elemHeight / 2 - 0.5, 0.02]} />
-        <meshStandardMaterial
-          color={wallColor}
-          roughness={0.6}
-          metalness={0.05}
-        />
-      </mesh>
-
-      {/* Vertical center stile */}
-      <mesh position={[0, 0, 0.13]} castShadow>
-        <boxGeometry args={[0.06, elemHeight - 0.3, 0.015]} />
-        <meshStandardMaterial
-          color={wallColor}
-          roughness={0.6}
-          metalness={0.1}
-        />
-      </mesh>
-
-      {/* ===== HARDWARE ===== */}
-
-      {/* Door Handle - Lever style */}
-      <mesh position={[elemWidth / 2 - 0.25, 0, 0.16]} castShadow>
-        <boxGeometry args={[0.12, 0.04, 0.04]} />
-        <meshStandardMaterial color="#B8860B" metalness={0.8} roughness={0.15} />
-      </mesh>
-
-      {/* Handle mechanism detail */}
-      <mesh position={[elemWidth / 2 - 0.35, 0, 0.15]} castShadow>
-        <cylinderGeometry args={[0.03, 0.03, 0.08, 16]} />
-        <meshStandardMaterial color="#888888" metalness={0.7} roughness={0.25} />
-      </mesh>
-
-      {/* Top Hinge */}
-      <mesh position={[-elemWidth / 2 - 0.1, elemHeight / 2 - 0.2, 0.1]} castShadow>
-        <boxGeometry args={[0.05, 0.08, 0.06]} />
-        <meshStandardMaterial color="#696969" metalness={0.75} roughness={0.3} />
-      </mesh>
-
-      {/* Middle Hinge */}
-      <mesh position={[-elemWidth / 2 - 0.1, 0, 0.1]} castShadow>
-        <boxGeometry args={[0.05, 0.08, 0.06]} />
-        <meshStandardMaterial color="#696969" metalness={0.75} roughness={0.3} />
-      </mesh>
-
-      {/* Bottom Hinge */}
-      <mesh position={[-elemWidth / 2 - 0.1, -elemHeight / 2 + 0.2, 0.1]} castShadow>
-        <boxGeometry args={[0.05, 0.08, 0.06]} />
-        <meshStandardMaterial color="#696969" metalness={0.75} roughness={0.3} />
-      </mesh>
-
-      {/* Door Frame - slight recess for depth */}
-      <mesh position={[0, 0, -0.02]}>
-        <boxGeometry args={[elemWidth + 0.08, elemHeight + 0.08, 0.02]} />
-        <meshStandardMaterial color={trimColor} roughness={0.4} metalness={0.2} />
-      </mesh>
+      {/* ── 3 hinges on left stile ── */}
+      {hingeYs.map((hy, i) => (
+        <mesh key={i} position={[-(W / 2 - stileW / 2), hy, slab / 2 + 0.01]}>
+          <boxGeometry args={[stileW - 0.02, 0.09, 0.02]} />
+          <meshStandardMaterial color="#888" metalness={0.72} roughness={0.28} />
+        </mesh>
+      ))}
     </group>
   );
 };
