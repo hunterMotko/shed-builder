@@ -4,7 +4,7 @@ import * as THREE from 'three';
 const RUNNER_SIZE = 0.333;
 // Nominal floor deck thickness (~1.5" T&G planks)
 const FLOOR_THICKNESS = 0.125;
-const NUM_SKIDS = 5;
+const NUM_RUNNERS = 5;
 
 /**
  * Runners + Floor Foundation Component
@@ -26,8 +26,8 @@ export const Runners = ({
 	// Runners run under the floor; their tops touch the floor bottom
 	const runnerY = -FLOOR_THICKNESS - RUNNER_SIZE / 2;
 	// 5 beams evenly spread across the full shed width
-	const xPositions = Array.from({ length: NUM_SKIDS }, (_, i) =>
-		-width / 2 + i * (width / (NUM_SKIDS - 1))
+	const xPositions = Array.from({ length: NUM_RUNNERS }, (_, i) =>
+		-width / 2 + i * (width / (NUM_RUNNERS - 1))
 	);
 	return (
 		<group name="foundationGroup">

@@ -1,8 +1,8 @@
 const RUNNER_SIZE = 0.333;
-const SKID_COLOR = '#6B4C2A';
+const RUNNER_COLOR = '#6B4C2A';
 const DECK_COLOR = '#C8A96E';
 
-const SKID_XS = [-6, -3, 0, 3, 6];
+const RUNNER_XS = [-6, -3, 0, 3, 6];
 
 export function BarnFoundation({ width = 12, length = 20 }) {
   return (
@@ -14,10 +14,10 @@ export function BarnFoundation({ width = 12, length = 20 }) {
       </mesh>
 
       {/* Pressure-treated runners */}
-      {SKID_XS.map((x) => (
+      {RUNNER_XS.map((x) => (
         <mesh key={x} position={[x, -(RUNNER_SIZE / 2 + 0.125), 0]} castShadow receiveShadow>
           <boxGeometry args={[RUNNER_SIZE, RUNNER_SIZE, length]} />
-          <meshStandardMaterial color={SKID_COLOR} roughness={0.8} />
+          <meshStandardMaterial color={RUNNER_COLOR} roughness={0.8} />
         </mesh>
       ))}
     </group>
