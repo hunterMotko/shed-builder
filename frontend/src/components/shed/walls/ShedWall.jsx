@@ -54,7 +54,7 @@ export const ShedWall = forwardRef(function ShedWall(
   ref
 ) {
   const [modifiedGeometry, setModifiedGeometry] = useState(null);
-  const shuttersEnabled = useShedStore((s) => s.addOns.shutters.enabled);
+  const shuttersEnabled = useShedStore((s) => s.options.shutters.enabled);
 
   const halfW = shedWidth / 2;
   const halfL = shedLength / 2;

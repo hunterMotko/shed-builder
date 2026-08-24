@@ -1,30 +1,30 @@
 import * as THREE from 'three';
 
 // 4×4 nominal lumber: 3.5" actual = ~0.292 ft, rounded to 0.333 for visual clarity
-const SKID_SIZE = 0.333;
+const RUNNER_SIZE = 0.333;
 // Nominal floor deck thickness (~1.5" T&G planks)
 const FLOOR_THICKNESS = 0.125;
 const NUM_SKIDS = 5;
 
 /**
- * Skids + Floor Foundation Component
+ * Runners + Floor Foundation Component
  *
- * Renders 5 longitudinal 4×4 pressure-treated skid beams running the full shed
+ * Renders 5 longitudinal 4×4 pressure-treated runners running the full shed
  * length, evenly spaced across the width, topped with a floor deck panel.
  *
  * Coordinate convention (matches ShedWall):
  *   Y = 0  — shed floor / top of deck / bottom of walls
- *   Y < 0  — below floor (skids, ground)
+ *   Y < 0  — below floor (runners, ground)
  */
-export const Skids = ({
+export const Runners = ({
 	width,
 	length,
 	foundationColor = '#6B4C2A', // pressure-treated wood tone
 }) => {
 	// Floor deck: thin panel sitting just below Y=0 so its top face is flush with wall bottoms
 	const floorY = -FLOOR_THICKNESS / 2;
-	// Skids run under the floor; their tops touch the floor bottom
-	const skidY = -FLOOR_THICKNESS - SKID_SIZE / 2;
+	// Runners run under the floor; their tops touch the floor bottom
+	const runnerY = -FLOOR_THICKNESS - RUNNER_SIZE / 2;
 	// 5 beams evenly spread across the full shed width
 	const xPositions = Array.from({ length: NUM_SKIDS }, (_, i) =>
 		-width / 2 + i * (width / (NUM_SKIDS - 1))
@@ -44,15 +44,15 @@ export const Skids = ({
 				/>
 			</mesh>
 
-			{/* 5 longitudinal 4×4 skid beams */}
+			{/* 5 longitudinal 4×4 runners */}
 			{xPositions.map((x, i) => (
 				<mesh
 					key={i}
-					position={[x, skidY, 0]}
+					position={[x, runnerY, 0]}
 					castShadow
 					receiveShadow
 				>
-					<boxGeometry args={[SKID_SIZE, SKID_SIZE, length]} />
+					<boxGeometry args={[RUNNER_SIZE, RUNNER_SIZE, length]} />
 					<meshStandardMaterial
 						color={foundationColor}
 						roughness={0.8}

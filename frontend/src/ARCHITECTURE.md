@@ -102,7 +102,7 @@ File: `src/store/shedStore.js`
 | `porch.enabled` | `boolean` | `false` | |
 | `porch.wall` | `string` | `'front'` | `'front'` \| `'back'` \| `'left'` \| `'right'` |
 | `porch.depth` | `number` | `6` | feet |
-| `addOns.garageDoor.style` | `string` | `'sectional'` | `'sectional'` \| `'rollup'`; auto-set by `setStyle` (Barn → `'rollup'`, Gable → `'sectional'`) |
+| `options.garageDoor.style` | `string` | `'sectional'` | `'sectional'` \| `'rollup'`; auto-set by `setStyle` (Barn → `'rollup'`, Gable → `'sectional'`) |
 | `price` | `number` | `0` | calculated, not set manually |
 | `placements` | `Placement[]` | `[]` | see Placement shape below |
 
@@ -127,7 +127,7 @@ File: `src/store/shedStore.js`
 |---|---|---|
 | `setWidth` | `(number) => void` | Updates width |
 | `setLength` | `(number) => void` | Updates length |
-| `setStyle` | `(string) => void` | Switches Gable/Barn; auto-sets `addOns.garageDoor.style` (`'rollup'` for Barn, `'sectional'` for Gable) |
+| `setStyle` | `(string) => void` | Switches Gable/Barn; auto-sets `options.garageDoor.style` (`'rollup'` for Barn, `'sectional'` for Gable) |
 | `setColor` | `(string) => void` | Siding hex color |
 | `setRoofColor` | `(string) => void` | Roof hex color |
 | `setTrimColor` | `(string) => void` | Trim hex color |

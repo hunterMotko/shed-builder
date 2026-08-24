@@ -26,23 +26,23 @@ const BarnSVG = () => (
   </svg>
 );
 
-const STYLES = [
+const MODELS = [
   { value: 'Gable', label: 'Gable',        desc: 'Classic peaked roof',  Icon: GableSVG },
   { value: 'Barn',  label: 'Barn (Gambrel)', desc: 'Double-slope barn roof', Icon: BarnSVG  },
 ];
 
-export const StyleSection = ({ style, onStyleChange }) => (
+export const ModelSection = ({ model, onModelChange }) => (
   <div>
-    <label style={LABEL}>Roof Style</label>
+    <label style={LABEL}>Model</label>
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-      {STYLES.map(({ value, label, desc, Icon }) => {
-        const active = style === value;
+      {MODELS.map(({ value, label, desc, Icon }) => {
+        const active = model === value;
         return (
           <button
             key={value}
             role="radio"
             aria-checked={active}
-            onClick={() => onStyleChange(value)}
+            onClick={() => onModelChange(value)}
             style={{
               display: 'flex', flexDirection: 'column',
               alignItems: 'center', justifyContent: 'center',

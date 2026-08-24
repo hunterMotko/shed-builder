@@ -5,7 +5,7 @@ import { GableRoof } from '../shed/roofs/GableRoof';
 import { GableEnd } from '../shed/roofs/GableEnd';
 import { Porch } from '../shed/extras/Porch';
 import { Ramp } from '../shed/extras/Ramp';
-import { Skids } from '../common/Skids';
+import { Runners } from '../common/Runners';
 import { GableTrim } from '../shed/trim/GableTrim';
 
 const WALL_SIDES = ['front', 'back', 'left', 'right'];
@@ -13,7 +13,7 @@ const ROOF_HEIGHT = 4; // ft above wall top
 
 /**
  * GableShed — composition wrapper.
- * Assembles: 4× ShedWall + 2× GableEnd + GableRoof + Skids + optional Porch.
+ * Assembles: 4× ShedWall + 2× GableEnd + GableRoof + Runners + optional Porch.
  * All geometry and shader logic lives in the individual components.
  */
 export const GableShed = ({
@@ -30,8 +30,8 @@ export const GableShed = ({
 	const sidingTexture = useShedStore((s) => s.sidingTexture);
 	const roofMaterial = useShedStore((s) => s.roofMaterial);
 	const porch = useShedStore((s) => s.porch);
-	const addOns = useShedStore((s) => s.addOns);
-	const garageDoorStyle = useShedStore((s) => s.addOns.garageDoor.style ?? 'sectional');
+	const options = useShedStore((s) => s.options);
+	const garageDoorStyle = useShedStore((s) => s.options.garageDoor.style ?? 'sectional');
 
 	// Expose front-wall mesh for raycasting / placement interaction
 	useEffect(() => {
@@ -68,7 +68,7 @@ export const GableShed = ({
 				roofHeight={ROOF_HEIGHT}
 				color={color}
 				sidingTexture={sidingTexture}
-				showOctagonWindow={addOns.octagonWindow.enabled}
+				showOctagonWindow={options.octagonWindow.enabled}
 				trimColor={trimColor}
 			/>
 			<GableEnd
@@ -79,7 +79,7 @@ export const GableShed = ({
 				roofHeight={ROOF_HEIGHT}
 				color={color}
 				sidingTexture={sidingTexture}
-				showOctagonWindow={addOns.octagonWindow.enabled}
+				showOctagonWindow={options.octagonWindow.enabled}
 				trimColor={trimColor}
 			/>
 
@@ -100,24 +100,24 @@ export const GableShed = ({
 				roofHeight={ROOF_HEIGHT}
 				roofColor={roofColor}
 				roofMaterial={roofMaterial}
-				skylight={addOns.skylight}
+				skylight={options.skylight}
 				overhangEave={0.5}
 			/>
 
-			{/* Foundation: floor deck + 5 longitudinal skid beams */}
-			<Skids
+			{/* Foundation: floor deck + 5 longitudinal runners */}
+			<Runners
 				width={width}
 				length={length}
 			/>
 
 			{/* Optional ramp */}
-			{addOns.ramp.enabled && (
+			{options.ramp.enabled && (
 				<Ramp
 					shedWidth={width}
 					shedLength={length}
 					wallHeight={wallHeight}
 					wall="front"
-					size={addOns.ramp.size}
+					size={options.ramp.size}
 				/>
 			)}
 

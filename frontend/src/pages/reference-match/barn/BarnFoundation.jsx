@@ -1,4 +1,4 @@
-const SKID_SIZE = 0.333;
+const RUNNER_SIZE = 0.333;
 const SKID_COLOR = '#6B4C2A';
 const DECK_COLOR = '#C8A96E';
 
@@ -13,10 +13,10 @@ export function BarnFoundation({ width = 12, length = 20 }) {
         <meshStandardMaterial color={DECK_COLOR} roughness={0.85} />
       </mesh>
 
-      {/* Pressure-treated skid beams */}
+      {/* Pressure-treated runners */}
       {SKID_XS.map((x) => (
-        <mesh key={x} position={[x, -(SKID_SIZE / 2 + 0.125), 0]} castShadow receiveShadow>
-          <boxGeometry args={[SKID_SIZE, SKID_SIZE, length]} />
+        <mesh key={x} position={[x, -(RUNNER_SIZE / 2 + 0.125), 0]} castShadow receiveShadow>
+          <boxGeometry args={[RUNNER_SIZE, RUNNER_SIZE, length]} />
           <meshStandardMaterial color={SKID_COLOR} roughness={0.8} />
         </mesh>
       ))}

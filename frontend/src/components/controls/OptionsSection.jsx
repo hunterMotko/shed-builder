@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useShedStore } from '../../store/shedStore';
-import { ADD_ON_PRICES } from '../../utils/pricingUtils';
+import { OPTION_PRICES } from '../../utils/pricingUtils';
 
 // ── Primitives ────────────────────────────────────────────────────────────────
 
@@ -92,27 +92,27 @@ function AccordionGroup({ title, selectedCount, children }) {
 
 // ── Main component ─────────────────────────────────────────────────────────────
 
-export const AddOnsSection = () => {
-  const addOns  = useShedStore((s) => s.addOns);
-  const setAddOn = useShedStore((s) => s.setAddOn);
-  const set = (key, cfg) => setAddOn(key, cfg);
+export const OptionsSection = () => {
+  const options  = useShedStore((s) => s.options);
+  const setOption = useShedStore((s) => s.setOption);
+  const set = (key, cfg) => setOption(key, cfg);
 
-  const doorsCount   = [addOns.garageDoor, addOns.additionalDoor, addOns.entryDoor].filter((o) => o.enabled).length;
-  const windowsCount = [addOns.vinylWindows, addOns.octagonWindow, addOns.skylight, addOns.octagonVent].filter((o) => o.enabled).length;
-  const extCount     = [addOns.shutters, addOns.ramp].filter((o) => o.enabled).length;
+  const doorsCount   = [options.garageDoor, options.additionalDoor, options.entryDoor].filter((o) => o.enabled).length;
+  const windowsCount = [options.vinylWindows, options.octagonWindow, options.skylight, options.octagonVent].filter((o) => o.enabled).length;
+  const extCount     = [options.shutters, options.ramp].filter((o) => o.enabled).length;
 
   return (
     <div>
       {/* Doors & Entry */}
       <AccordionGroup title="Doors & Entry" selectedCount={doorsCount}>
         <Checkbox
-          checked={addOns.garageDoor.enabled}
+          checked={options.garageDoor.enabled}
           onChange={(v) => set('garageDoor', { enabled: v })}
           label="Roll-Up Garage Door"
-          price={addOns.garageDoor.size === '8x7' ? ADD_ON_PRICES.garage_door_8x7 : ADD_ON_PRICES.garage_door_6x7}
+          price={options.garageDoor.size === '8x7' ? OPTION_PRICES.garage_door_8x7 : OPTION_PRICES.garage_door_6x7}
         >
-          {addOns.garageDoor.enabled && (
-            <select style={SUB_SELECT} value={addOns.garageDoor.size} onChange={(e) => set('garageDoor', { size: e.target.value })}>
+          {options.garageDoor.enabled && (
+            <select style={SUB_SELECT} value={options.garageDoor.size} onChange={(e) => set('garageDoor', { size: e.target.value })}>
               <option value="6x7">6×7 — $450</option>
               <option value="8x7">8×7 — $500</option>
             </select>
@@ -120,20 +120,20 @@ export const AddOnsSection = () => {
         </Checkbox>
 
         <Checkbox
-          checked={addOns.additionalDoor.enabled}
+          checked={options.additionalDoor.enabled}
           onChange={(v) => set('additionalDoor', { enabled: v })}
           label="Additional Garage Door"
-          price={ADD_ON_PRICES.garage_door_additional}
+          price={OPTION_PRICES.garage_door_additional}
         />
 
         <Checkbox
-          checked={addOns.entryDoor.enabled}
+          checked={options.entryDoor.enabled}
           onChange={(v) => set('entryDoor', { enabled: v })}
           label="36in Pre-Hung Entry Door"
-          price={addOns.entryDoor.type === 'nine_light' ? ADD_ON_PRICES.entry_door_nine_light : ADD_ON_PRICES.entry_door_steel}
+          price={options.entryDoor.type === 'nine_light' ? OPTION_PRICES.entry_door_nine_light : OPTION_PRICES.entry_door_steel}
         >
-          {addOns.entryDoor.enabled && (
-            <select style={SUB_SELECT} value={addOns.entryDoor.type} onChange={(e) => set('entryDoor', { type: e.target.value })}>
+          {options.entryDoor.enabled && (
+            <select style={SUB_SELECT} value={options.entryDoor.type} onChange={(e) => set('entryDoor', { type: e.target.value })}>
               <option value="steel">Steel Panel — $375</option>
               <option value="nine_light">Nine-Light — $425</option>
             </select>
@@ -144,19 +144,19 @@ export const AddOnsSection = () => {
       {/* Windows & Light */}
       <AccordionGroup title="Windows & Light" selectedCount={windowsCount}>
         <Checkbox
-          checked={addOns.vinylWindows.enabled}
+          checked={options.vinylWindows.enabled}
           onChange={(v) => set('vinylWindows', { enabled: v })}
           label="Vinyl Slide Windows"
-          price={ADD_ON_PRICES.window_vinyl_slide * (addOns.vinylWindows.count || 1)}
+          price={OPTION_PRICES.window_vinyl_slide * (options.vinylWindows.count || 1)}
         >
-          {addOns.vinylWindows.enabled && (
+          {options.vinylWindows.enabled && (
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <select style={SUB_SELECT} value={addOns.vinylWindows.count} onChange={(e) => set('vinylWindows', { count: parseInt(e.target.value, 10) })}>
+              <select style={SUB_SELECT} value={options.vinylWindows.count} onChange={(e) => set('vinylWindows', { count: parseInt(e.target.value, 10) })}>
                 {[1,2,3,4,5,6].map((n) => (
                   <option key={n} value={n}>{n} window{n > 1 ? 's' : ''}</option>
                 ))}
               </select>
-              <select style={SUB_SELECT} value={addOns.vinylWindows.windowSize} onChange={(e) => set('vinylWindows', { windowSize: e.target.value })}>
+              <select style={SUB_SELECT} value={options.vinylWindows.windowSize} onChange={(e) => set('vinylWindows', { windowSize: e.target.value })}>
                 <option value="2x2">24×24</option>
                 <option value="2x3">24×36</option>
                 <option value="3x3">36×36</option>
@@ -166,74 +166,74 @@ export const AddOnsSection = () => {
         </Checkbox>
 
         <Checkbox
-          checked={addOns.octagonWindow.enabled}
+          checked={options.octagonWindow.enabled}
           onChange={(v) => set('octagonWindow', { enabled: v })}
           label="Octagon Gable Window"
-          price={ADD_ON_PRICES.window_octagon}
+          price={OPTION_PRICES.window_octagon}
         />
 
         <Checkbox
-          checked={addOns.skylight.enabled}
+          checked={options.skylight.enabled}
           onChange={(v) => set('skylight', { enabled: v })}
           label="Ridge Skylight"
-          price={ADD_ON_PRICES.skylight_per_ft * (addOns.skylight.runningFt || 0)}
+          price={OPTION_PRICES.skylight_per_ft * (options.skylight.runningFt || 0)}
         >
-          {addOns.skylight.enabled && (
+          {options.skylight.enabled && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <input
                 type="range" min="4" max="20" step="2"
-                value={addOns.skylight.runningFt}
+                value={options.skylight.runningFt}
                 onChange={(e) => set('skylight', { runningFt: parseInt(e.target.value, 10) })}
                 style={{ flex: 1, accentColor: '#3b82f6' }}
               />
               <span style={{ color: '#94a3b8', fontSize: 11, width: 28, textAlign: 'right' }}>
-                {addOns.skylight.runningFt} ft
+                {options.skylight.runningFt} ft
               </span>
             </div>
           )}
         </Checkbox>
 
         <Checkbox
-          checked={addOns.octagonVent.enabled}
+          checked={options.octagonVent.enabled}
           onChange={(v) => set('octagonVent', { enabled: v })}
           label="Vinyl Octagon Gable Vent"
-          price={ADD_ON_PRICES.vent_octagon}
+          price={OPTION_PRICES.vent_octagon}
         />
       </AccordionGroup>
 
       {/* Exterior */}
       <AccordionGroup title="Exterior" selectedCount={extCount}>
         <Checkbox
-          checked={addOns.shutters.enabled}
+          checked={options.shutters.enabled}
           onChange={(v) => set('shutters', { enabled: v })}
           label="15in Vinyl Shutters"
-          price={ADD_ON_PRICES.shutters_per_pair * (addOns.shutters.pairs || 1)}
+          price={OPTION_PRICES.shutters_per_pair * (options.shutters.pairs || 1)}
         >
-          {addOns.shutters.enabled && (
-            <select style={SUB_SELECT} value={addOns.shutters.pairs} onChange={(e) => set('shutters', { pairs: parseInt(e.target.value, 10) })}>
+          {options.shutters.enabled && (
+            <select style={SUB_SELECT} value={options.shutters.pairs} onChange={(e) => set('shutters', { pairs: parseInt(e.target.value, 10) })}>
               {[1,2,3,4].map((n) => (
-                <option key={n} value={n}>{n} pair{n > 1 ? 's' : ''} — ${(ADD_ON_PRICES.shutters_per_pair * n).toLocaleString()}</option>
+                <option key={n} value={n}>{n} pair{n > 1 ? 's' : ''} — ${(OPTION_PRICES.shutters_per_pair * n).toLocaleString()}</option>
               ))}
             </select>
           )}
         </Checkbox>
 
         <Checkbox
-          checked={addOns.ramp.enabled}
+          checked={options.ramp.enabled}
           onChange={(v) => set('ramp', { enabled: v })}
           label="Heavy Duty Treated Ramp"
-          price={addOns.ramp.size === 'large' ? ADD_ON_PRICES.ramp_large : ADD_ON_PRICES.ramp_small}
+          price={options.ramp.size === 'large' ? OPTION_PRICES.ramp_large : OPTION_PRICES.ramp_small}
         >
-          {addOns.ramp.enabled && (
+          {options.ramp.enabled && (
             <div style={{ display: 'flex', gap: 10 }}>
               {[
-                { value: 'small', label: '6–8×4 ft', price: ADD_ON_PRICES.ramp_small },
-                { value: 'large', label: '8–10×4 ft', price: ADD_ON_PRICES.ramp_large },
+                { value: 'small', label: '6–8×4 ft', price: OPTION_PRICES.ramp_small },
+                { value: 'large', label: '8–10×4 ft', price: OPTION_PRICES.ramp_large },
               ].map(({ value, label, price }) => (
                 <label key={value} style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', color: '#94a3b8', fontSize: 12 }}>
                   <input
                     type="radio" name="rampSize" value={value}
-                    checked={addOns.ramp.size === value}
+                    checked={options.ramp.size === value}
                     onChange={() => set('ramp', { size: value })}
                     style={{ accentColor: '#3b82f6' }}
                   />

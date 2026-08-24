@@ -20,7 +20,7 @@ export const useDesignPersistence = () => {
 		setWidth,
 		setLength,
 		setWallHeight,
-		setStyle,
+		setModel,
 		setColor,
 		setRoofColor,
 		setTrimColor,
@@ -33,7 +33,7 @@ export const useDesignPersistence = () => {
 		setFoundationHeight,
 		setFoundationColor,
 		setPorch,
-		setAddOn,
+		setOption,
 		setPrice,
 		clearPlacements,
 		addPlacement,
@@ -85,7 +85,7 @@ export const useDesignPersistence = () => {
 			setWidth(design.width);
 			setLength(design.length);
 			if (design.wallHeight != null) setWallHeight(design.wallHeight);
-			setStyle(design.style);
+			setModel(design.model);
 			setColor(design.color);
 			setRoofColor(design.roofColor);
 			setTrimColor(design.trimColor);
@@ -98,8 +98,8 @@ export const useDesignPersistence = () => {
 			if (design.foundationHeight != null) setFoundationHeight(design.foundationHeight);
 			if (design.foundationColor != null) setFoundationColor(design.foundationColor);
 			if (design.porch != null) setPorch(design.porch);
-			if (design.addOns != null) {
-				Object.entries(design.addOns).forEach(([key, cfg]) => setAddOn(key, cfg));
+			if (design.options != null) {
+				Object.entries(design.options).forEach(([key, cfg]) => setOption(key, cfg));
 			}
 			if (design.price != null) setPrice(design.price);
 			// Restore placements
