@@ -404,3 +404,20 @@ cd backend && go mod tidy
 - If placements don't appear, verify normalized coordinates are in [0, 1] range
 - If CSG holes are misaligned, check wall coordinate conversion in `getWorldCoordinates()`
 - Clear browser cache if seeing old geometry after code changes
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues on `hunterMotko/shed-builder`, via the `gh` CLI.
+See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five canonical triage roles, using the default label strings.
+See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context — `CONTEXT.md` and `docs/adr/` at the repo root.
+See `docs/agents/domain.md`.
