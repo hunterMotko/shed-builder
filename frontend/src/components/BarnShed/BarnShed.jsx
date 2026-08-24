@@ -4,7 +4,7 @@ import { ShedWall } from '../shed/walls/ShedWall';
 import { GambrelRoof } from '../shed/roofs/GambrelRoof';
 import { Porch } from '../shed/extras/Porch';
 import { Ramp } from '../shed/extras/Ramp';
-import { Skids } from '../common/Skids';
+import { Runners } from '../common/Runners';
 import { BarnTrim } from '../shed/trim/BarnTrim';
 
 // Front/back faces are provided by GambrelRoof's ExtrudeGeometry end-caps (siding material).
@@ -13,7 +13,7 @@ const WALL_SIDES = ['left', 'right'];
 
 /**
  * BarnShed — composition wrapper.
- * Assembles: 2× ShedWall (left/right) + GambrelRoof + Skids + optional Porch.
+ * Assembles: 2× ShedWall (left/right) + GambrelRoof + Runners + optional Porch.
  * Front/back barn faces come from GambrelRoof end-caps (siding shader, groups 0 & 1).
  */
 export const BarnShed = ({
@@ -31,8 +31,8 @@ export const BarnShed = ({
 	const roofLowerPitch = useShedStore((s) => s.roofLowerPitch);
 	const roofUpperPitch = useShedStore((s) => s.roofUpperPitch);
 	const porch = useShedStore((s) => s.porch);
-	const addOns = useShedStore((s) => s.addOns);
-	const garageDoorStyle = useShedStore((s) => s.addOns.garageDoor.style ?? 'sectional');
+	const options = useShedStore((s) => s.options);
+	const garageDoorStyle = useShedStore((s) => s.options.garageDoor.style ?? 'sectional');
 	useEffect(() => {
 		// Barn has no discrete front wall mesh — placement raycasting not yet wired
 		if (onShedMeshReady) onShedMeshReady(null, { width, length, wallHeight });
@@ -57,13 +57,13 @@ export const BarnShed = ({
 			))}
 
 			{/* Optional ramp */}
-			{addOns.ramp.enabled && (
+			{options.ramp.enabled && (
 				<Ramp
 					shedWidth={width}
 					shedLength={length}
 					wallHeight={wallHeight}
 					wall="front"
-					size={addOns.ramp.size}
+					size={options.ramp.size}
 				/>
 			)}
 
@@ -78,7 +78,7 @@ export const BarnShed = ({
 				roofMaterial={roofMaterial}
 				color={color}
 				sidingTexture={sidingTexture}
-				skylight={addOns.skylight}
+				skylight={options.skylight}
 				overhangEave={0.5}
 			/>
 
@@ -91,8 +91,8 @@ export const BarnShed = ({
 				overhangEave={0.5}
 			/>
 
-			{/* Foundation: floor deck + 5 longitudinal skid beams */}
-			<Skids
+			{/* Foundation: floor deck + 5 longitudinal runners */}
+			<Runners
 				width={width}
 				length={length}
 			/>

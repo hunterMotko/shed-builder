@@ -18,7 +18,7 @@ export const useShedStore = create((set) => ({
 	width: 12,
 	length: 16,
 	wallHeight: 10, // 10 = Standard, 11 = Deluxe, 12 = Special
-	style: 'Gable',
+	model: 'Gable',
 	color: '#D2691E',
 	roofColor: '#8B4513',
 	// Trim and Detail Configuration
@@ -28,7 +28,7 @@ export const useShedStore = create((set) => ({
 	// Material and Texture Configuration
 	sidingTexture: 'T1-11', // 'T1-11', 'smooth'
 	roofMaterial: 'metal', // 'metal', 'shingle'
-	// Gambrel Roof Configuration (when style === 'Gambrel')
+	// Gambrel Roof Configuration (when model === 'Barn')
 	roofLowerPitch: 24, // 24:12 pitch (~63° — classic steep barn eave slope)
 	roofUpperPitch: 6,  // 6:12 pitch (~26.6° — gentle barn ridge slope)
 	// Foundation Configuration
@@ -41,7 +41,7 @@ export const useShedStore = create((set) => ({
 		depth: 6,        // feet the porch extends from the wall
 	},
 	// Add-on options (all disabled by default)
-	addOns: {
+	options: {
 		garageDoor:     { enabled: false, size: '8x7', style: 'sectional' },
 		additionalDoor: { enabled: false, size: '6x7' },
 		entryDoor:      { enabled: false, type: 'steel' }, // 'steel' | 'nine_light'
@@ -70,13 +70,13 @@ export const useShedStore = create((set) => ({
 		const snapped = snapToValidCombo(s.width, s.length, wallHeight);
 		return { width: snapped.width, length: snapped.length, wallHeight: snapped.wallHeight };
 	}),
-	setStyle: (style) => set((s) => ({
-		style,
-		addOns: {
-			...s.addOns,
+	setModel: (model) => set((s) => ({
+		model,
+		options: {
+			...s.options,
 			garageDoor: {
-				...s.addOns.garageDoor,
-				style: style === 'Barn' ? 'rollup' : 'sectional',
+				...s.options.garageDoor,
+				style: model === 'Barn' ? 'rollup' : 'sectional',
 			},
 		},
 	})),
@@ -92,10 +92,10 @@ export const useShedStore = create((set) => ({
 	setRoofUpperPitch: (v) => set({ roofUpperPitch: Math.max(1, Math.min(v, 18)) }),
 	setFoundationHeight: (foundationHeight) => set({ foundationHeight }),
 	setFoundationColor: (foundationColor) => set({ foundationColor }),
-	setAddOn: (key, config) => set((state) => ({
-		addOns: {
-			...state.addOns,
-			[key]: { ...state.addOns[key], ...config },
+	setOption: (key, config) => set((state) => ({
+		options: {
+			...state.options,
+			[key]: { ...state.options[key], ...config },
 		},
 	})),
 	setPorch: (porchConfig) => set((state) => ({
@@ -131,7 +131,7 @@ export const useShedStore = create((set) => ({
 		width: 12,
 		length: 16,
 		wallHeight: 10,
-		style: 'Gable',
+		model: 'Gable',
 		color: '#D2691E',
 		roofColor: '#8B4513',
 		trimColor: '#654321',
@@ -144,7 +144,7 @@ export const useShedStore = create((set) => ({
 		foundationHeight: 1.5,
 		foundationColor: '#8B7355',
 		porch: { enabled: false, wall: 'front', depth: 6 },
-		addOns: {
+		options: {
 			garageDoor:     { enabled: false, size: '8x7', style: 'sectional' },
 			additionalDoor: { enabled: false, size: '6x7' },
 			entryDoor:      { enabled: false, type: 'steel' },
@@ -161,7 +161,7 @@ export const useShedStore = create((set) => ({
 	// Get calculated price (derived state)
 	getPrice: () => {
 		const state = useShedStore.getState();
-		return calculateTotalPrice(state.width, state.length, state.wallHeight, state.addOns);
+		return calculateTotalPrice(state.width, state.length, state.wallHeight, state.options);
 	},
 	// Get full configuration
 	getConfig: () => {
@@ -170,7 +170,7 @@ export const useShedStore = create((set) => ({
 			width: state.width,
 			length: state.length,
 			wallHeight: state.wallHeight,
-			style: state.style,
+			model: state.model,
 			color: state.color,
 			roofColor: state.roofColor,
 			trimColor: state.trimColor,
@@ -184,8 +184,8 @@ export const useShedStore = create((set) => ({
 			foundationColor: state.foundationColor,
 			placements: state.placements,
 			porch: state.porch,
-			addOns: state.addOns,
-			price: calculateTotalPrice(state.width, state.length, state.wallHeight, state.addOns),
+			options: state.options,
+			price: calculateTotalPrice(state.width, state.length, state.wallHeight, state.options),
 		};
 	},
 }));

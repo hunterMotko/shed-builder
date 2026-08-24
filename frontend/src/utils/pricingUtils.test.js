@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { lookupBasePrice, getAddOnLineItems, calculateTotalPrice } from './pricingUtils';
+import { lookupBasePrice, getOptionLineItems, calculateTotalPrice } from './pricingUtils';
 
 // Expected prices come from shed-options.md, the catalog of record.
 
@@ -16,36 +16,36 @@ describe('base price', () => {
 describe('Option line items', () => {
 	it('prices an 8x7 roll-up door at the 6x7 price plus two feet of width', () => {
 		// shed-options.md: 6x7 roll-up is $450, "+$25 per foot wider".
-		const [line] = getAddOnLineItems({ garageDoor: { enabled: true, size: '8x7' } });
+		const [line] = getOptionLineItems({ garageDoor: { enabled: true, size: '8x7' } });
 		expect(line.amount).toBe(450 + 2 * 25);
 	});
 
 	it('prices vinyl windows per window', () => {
-		const [line] = getAddOnLineItems({ vinylWindows: { enabled: true, count: 3 } });
+		const [line] = getOptionLineItems({ vinylWindows: { enabled: true, count: 3 } });
 		expect(line.amount).toBe(3 * 275);
 	});
 
 	it('leaves out Options that are not enabled', () => {
-		expect(getAddOnLineItems({ ramp: { enabled: false, size: 'large' } })).toEqual([]);
+		expect(getOptionLineItems({ ramp: { enabled: false, size: 'large' } })).toEqual([]);
 	});
 
 	it('prices a workbench by the running foot', () => {
 		// shed-options.md: 32in heavy duty workbench, $35 per running ft.
-		const [line] = getAddOnLineItems({ workbench: { enabled: true, runningFt: 8 } });
+		const [line] = getOptionLineItems({ workbench: { enabled: true, runningFt: 8 } });
 		expect(line.label).toContain('Workbench');
 		expect(line.amount).toBe(280);
 	});
 
 	it('prices pegboard by the sheet', () => {
 		// shed-options.md: pegboard 4x8 white, $70 per sheet.
-		const [line] = getAddOnLineItems({ pegboard: { enabled: true, sheets: 3 } });
+		const [line] = getOptionLineItems({ pegboard: { enabled: true, sheets: 3 } });
 		expect(line.label).toContain('Pegboard');
 		expect(line.amount).toBe(210);
 	});
 
 	it('prices a loft by the square foot', () => {
 		// shed-options.md: add loft/shelving, $4 per sq ft.
-		const [line] = getAddOnLineItems({ loft: { enabled: true, sqft: 96 } });
+		const [line] = getOptionLineItems({ loft: { enabled: true, sqft: 96 } });
 		expect(line.label).toContain('Loft');
 		expect(line.amount).toBe(384);
 	});

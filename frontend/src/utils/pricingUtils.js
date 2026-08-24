@@ -44,7 +44,7 @@ export const PRICE_TABLE = {
 
 // ─── Add-on price constants ──────────────────────────────────────────────────
 
-export const ADD_ON_PRICES = {
+export const OPTION_PRICES = {
   garage_door_6x7:          450,
   garage_door_8x7:          500,   // $450 base + 2ft × $25/ft
   garage_door_additional:   600,
@@ -150,81 +150,81 @@ export function snapToValidCombo(width, length, wallHeight) {
 
 /**
  * Returns the itemized add-on cost breakdown as an array of { label, amount } lines.
- * Only includes enabled add-ons.
+ * Only includes enabled Options.
  */
-export function getAddOnLineItems(addOns) {
+export function getOptionLineItems(options) {
   const lines = [];
 
-  if (addOns.garageDoor?.enabled) {
-    const key = addOns.garageDoor.size === '8x7' ? 'garage_door_8x7' : 'garage_door_6x7';
-    lines.push({ label: `${addOns.garageDoor.size} Roll-Up Garage Door`, amount: ADD_ON_PRICES[key] });
+  if (options.garageDoor?.enabled) {
+    const key = options.garageDoor.size === '8x7' ? 'garage_door_8x7' : 'garage_door_6x7';
+    lines.push({ label: `${options.garageDoor.size} Roll-Up Garage Door`, amount: OPTION_PRICES[key] });
   }
-  if (addOns.additionalDoor?.enabled) {
-    lines.push({ label: 'Additional Garage Door', amount: ADD_ON_PRICES.garage_door_additional });
+  if (options.additionalDoor?.enabled) {
+    lines.push({ label: 'Additional Garage Door', amount: OPTION_PRICES.garage_door_additional });
   }
-  if (addOns.entryDoor?.enabled) {
-    const key = addOns.entryDoor.type === 'nine_light' ? 'entry_door_nine_light' : 'entry_door_steel';
-    const label = addOns.entryDoor.type === 'nine_light' ? '36in Nine-Light Entry Door' : '36in Steel Entry Door';
-    lines.push({ label, amount: ADD_ON_PRICES[key] });
+  if (options.entryDoor?.enabled) {
+    const key = options.entryDoor.type === 'nine_light' ? 'entry_door_nine_light' : 'entry_door_steel';
+    const label = options.entryDoor.type === 'nine_light' ? '36in Nine-Light Entry Door' : '36in Steel Entry Door';
+    lines.push({ label, amount: OPTION_PRICES[key] });
   }
-  if (addOns.vinylWindows?.enabled) {
-    const count = addOns.vinylWindows.count || 1;
+  if (options.vinylWindows?.enabled) {
+    const count = options.vinylWindows.count || 1;
     lines.push({
       label: `${count}× Vinyl Slide Window${count > 1 ? 's' : ''}`,
-      amount: ADD_ON_PRICES.window_vinyl_slide * count,
+      amount: OPTION_PRICES.window_vinyl_slide * count,
     });
   }
-  if (addOns.octagonWindow?.enabled) {
-    lines.push({ label: 'Octagon Gable Window', amount: ADD_ON_PRICES.window_octagon });
+  if (options.octagonWindow?.enabled) {
+    lines.push({ label: 'Octagon Gable Window', amount: OPTION_PRICES.window_octagon });
   }
-  if (addOns.skylight?.enabled) {
-    const ft = addOns.skylight.runningFt || 0;
-    lines.push({ label: `Ridge Skylight (${ft} ft)`, amount: ADD_ON_PRICES.skylight_per_ft * ft });
+  if (options.skylight?.enabled) {
+    const ft = options.skylight.runningFt || 0;
+    lines.push({ label: `Ridge Skylight (${ft} ft)`, amount: OPTION_PRICES.skylight_per_ft * ft });
   }
-  if (addOns.shutters?.enabled) {
-    const pairs = addOns.shutters.pairs || 1;
+  if (options.shutters?.enabled) {
+    const pairs = options.shutters.pairs || 1;
     lines.push({
       label: `${pairs}× Vinyl Shutter Pair${pairs > 1 ? 's' : ''}`,
-      amount: ADD_ON_PRICES.shutters_per_pair * pairs,
+      amount: OPTION_PRICES.shutters_per_pair * pairs,
     });
   }
-  if (addOns.ramp?.enabled) {
-    const key = addOns.ramp.size === 'large' ? 'ramp_large' : 'ramp_small';
-    const label = addOns.ramp.size === 'large' ? 'Access Ramp (8–10×4ft)' : 'Access Ramp (6–8×4ft)';
-    lines.push({ label, amount: ADD_ON_PRICES[key] });
+  if (options.ramp?.enabled) {
+    const key = options.ramp.size === 'large' ? 'ramp_large' : 'ramp_small';
+    const label = options.ramp.size === 'large' ? 'Access Ramp (8–10×4ft)' : 'Access Ramp (6–8×4ft)';
+    lines.push({ label, amount: OPTION_PRICES[key] });
   }
-  if (addOns.workbench?.enabled) {
-    const ft = addOns.workbench.runningFt || 0;
-    lines.push({ label: `Workbench (${ft} ft)`, amount: ADD_ON_PRICES.workbench_per_ft * ft });
+  if (options.workbench?.enabled) {
+    const ft = options.workbench.runningFt || 0;
+    lines.push({ label: `Workbench (${ft} ft)`, amount: OPTION_PRICES.workbench_per_ft * ft });
   }
-  if (addOns.pegboard?.enabled) {
-    const sheets = addOns.pegboard.sheets || 0;
+  if (options.pegboard?.enabled) {
+    const sheets = options.pegboard.sheets || 0;
     lines.push({
       label: `${sheets}× Pegboard Sheet${sheets === 1 ? '' : 's'}`,
-      amount: ADD_ON_PRICES.pegboard_per_sheet * sheets,
+      amount: OPTION_PRICES.pegboard_per_sheet * sheets,
     });
   }
-  if (addOns.loft?.enabled) {
-    const sqft = addOns.loft.sqft || 0;
-    lines.push({ label: `Loft / Shelving (${sqft} sq ft)`, amount: ADD_ON_PRICES.loft_per_sqft * sqft });
+  if (options.loft?.enabled) {
+    const sqft = options.loft.sqft || 0;
+    lines.push({ label: `Loft / Shelving (${sqft} sq ft)`, amount: OPTION_PRICES.loft_per_sqft * sqft });
   }
-  if (addOns.octagonVent?.enabled) {
-    lines.push({ label: 'Vinyl Octagon Gable Vent', amount: ADD_ON_PRICES.vent_octagon });
+  if (options.octagonVent?.enabled) {
+    lines.push({ label: 'Vinyl Octagon Gable Vent', amount: OPTION_PRICES.vent_octagon });
   }
 
   return lines;
 }
 
-export function calculateAddOnTotal(addOns) {
-  return getAddOnLineItems(addOns).reduce((sum, item) => sum + item.amount, 0);
+export function calculateOptionTotal(options) {
+  return getOptionLineItems(options).reduce((sum, item) => sum + item.amount, 0);
 }
 
 /**
- * Full total price: base lookup + all enabled add-ons.
+ * Full total price: base lookup + all enabled Options.
  */
-export function calculateTotalPrice(width, length, wallHeight, addOns = {}) {
+export function calculateTotalPrice(width, length, wallHeight, options = {}) {
   const base = lookupBasePrice(width, length, wallHeight) ?? 0;
-  return base + calculateAddOnTotal(addOns);
+  return base + calculateOptionTotal(options);
 }
 
 // ─── Formatting helpers (unchanged API) ─────────────────────────────────────

@@ -14,13 +14,13 @@ export const ShedConfigurator = ({
 	width = 10,
 	length = 12,
 	wallHeight = 8,
-	style = 'Gable',
+	model = 'Gable',
 	color = '#8B4513',
 	roofColor = '#2F4F4F',
 	onShedMeshReady = null,
 }) => {
 	// Route to appropriate style-specific component
-	if (style === 'Barn') {
+	if (model === 'Barn') {
 		return (
 			<BarnShed
 				width={width}

@@ -36,11 +36,11 @@ describe('dimensions', () => {
 
 describe('Model', () => {
 	it('fits a Barn with a roll-up door and a Gable with a sectional one', () => {
-		state().setStyle('Barn');
-		expect(state().addOns.garageDoor.style).toBe('rollup');
+		state().setModel('Barn');
+		expect(state().options.garageDoor.style).toBe('rollup');
 
-		state().setStyle('Gable');
-		expect(state().addOns.garageDoor.style).toBe('sectional');
+		state().setModel('Gable');
+		expect(state().options.garageDoor.style).toBe('sectional');
 	});
 });
 

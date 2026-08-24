@@ -25,8 +25,8 @@ var priceTable = map[string]float64{
 	"14x28x12": 13189, "16x36x12": 14789,
 }
 
-// addOnPrices maps add-on keys to dollar amounts.
-var addOnPrices = map[string]float64{
+// optionPrices maps add-on keys to dollar amounts.
+var optionPrices = map[string]float64{
 	"garage_door_6x7":        450,
 	"garage_door_8x7":        500,
 	"garage_door_additional": 600,
@@ -64,9 +64,9 @@ type Placement struct {
 	RotationZ   float64 `json:"rotationZ,omitempty"`
 }
 
-// AddOnConfig holds the client-supplied add-on state.
+// OptionConfig holds the client-supplied add-on state.
 // We re-derive price server-side for security; we just store the state.
-type AddOnConfig struct {
+type OptionConfig struct {
 	Enabled   bool    `json:"enabled"`
 	Size      string  `json:"size,omitempty"`
 	Count     int     `json:"count,omitempty"`
@@ -77,41 +77,41 @@ type AddOnConfig struct {
 	Sqft      float64 `json:"sqft,omitempty"`
 }
 
-// AddOns holds all add-on states.
-type AddOns struct {
-	GarageDoor     AddOnConfig `json:"garageDoor"`
-	AdditionalDoor AddOnConfig `json:"additionalDoor"`
-	EntryDoor      AddOnConfig `json:"entryDoor"`
-	VinylWindows   AddOnConfig `json:"vinylWindows"`
-	OctagonWindow  AddOnConfig `json:"octagonWindow"`
-	Skylight       AddOnConfig `json:"skylight"`
-	Shutters       AddOnConfig `json:"shutters"`
-	Ramp           AddOnConfig `json:"ramp"`
-	OctagonVent    AddOnConfig `json:"octagonVent"`
-	Workbench      AddOnConfig `json:"workbench"`
-	Pegboard       AddOnConfig `json:"pegboard"`
-	Loft           AddOnConfig `json:"loft"`
+// Options holds all add-on states.
+type Options struct {
+	GarageDoor     OptionConfig `json:"garageDoor"`
+	AdditionalDoor OptionConfig `json:"additionalDoor"`
+	EntryDoor      OptionConfig `json:"entryDoor"`
+	VinylWindows   OptionConfig `json:"vinylWindows"`
+	OctagonWindow  OptionConfig `json:"octagonWindow"`
+	Skylight       OptionConfig `json:"skylight"`
+	Shutters       OptionConfig `json:"shutters"`
+	Ramp           OptionConfig `json:"ramp"`
+	OctagonVent    OptionConfig `json:"octagonVent"`
+	Workbench      OptionConfig `json:"workbench"`
+	Pegboard       OptionConfig `json:"pegboard"`
+	Loft           OptionConfig `json:"loft"`
 }
 
-// calculateAddOnTotal derives total add-on price from the AddOns state.
-func calculateAddOnTotal(ao AddOns) float64 {
+// calculateOptionTotal derives total add-on price from the Options state.
+func calculateOptionTotal(ao Options) float64 {
 	total := 0.0
 
 	if ao.GarageDoor.Enabled {
 		if ao.GarageDoor.Size == "8x7" {
-			total += addOnPrices["garage_door_8x7"]
+			total += optionPrices["garage_door_8x7"]
 		} else {
-			total += addOnPrices["garage_door_6x7"]
+			total += optionPrices["garage_door_6x7"]
 		}
 	}
 	if ao.AdditionalDoor.Enabled {
-		total += addOnPrices["garage_door_additional"]
+		total += optionPrices["garage_door_additional"]
 	}
 	if ao.EntryDoor.Enabled {
 		if ao.EntryDoor.Type == "nine_light" {
-			total += addOnPrices["entry_door_nine_light"]
+			total += optionPrices["entry_door_nine_light"]
 		} else {
-			total += addOnPrices["entry_door_steel"]
+			total += optionPrices["entry_door_steel"]
 		}
 	}
 	if ao.VinylWindows.Enabled {
@@ -119,43 +119,43 @@ func calculateAddOnTotal(ao AddOns) float64 {
 		if count < 1 {
 			count = 1
 		}
-		total += addOnPrices["window_vinyl_slide"] * float64(count)
+		total += optionPrices["window_vinyl_slide"] * float64(count)
 	}
 	if ao.OctagonWindow.Enabled {
-		total += addOnPrices["window_octagon"]
+		total += optionPrices["window_octagon"]
 	}
 	if ao.Skylight.Enabled {
 		ft := ao.Skylight.RunningFt
 		if ft <= 0 {
 			ft = 8
 		}
-		total += addOnPrices["skylight_per_ft"] * ft
+		total += optionPrices["skylight_per_ft"] * ft
 	}
 	if ao.Shutters.Enabled {
 		pairs := ao.Shutters.Pairs
 		if pairs < 1 {
 			pairs = 1
 		}
-		total += addOnPrices["shutters_per_pair"] * float64(pairs)
+		total += optionPrices["shutters_per_pair"] * float64(pairs)
 	}
 	if ao.Ramp.Enabled {
 		if ao.Ramp.Size == "large" {
-			total += addOnPrices["ramp_large"]
+			total += optionPrices["ramp_large"]
 		} else {
-			total += addOnPrices["ramp_small"]
+			total += optionPrices["ramp_small"]
 		}
 	}
 	if ao.OctagonVent.Enabled {
-		total += addOnPrices["vent_octagon"]
+		total += optionPrices["vent_octagon"]
 	}
 	if ao.Workbench.Enabled {
-		total += addOnPrices["workbench_per_ft"] * ao.Workbench.RunningFt
+		total += optionPrices["workbench_per_ft"] * ao.Workbench.RunningFt
 	}
 	if ao.Pegboard.Enabled {
-		total += addOnPrices["pegboard_per_sheet"] * float64(ao.Pegboard.Sheets)
+		total += optionPrices["pegboard_per_sheet"] * float64(ao.Pegboard.Sheets)
 	}
 	if ao.Loft.Enabled {
-		total += addOnPrices["loft_per_sqft"] * ao.Loft.Sqft
+		total += optionPrices["loft_per_sqft"] * ao.Loft.Sqft
 	}
 
 	return total
@@ -167,12 +167,12 @@ type Design struct {
 	Width      int          `json:"width"`
 	Length     int          `json:"length"`
 	WallHeight int          `json:"wallHeight"`
-	Style      string       `json:"style"`
+	Model      string       `json:"model"`
 	Color      string       `json:"color"`
 	RoofColor  string       `json:"roofColor"`
 	TrimColor  string       `json:"trimColor"`
 	Placements []*Placement `json:"placements"`
-	AddOns     AddOns       `json:"addOns"`
+	Options    Options      `json:"options"`
 	Price      float64      `json:"price"`
 	CreatedAt  string       `json:"createdAt"`
 }
@@ -208,25 +208,25 @@ func saveDesign(c *gin.Context) {
 		return
 	}
 
-	if input.Style != "Gable" && input.Style != "Barn" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Style must be 'Gable' or 'Barn'"})
+	if input.Model != "Gable" && input.Model != "Barn" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Model must be 'Gable' or 'Barn'"})
 		return
 	}
 
 	// Server-side price calculation (ignore client price for base)
-	serverPrice := basePrice + calculateAddOnTotal(input.AddOns)
+	serverPrice := basePrice + calculateOptionTotal(input.Options)
 
 	design := &Design{
 		ID:         uuid.New().String(),
 		Width:      input.Width,
 		Length:     input.Length,
 		WallHeight: input.WallHeight,
-		Style:      input.Style,
+		Model:      input.Model,
 		Color:      input.Color,
 		RoofColor:  input.RoofColor,
 		TrimColor:  input.TrimColor,
 		Placements: input.Placements,
-		AddOns:     input.AddOns,
+		Options:    input.Options,
 		Price:      serverPrice,
 		CreatedAt:  time.Now().Format(time.RFC3339),
 	}

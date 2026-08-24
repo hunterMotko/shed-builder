@@ -11,7 +11,7 @@ const PANEL_THICK = 0.04;  // ft
  *   position={[0, wallHeight + roofHeight, 0]} for a gable roof.
  *
  * Props:
- *   runningFt — total ridge length to cover in feet (from addOns.skylight.runningFt)
+ *   runningFt — total ridge length to cover in feet (from options.skylight.runningFt)
  *   numPanels — how many panels to split the run into (default 4)
  */
 export const Skylight = ({ runningFt = 8, numPanels = 4 }) => {

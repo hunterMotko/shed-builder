@@ -1,14 +1,14 @@
 import { useShedStore } from '../../store/shedStore';
-import { lookupBasePrice, getShedTier, getAddOnLineItems } from '../../utils/pricingUtils';
+import { lookupBasePrice, getShedTier, getOptionLineItems } from '../../utils/pricingUtils';
 
 export const PriceDisplay = () => {
   const width      = useShedStore((s) => s.width);
   const length     = useShedStore((s) => s.length);
   const wallHeight = useShedStore((s) => s.wallHeight);
-  const addOns     = useShedStore((s) => s.addOns);
+  const options     = useShedStore((s) => s.options);
 
   const basePrice  = lookupBasePrice(width, length, wallHeight) ?? 0;
-  const lineItems  = getAddOnLineItems(addOns);
+  const lineItems  = getOptionLineItems(options);
   const total      = basePrice + lineItems.reduce((s, i) => s + i.amount, 0);
   const tier       = getShedTier(wallHeight);
 

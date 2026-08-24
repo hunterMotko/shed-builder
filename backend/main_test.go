@@ -28,7 +28,7 @@ func post(t *testing.T, body string) (*httptest.ResponseRecorder, Design) {
 // The Quote is the server's number, not the client's. Expected prices come
 // from shed-options.md.
 func TestQuoteIgnoresClientSuppliedPrice(t *testing.T) {
-	rec, design := post(t, `{"width":12,"length":16,"wallHeight":10,"style":"Gable","price":1}`)
+	rec, design := post(t, `{"width":12,"length":16,"wallHeight":10,"model":"Gable","price":1}`)
 
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("want 201, got %d: %s", rec.Code, rec.Body.String())
@@ -39,7 +39,7 @@ func TestQuoteIgnoresClientSuppliedPrice(t *testing.T) {
 }
 
 func TestRejectsCombinationNotInCatalog(t *testing.T) {
-	rec, _ := post(t, `{"width":13,"length":17,"wallHeight":10,"style":"Gable"}`)
+	rec, _ := post(t, `{"width":13,"length":17,"wallHeight":10,"model":"Gable"}`)
 
 	if rec.Code != http.StatusBadRequest {
 		t.Errorf("want 400 for a combination we do not sell, got %d", rec.Code)
@@ -47,7 +47,7 @@ func TestRejectsCombinationNotInCatalog(t *testing.T) {
 }
 
 func TestRejectsUnknownModel(t *testing.T) {
-	rec, _ := post(t, `{"width":12,"length":16,"wallHeight":10,"style":"Tudor"}`)
+	rec, _ := post(t, `{"width":12,"length":16,"wallHeight":10,"model":"Tudor"}`)
 
 	if rec.Code != http.StatusBadRequest {
 		t.Errorf("want 400 for an unknown Model, got %d", rec.Code)
@@ -55,7 +55,7 @@ func TestRejectsUnknownModel(t *testing.T) {
 }
 
 func TestSavedDesignCanBeFetchedByID(t *testing.T) {
-	_, saved := post(t, `{"width":12,"length":16,"wallHeight":10,"style":"Gable"}`)
+	_, saved := post(t, `{"width":12,"length":16,"wallHeight":10,"model":"Gable"}`)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/design/"+saved.ID, nil)
 	rec := httptest.NewRecorder()
@@ -75,7 +75,7 @@ func TestSavedDesignCanBeFetchedByID(t *testing.T) {
 
 // Interior Options: workbench $35/running ft, pegboard $70/sheet, loft $4/sqft.
 func TestQuotePricesInteriorOptions(t *testing.T) {
-	_, design := post(t, `{"width":12,"length":16,"wallHeight":10,"style":"Gable","addOns":{
+	_, design := post(t, `{"width":12,"length":16,"wallHeight":10,"model":"Gable","options":{
 		"workbench":{"enabled":true,"runningFt":8},
 		"pegboard":{"enabled":true,"sheets":3},
 		"loft":{"enabled":true,"sqft":96}}}`)

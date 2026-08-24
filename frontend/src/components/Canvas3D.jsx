@@ -74,7 +74,7 @@ function RaycastingInteraction({ shedMesh, shedDimensions, onWallClick }) {
 }
 
 export const Canvas3D = ({ onPlacementInteraction = null }) => {
-	const { width, length, style, color, roofColor } = useShedStore();
+	const { width, length, model, color, roofColor } = useShedStore();
 	const [shedMesh, setShedMesh] = useState(null);
 	const [shedDimensions, setShedDimensions] = useState(null);
 
@@ -103,7 +103,7 @@ export const Canvas3D = ({ onPlacementInteraction = null }) => {
 			<Shed
 				width={width}
 				length={length}
-				style={style}
+				model={model}
 				color={color}
 				roofColor={roofColor}
 				onShedMeshReady={handleShedMeshReady}

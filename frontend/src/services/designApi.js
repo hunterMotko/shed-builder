@@ -45,7 +45,7 @@ apiClient.interceptors.response.use(
  * @param {Object} config - Design configuration object
  * @param {number} config.width - Shed width in feet
  * @param {number} config.length - Shed length in feet
- * @param {string} config.style - Shed style ('Barn' or 'Gable')
+ * @param {string} config.model - Shed Model ('Barn' or 'Gable')
  * @param {string} config.color - Shed color (hex)
  * @param {string} config.roofColor - Roof color (hex)
  * @param {string} config.trimColor - Trim color (hex)
@@ -85,7 +85,7 @@ export const listDesigns = async () => {
 export const validateDesignConfig = (config) => {
 	const errors = [];
 	// Style validation
-	if (!['Barn', 'Gable'].includes(config.style)) {
+	if (!['Barn', 'Gable'].includes(config.model)) {
 		errors.push('Style must be either "Barn" or "Gable"');
 	}
 	// Color validation (basic hex format)

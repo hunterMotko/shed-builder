@@ -2,30 +2,30 @@ import { useState } from 'react';
 import { useShedStore } from '../store/shedStore';
 import { useDesignPersistence } from '../hooks/useDesignPersistence';
 import { DimensionsSection }     from './controls/DimensionsSection';
-import { StyleSection }          from './controls/StyleSection';
+import { ModelSection }          from './controls/ModelSection';
 import { TrimAndDetailsSection } from './controls/TrimAndDetailsSection';
 import { ColorSection }          from './controls/ColorSection';
-import { AddOnsSection }         from './controls/AddOnsSection';
+import { OptionsSection }         from './controls/OptionsSection';
 import { ActionButtons }         from './controls/ActionButtons';
-import { lookupBasePrice, getAddOnLineItems } from '../utils/pricingUtils';
+import { lookupBasePrice, getOptionLineItems } from '../utils/pricingUtils';
 
 const TABS = [
   { id: 'dimensions', label: 'Size' },
-  { id: 'style',      label: 'Style' },
+  { id: 'model',      label: 'Model' },
   { id: 'colors',     label: 'Colors' },
-  { id: 'addons',     label: 'Add-Ons' },
+  { id: 'options',    label: 'Options' },
 ];
 
 export const ControlPanel = ({ onClose }) => {
   const [activeTab, setActiveTab] = useState('dimensions');
 
-  const { style, color, roofColor, setStyle, setColor, setRoofColor,
-          width, length, wallHeight, addOns, reset } = useShedStore();
+  const { model, color, roofColor, setModel, setColor, setRoofColor,
+          width, length, wallHeight, options, reset } = useShedStore();
   const { save, load, isLoading } = useDesignPersistence();
 
   const base     = lookupBasePrice(width, length, wallHeight) ?? 0;
-  const addOnAmt = getAddOnLineItems(addOns).reduce((s, i) => s + i.amount, 0);
-  const total    = base + addOnAmt;
+  const optionAmt = getOptionLineItems(options).reduce((s, i) => s + i.amount, 0);
+  const total    = base + optionAmt;
 
   const handleSave = async () => {
     try {
@@ -115,9 +115,9 @@ export const ControlPanel = ({ onClose }) => {
             <DimensionsSection />
           )}
 
-          {activeTab === 'style' && (
+          {activeTab === 'model' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-              <StyleSection style={style} onStyleChange={setStyle} />
+              <ModelSection model={model} onModelChange={setModel} />
               <TrimAndDetailsSection />
             </div>
           )}
@@ -129,8 +129,8 @@ export const ControlPanel = ({ onClose }) => {
             </div>
           )}
 
-          {activeTab === 'addons' && (
-            <AddOnsSection />
+          {activeTab === 'options' && (
+            <OptionsSection />
           )}
         </div>
       </div>

@@ -7,7 +7,7 @@ import { ControlPanel } from './components/ControlPanel';
 import { ComponentPreview } from './pages/ComponentPreview';
 import { ReferenceMatch } from './pages/ReferenceMatch';
 import { useShedStore } from './store/shedStore';
-import { lookupBasePrice, getAddOnLineItems, getShedTier } from './utils/pricingUtils';
+import { lookupBasePrice, getOptionLineItems, getShedTier } from './utils/pricingUtils';
 import './App.css';
 
 const NAV_H  = 48;
@@ -28,12 +28,12 @@ export default function App() {
   const [page, setPage]           = useState('configurator');
   const [drawerOpen, setDrawerOpen] = useState(true);
 
-  const { width, length, wallHeight, style, color, roofColor, addOns } = useShedStore();
+  const { width, length, wallHeight, model, color, roofColor, options } = useShedStore();
 
   // Price for canvas overlay
   const base      = lookupBasePrice(width, length, wallHeight) ?? 0;
-  const addOnTotal = getAddOnLineItems(addOns).reduce((s, i) => s + i.amount, 0);
-  const total     = base + addOnTotal;
+  const optionTotal = getOptionLineItems(options).reduce((s, i) => s + i.amount, 0);
+  const total     = base + optionTotal;
   const tier      = getShedTier(wallHeight);
 
   return (
@@ -117,7 +117,7 @@ export default function App() {
               <pointLight position={[15, 20, 10]} intensity={1} />
               <pointLight position={[-15, 20, -10]} intensity={0.5} />
               <Suspense fallback={null}>
-                {style === 'Barn' ? (
+                {model === 'Barn' ? (
                   <BarnShed width={width} length={length} wallHeight={wallHeight} color={color} roofColor={roofColor} />
                 ) : (
                   <GableShed width={width} length={length} wallHeight={wallHeight} color={color} roofColor={roofColor} />
