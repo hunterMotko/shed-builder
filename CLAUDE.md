@@ -93,7 +93,11 @@ rotated `[0, -π/2, 0]` so a wall's local X always runs along its own width.
 
 > `frontend/src/utils/csgOperations.js` exports a `csgModifier` singleton with world-space
 > coordinate helpers. **Nothing imports it.** It is dead code that contradicts ADR-0001; do not
-> treat it as the coordinate reference and do not extend it. See issue #3.
+> treat it as the coordinate reference and do not extend it. Issue #18 deletes it.
+
+The cut and the rendered opening currently measure the wall differently on the left and right
+walls — the cut spans `shedLength - 2 * WALL_THICKNESS`, every opening component spans
+`shedLength`, so they drift apart by up to 6in toward the wall ends (issue #17).
 
 CSG is expensive and has a performance ceiling — read ADR-0005 before adding placements or moving
 this work.
@@ -235,11 +239,12 @@ cd backend && go mod tidy
 
 ## Stale documents
 
-`frontend/GEOMETRY_ARCHITECTURE.md`, `frontend/PLACEMENT_COORDINATE_DIAGNOSTIC.md`,
-`frontend/PLACEMENT_FIX_GUIDE.md`, `frontend/src/ARCHITECTURE.md`,
-`frontend/src/DEBUG_REPORT.md`, `frontend/src/QUALITY_REPORT.md` and
+`frontend/GEOMETRY_ARCHITECTURE.md`, `frontend/src/ARCHITECTURE.md` and
 `frontend/src/UI_DESIGN_REPORT.md` predate the current code and contain claims that are no longer
-true. Verify anything you take from them; issue #3 triages and removes them.
+true. Verify anything you take from them.
+
+The four analysis reports that used to sit alongside them were triaged and deleted (issue #3).
+Almost everything they reported had already been fixed; what survived is now issues #17-#20.
 
 ## API contract
 
