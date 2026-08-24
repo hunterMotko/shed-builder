@@ -1,0 +1,61 @@
+import { describe, it, expect } from 'vitest';
+import { lookupBasePrice, getAddOnLineItems, calculateTotalPrice } from './pricingUtils';
+
+// Expected prices come from shed-options.md, the catalog of record.
+
+describe('base price', () => {
+	it('quotes a 12x16x10 Standard from the catalog', () => {
+		expect(lookupBasePrice(12, 16, 10)).toBe(6089);
+	});
+
+	it('refuses a combination the catalog does not sell', () => {
+		expect(lookupBasePrice(13, 17, 10)).toBeNull();
+	});
+});
+
+describe('Option line items', () => {
+	it('prices an 8x7 roll-up door at the 6x7 price plus two feet of width', () => {
+		// shed-options.md: 6x7 roll-up is $450, "+$25 per foot wider".
+		const [line] = getAddOnLineItems({ garageDoor: { enabled: true, size: '8x7' } });
+		expect(line.amount).toBe(450 + 2 * 25);
+	});
+
+	it('prices vinyl windows per window', () => {
+		const [line] = getAddOnLineItems({ vinylWindows: { enabled: true, count: 3 } });
+		expect(line.amount).toBe(3 * 275);
+	});
+
+	it('leaves out Options that are not enabled', () => {
+		expect(getAddOnLineItems({ ramp: { enabled: false, size: 'large' } })).toEqual([]);
+	});
+
+	it('prices a workbench by the running foot', () => {
+		// shed-options.md: 32in heavy duty workbench, $35 per running ft.
+		const [line] = getAddOnLineItems({ workbench: { enabled: true, runningFt: 8 } });
+		expect(line.label).toContain('Workbench');
+		expect(line.amount).toBe(280);
+	});
+
+	it('prices pegboard by the sheet', () => {
+		// shed-options.md: pegboard 4x8 white, $70 per sheet.
+		const [line] = getAddOnLineItems({ pegboard: { enabled: true, sheets: 3 } });
+		expect(line.label).toContain('Pegboard');
+		expect(line.amount).toBe(210);
+	});
+
+	it('prices a loft by the square foot', () => {
+		// shed-options.md: add loft/shelving, $4 per sq ft.
+		const [line] = getAddOnLineItems({ loft: { enabled: true, sqft: 96 } });
+		expect(line.label).toContain('Loft');
+		expect(line.amount).toBe(384);
+	});
+
+	it.todo('prices a Design with a porch — awaiting a porch price from shed-options.md');
+});
+
+describe('total', () => {
+	it('adds enabled Options to the catalog base price', () => {
+		const total = calculateTotalPrice(12, 16, 10, { octagonWindow: { enabled: true } });
+		expect(total).toBe(6089 + 85);
+	});
+});

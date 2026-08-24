@@ -4,6 +4,7 @@ backend/*.exe
 
 # Frontend
 frontend/node_modules/
+frontend/package-lock.json
 frontend/dist/
 frontend/.env*.local
 
