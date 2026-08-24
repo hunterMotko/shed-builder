@@ -39,6 +39,9 @@ var addOnPrices = map[string]float64{
 	"ramp_small":             275,
 	"ramp_large":             325,
 	"vent_octagon":           85,
+	"workbench_per_ft":       35,
+	"pegboard_per_sheet":     70,
+	"loft_per_sqft":          4,
 }
 
 // lookupBasePrice returns the catalog price for the given dimensions.
@@ -64,12 +67,14 @@ type Placement struct {
 // AddOnConfig holds the client-supplied add-on state.
 // We re-derive price server-side for security; we just store the state.
 type AddOnConfig struct {
-	Enabled bool   `json:"enabled"`
-	Size    string `json:"size,omitempty"`
-	Count   int    `json:"count,omitempty"`
-	Type    string `json:"type,omitempty"`
-	Pairs   int    `json:"pairs,omitempty"`
+	Enabled   bool    `json:"enabled"`
+	Size      string  `json:"size,omitempty"`
+	Count     int     `json:"count,omitempty"`
+	Type      string  `json:"type,omitempty"`
+	Pairs     int     `json:"pairs,omitempty"`
 	RunningFt float64 `json:"runningFt,omitempty"`
+	Sheets    int     `json:"sheets,omitempty"`
+	Sqft      float64 `json:"sqft,omitempty"`
 }
 
 // AddOns holds all add-on states.
@@ -83,6 +88,9 @@ type AddOns struct {
 	Shutters       AddOnConfig `json:"shutters"`
 	Ramp           AddOnConfig `json:"ramp"`
 	OctagonVent    AddOnConfig `json:"octagonVent"`
+	Workbench      AddOnConfig `json:"workbench"`
+	Pegboard       AddOnConfig `json:"pegboard"`
+	Loft           AddOnConfig `json:"loft"`
 }
 
 // calculateAddOnTotal derives total add-on price from the AddOns state.
@@ -139,6 +147,15 @@ func calculateAddOnTotal(ao AddOns) float64 {
 	}
 	if ao.OctagonVent.Enabled {
 		total += addOnPrices["vent_octagon"]
+	}
+	if ao.Workbench.Enabled {
+		total += addOnPrices["workbench_per_ft"] * ao.Workbench.RunningFt
+	}
+	if ao.Pegboard.Enabled {
+		total += addOnPrices["pegboard_per_sheet"] * float64(ao.Pegboard.Sheets)
+	}
+	if ao.Loft.Enabled {
+		total += addOnPrices["loft_per_sqft"] * ao.Loft.Sqft
 	}
 
 	return total
@@ -249,7 +266,9 @@ func listDesigns(c *gin.Context) {
 	c.JSON(http.StatusOK, designs)
 }
 
-func main() {
+// newRouter builds the HTTP router. Split out from main() so tests can drive
+// the API with httptest without binding a port.
+func newRouter() *gin.Engine {
 	router := gin.Default()
 
 	// CORS middleware
@@ -275,5 +294,9 @@ func main() {
 		api.GET("/designs", listDesigns)
 	}
 
-	router.Run(":8080")
+	return router
+}
+
+func main() {
+	newRouter().Run(":8080")
 }

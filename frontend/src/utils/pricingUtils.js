@@ -57,6 +57,9 @@ export const ADD_ON_PRICES = {
   ramp_small:               275,   // 6–8ft × 4ft
   ramp_large:               325,   // 8–10ft × 4ft
   vent_octagon:              85,
+  workbench_per_ft:          35,   // per running foot
+  pegboard_per_sheet:        70,   // 4x8 white sheet
+  loft_per_sqft:              4,   // loft / shelving
 };
 
 // ─── Derived helpers ─────────────────────────────────────────────────────────
@@ -189,6 +192,21 @@ export function getAddOnLineItems(addOns) {
     const key = addOns.ramp.size === 'large' ? 'ramp_large' : 'ramp_small';
     const label = addOns.ramp.size === 'large' ? 'Access Ramp (8–10×4ft)' : 'Access Ramp (6–8×4ft)';
     lines.push({ label, amount: ADD_ON_PRICES[key] });
+  }
+  if (addOns.workbench?.enabled) {
+    const ft = addOns.workbench.runningFt || 0;
+    lines.push({ label: `Workbench (${ft} ft)`, amount: ADD_ON_PRICES.workbench_per_ft * ft });
+  }
+  if (addOns.pegboard?.enabled) {
+    const sheets = addOns.pegboard.sheets || 0;
+    lines.push({
+      label: `${sheets}× Pegboard Sheet${sheets === 1 ? '' : 's'}`,
+      amount: ADD_ON_PRICES.pegboard_per_sheet * sheets,
+    });
+  }
+  if (addOns.loft?.enabled) {
+    const sqft = addOns.loft.sqft || 0;
+    lines.push({ label: `Loft / Shelving (${sqft} sq ft)`, amount: ADD_ON_PRICES.loft_per_sqft * sqft });
   }
   if (addOns.octagonVent?.enabled) {
     lines.push({ label: 'Vinyl Octagon Gable Vent', amount: ADD_ON_PRICES.vent_octagon });
