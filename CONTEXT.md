@@ -10,8 +10,9 @@ what lumber to buy to build it.
 
 **Model**:
 A product line a customer chooses between — Barn or Gable. A Model determines the
-roof profile, wall height, stud length, and trim set as one bundle, not as
-independent choices.
+roof profile, stud length, and trim set as one bundle, not as independent choices.
+It also decides how much of the Peak Height the roof takes, and so how tall the
+walls end up.
 _Avoid_: style, type, variant
 
 **Barn**:
