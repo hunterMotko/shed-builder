@@ -2,8 +2,8 @@ import { useMemo } from 'react';
 import * as THREE from 'three';
 
 const FLOOR_THICKNESS = 0.125;
-const SKID_SIZE = 0.333;
-const GROUND_Y = -(FLOOR_THICKNESS + SKID_SIZE); // ~-0.46 ft
+const RUNNER_SIZE = 0.333;
+const GROUND_Y = -(FLOOR_THICKNESS + RUNNER_SIZE); // ~-0.46 ft
 const RAMP_HEIGHT = Math.abs(GROUND_Y);
 const SIDE_THICK = 0.14; // ft — triangular side panel thickness
 const WALL_THICKNESS = 0.5;

@@ -75,6 +75,26 @@ The sloped edge of a roof at a gable or barn end.
 **Eave**:
 The horizontal lower edge of a roof, along the long walls.
 
+**Trim**:
+The finish boards that cover the joints and edges of a build — corner boards,
+fascia, rake boards. Trim is part of a Model, not an Option: a customer chooses
+its colour, never its pieces.
+
+**Trim Set**:
+The trim a Model carries. Part of the Model bundle, alongside roof profile, wall
+height and stud length. A Barn and a Gable do not carry the same set — that is a
+difference in the product, not a difference in the renderer.
+_The contents of each set are still being settled against the Reference Photos;
+see issues #5, #6 and #22._
+
+**Corner Board**:
+A vertical trim board at a corner of the shed, covering the siding joint. Four
+in a standard build.
+
+**Fascia**:
+A horizontal trim board along the eave, closing the roof edge above the wall.
+_Avoid_: eave board, trim board (say which board)
+
 ### Fidelity
 
 **Reference Photo**:
