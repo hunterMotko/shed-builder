@@ -82,9 +82,11 @@ trim, Runners and any Placements. Roofs come from `ExtrudeGeometry` over a 2D pr
 `BoxGeometry` with openings cut out.
 
 Trim is per Model and deliberately not shared — `GableTrim` has corner boards, eave fascia and
-rake boards; `BarnTrim` has **corner boards only** (ADR-0006 says it also has fascia; the code
-disagrees and the code is what runs — issue #22). Trim stock is `0.333 ft` (~4in); roof overhang
-at the eave is `0.5 ft`.
+rake boards; `BarnTrim` has **corner boards only**. ADR-0006 says the Barn also has fascia; the
+code disagrees, and which one matches the product is settled against the Reference Photos in #5
+and #6, not by reading the component (issue #22). The Trim Set is part of the Model bundle, so
+treat it as a product question. Trim stock is `0.333 ft` (~4in); roof overhang at the eave is
+`0.5 ft`.
 
 ### CSG (cutting openings)
 
