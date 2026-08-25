@@ -1,5 +1,6 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useMemo } from 'react';
 import { useShedStore } from '../../store/shedStore';
+import { WALL_SIDES, routePlacements } from '../../utils/wallSides';
 import { ShedWall } from '../shed/walls/ShedWall';
 import { GableRoof } from '../shed/roofs/GableRoof';
 import { GableEnd } from '../shed/roofs/GableEnd';
@@ -8,7 +9,6 @@ import { Ramp } from '../shed/extras/Ramp';
 import { Runners } from '../common/Runners';
 import { GableTrim } from '../shed/trim/GableTrim';
 
-const WALL_SIDES = ['front', 'back', 'left', 'right'];
 const ROOF_HEIGHT = 4; // ft above wall top
 
 /**
@@ -40,6 +40,11 @@ export const GableShed = ({
 		}
 	}, [width, length, wallHeight, onShedMeshReady]);
 
+	// Routed once per placements change, not per render: ShedWall's CSG effect
+	// keys on the array it is handed, so a fresh filter() each render would
+	// re-cut every opening on every render.
+	const { byWall } = useMemo(() => routePlacements(placements), [placements]);
+
 	return (
 		<group name="gableShed">
 			{/* Four individual walls */}
@@ -54,7 +59,7 @@ export const GableShed = ({
 					color={color}
 					sidingTexture={sidingTexture}
 					trimColor={trimColor}
-					placements={placements.filter((p) => p.wall === side)}
+					placements={byWall[side]}
 					doorStyle={garageDoorStyle}
 				/>
 			))}

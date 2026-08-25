@@ -1,6 +1,6 @@
-import { useMemo, useEffect, useState, forwardRef } from 'react';
+import { useMemo, useEffect, forwardRef } from 'react';
 import * as THREE from 'three';
-import { Evaluator, SUBTRACTION } from 'three-bvh-csg';
+import { cutOpenings } from '../../../utils/wallOpenings';
 import { makeSidingShader } from '../../../utils/shaders';
 import { useShedStore } from '../../../store/shedStore';
 import { DoorFrame } from '../../common/DoorFrame';
@@ -16,9 +16,6 @@ import { Shutters } from '../extras/Shutters';
  * Exported so GableEnd / roof components can align their positions correctly.
  */
 export const WALL_THICKNESS = 0.5;
-
-// One shared Evaluator instance — CSG is sequential so no concurrency issue.
-const evaluator = new Evaluator();
 
 /**
  * ShedWall — independently renderable individual wall section.
@@ -53,7 +50,6 @@ export const ShedWall = forwardRef(function ShedWall(
   },
   ref
 ) {
-  const [modifiedGeometry, setModifiedGeometry] = useState(null);
   const shuttersEnabled = useShedStore((s) => s.options.shutters.enabled);
 
   const halfW = shedWidth / 2;
@@ -81,55 +77,28 @@ export const ShedWall = forwardRef(function ShedWall(
     }
   }, [side, wallHeight, halfW, halfL, tHalf]);
 
-  // CSG — cut openings in local wall coordinate space
-  useEffect(() => {
-    if (placements.length === 0) {
-      setModifiedGeometry(null);
-      return;
-    }
-
-    const toDispose = [];
-    let finalGeometry = null;
-
+  // CSG — cut openings in local wall coordinate space (ADR-0001).
+  // Derived from the Placements, so it is a memo rather than effect-and-state:
+  // the cut geometry is not something that arrives later, it is what this wall
+  // *is* for a given Design.
+  const modifiedGeometry = useMemo(() => {
     try {
-      const cloned = baseGeometry.clone();
-      toDispose.push(cloned);
-      let currentMesh = new THREE.Mesh(cloned);
-      currentMesh.updateMatrixWorld(true);
-
-      for (const p of placements) {
-        // Door/window center in the wall's local XY plane
-        const localX = -localGeomWidth / 2 + p.normalizedX * localGeomWidth;
-        const localY = -wallHeight / 2 + p.normalizedY * wallHeight;
-
-        const cutGeo = new THREE.BoxGeometry(p.width, p.height, WALL_THICKNESS + 0.1);
-        const cutMat = new THREE.MeshBasicMaterial();
-        const cutMesh = new THREE.Mesh(cutGeo, cutMat);
-        cutMesh.position.set(localX, localY, 0);
-        cutMesh.updateMatrixWorld();
-        currentMesh.updateMatrixWorld();
-
-        const prev = currentMesh;
-        currentMesh = evaluator.evaluate(currentMesh, cutMesh, SUBTRACTION);
-
-        // Dispose intermediates (but not baseGeometry — it belongs to the useMemo)
-        if (prev.geometry !== cloned) toDispose.push(prev.geometry);
-        toDispose.push(cutGeo, cutMat);
-      }
-
-      finalGeometry = currentMesh.geometry;
-      setModifiedGeometry(finalGeometry);
+      return cutOpenings(baseGeometry, placements, {
+        localGeomWidth,
+        wallHeight,
+        wallThickness: WALL_THICKNESS,
+      });
     } catch (err) {
+      // A wall that renders solid is wrong but recoverable; a wall that throws
+      // takes the whole canvas down with it.
       console.error(`ShedWall CSG failed (${side}):`, err);
-      setModifiedGeometry(null);
-    } finally {
-      toDispose.forEach((obj) => obj.dispose?.());
+      return null;
     }
-
-    return () => {
-      finalGeometry?.dispose();
-    };
   }, [placements, baseGeometry, localGeomWidth, wallHeight, side]);
+
+  // The cut geometry reaches the mesh through <primitive>, which R3F never
+  // disposes, so this wall owns its lifetime.
+  useEffect(() => () => modifiedGeometry?.dispose(), [modifiedGeometry]);
 
   const sidingShader = useMemo(
     () => makeSidingShader(color, sidingTexture),

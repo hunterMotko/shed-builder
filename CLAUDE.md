@@ -81,6 +81,12 @@ All geometry is procedural. There are no model files (`.obj`, `.gltf`).
 trim, Runners and any Placements. Roofs come from `ExtrudeGeometry` over a 2D profile; walls are
 `BoxGeometry` with openings cut out.
 
+**Both Models render all four walls** (ADR-0010), from `WALL_SIDES` in `utils/wallSides.js`. The
+Models differ above the eave only: a Gable has two `GableEnd` triangles, a Barn has the gambrel
+end-caps. Placements are routed to walls by `routePlacements`, which hands back a `dropped` list so
+an opening assigned to a wall that isn't rendered is reported rather than lost — a Barn used to
+render two walls and discard every front and back Placement in silence.
+
 Trim is per Model and deliberately not shared — `GableTrim` has corner boards, eave fascia and
 rake boards; `BarnTrim` has **corner boards only**. ADR-0006 says the Barn also has fascia; the
 code disagrees, and which one matches the product is settled against the Reference Photos in #5
@@ -90,17 +96,27 @@ treat it as a product question. Trim stock is `0.333 ft` (~4in); roof overhang a
 
 ### CSG (cutting openings)
 
-Openings are cut **inside `ShedWall.jsx`**, which owns a shared `three-bvh-csg` `Evaluator` and
-subtracts one box per Placement in the wall's **local** space (ADR-0001). Left and right walls are
-rotated `[0, -π/2, 0]` so a wall's local X always runs along its own width.
+`utils/wallOpenings.js` owns the cut: `cutOpenings(baseGeometry, placements, opts)` subtracts one
+box per Placement in the wall's **local** space (ADR-0001) and returns a new geometry, or `null`
+when the wall has no openings. `ShedWall.jsx` calls it from a `useMemo` and disposes the result —
+the cut geometry reaches the mesh through `<primitive>`, which React Three Fiber never disposes.
+Left and right walls are rotated `[0, -π/2, 0]` so a wall's local X always runs along its own
+width.
+
+**Operands must be `Brush`, not `THREE.Mesh`.** `Evaluator.evaluate` calls `prepareGeometry()` on
+both, which only `Brush` has. Passing a Mesh throws, and for a long time that throw was caught and
+logged while every wall silently rendered solid (issue #25). `evaluator.useGroups = false`, since a
+wall draws with one material.
 
 > `frontend/src/utils/csgOperations.js` exports a `csgModifier` singleton with world-space
 > coordinate helpers. **Nothing imports it.** It is dead code that contradicts ADR-0001; do not
 > treat it as the coordinate reference and do not extend it. Issue #18 deletes it.
 
-The cut and the rendered opening currently measure the wall differently on the left and right
-walls — the cut spans `shedLength - 2 * WALL_THICKNESS`, every opening component spans
-`shedLength`, so they drift apart by up to 6in toward the wall ends (issue #17).
+The cut and the rendered opening still measure the wall differently, on both axes. Vertically every
+opening component is `wallHeight/2` low, because it uses the wall-local Y formula while being
+positioned in shed space (issue #26). Horizontally, on left and right walls the cut spans
+`shedLength - 2 * WALL_THICKNESS` while the components span `shedLength`, so they drift apart by up
+to 6in toward the wall ends (issue #17). Same seven files, same cause; fix them together.
 
 CSG is expensive and has a performance ceiling — read ADR-0005 before adding placements or moving
 this work.
@@ -206,6 +222,8 @@ under test is non-React.
 | Roof math | `utils/roofGeometry.test.js` |
 | Catalog and Option pricing | `utils/pricingUtils.test.js` |
 | Placement rules | `utils/placementValidator.test.js` |
+| Cutting openings | `utils/wallOpenings.test.js` |
+| Walls and Placement routing | `utils/wallSides.test.js` |
 | Store behaviour | `store/shedStore.test.js` |
 | HTTP API | `backend/main_test.go` |
 
@@ -293,6 +311,8 @@ frontend/src/
   components/common/              door/window frames and objects, Runners
   pages/ReferenceMatch.jsx        photo vs render (its scene is a fork — issue #4)
   utils/roofGeometry.js           roof math
+  utils/wallOpenings.js           CSG: cut Openings out of a wall (Brush, local space)
+  utils/wallSides.js              the four walls, and routing Placements onto them
   utils/pricingUtils.js           catalog and Option line items
   services/designApi.js           axios client
 

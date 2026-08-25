@@ -12,13 +12,10 @@ import { Skylight } from '../extras/Skylight';
  *   Group 1 — back end-cap   → siding material (barn gable, front of shed)
  *   Group 2 — slope faces    → roof material (metal or shingle)
  *
- * The end-caps cover only the ROOF profile (Y=wallHeight upward).
- * Two separate wall panels (barnWallFront/Back) cover the rectangular
- * gable area from floor (Y=0) to eave (Y=wallHeight), positioned 0.01 ft
- * proud of the end-caps so there is no Z-fighting between them.
- *
- * BarnShed renders only left/right ShedWalls; these panels + end-caps
- * together form the complete front/back gable faces.
+ * The end-caps cover only the ROOF profile (Y=wallHeight upward). Below the
+ * eave, BarnShed's front/back ShedWalls cover floor to eave — real walls that
+ * take CSG openings, which the flat panels this component used to draw could
+ * not (ADR-0010). The two are disjoint in Y and meet at the eave line.
  */
 
 const KNUCKLE_X_RATIO = 0.82;
@@ -98,10 +95,6 @@ export const GambrelRoof = ({
   // Peak in world space: wallHeight + peakY (peakY is relative to wallHeight base)
   const worldPeakY = wallHeight + peakY;
 
-  // Front/back wall panel dimensions — covers rectangular gable from floor to eave
-  const halfLen = shedLength / 2;
-  const WALL_PANEL_OFFSET = 0.01; // ft proud of end-caps to prevent Z-fighting
-
   return (
     <group name="gambrelRoof">
       {/* Roof slope sections — end-caps cover gable profile above wallHeight */}
@@ -112,28 +105,6 @@ export const GambrelRoof = ({
       <mesh name="gambrelRoofUpper" position={pos} castShadow={castShadow} receiveShadow={receiveShadow}>
         <extrudeGeometry args={[upperShape, extrudeSettings]} />
         <primitive object={materials} attach="material" />
-      </mesh>
-
-      {/* Front barn wall face — rectangular panel from floor to eave */}
-      <mesh
-        name="barnWallFront"
-        position={[0, wallHeight / 2, halfLen + WALL_PANEL_OFFSET]}
-        castShadow={castShadow}
-        receiveShadow={receiveShadow}
-      >
-        <boxGeometry args={[shedWidth, wallHeight, 0.01]} />
-        <primitive object={sidingMat} attach="material" />
-      </mesh>
-
-      {/* Back barn wall face — rectangular panel from floor to eave */}
-      <mesh
-        name="barnWallBack"
-        position={[0, wallHeight / 2, -(halfLen + WALL_PANEL_OFFSET)]}
-        castShadow={castShadow}
-        receiveShadow={receiveShadow}
-      >
-        <boxGeometry args={[shedWidth, wallHeight, 0.01]} />
-        <primitive object={sidingMat} attach="material" />
       </mesh>
 
       {skylight?.enabled && (
