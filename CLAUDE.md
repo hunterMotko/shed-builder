@@ -82,8 +82,9 @@ trim, Runners and any Placements. Roofs come from `ExtrudeGeometry` over a 2D pr
 `BoxGeometry` with openings cut out.
 
 Trim is per Model and deliberately not shared — `GableTrim` has corner boards, eave fascia and
-rake boards; `BarnTrim` has corner boards and fascia (ADR-0006). Trim stock is `0.333 ft` (~4in);
-roof overhang at the eave is `0.5 ft`.
+rake boards; `BarnTrim` has **corner boards only** (ADR-0006 says it also has fascia; the code
+disagrees and the code is what runs — issue #22). Trim stock is `0.333 ft` (~4in); roof overhang
+at the eave is `0.5 ft`.
 
 ### CSG (cutting openings)
 
@@ -236,15 +237,6 @@ cd backend && go mod tidy
 - A hole misaligned with its door → the cut happens in `ShedWall.jsx` in local wall space, not in
   `csgOperations.js`.
 - Stale geometry after a code change → clear the browser cache.
-
-## Stale documents
-
-`frontend/GEOMETRY_ARCHITECTURE.md`, `frontend/src/ARCHITECTURE.md` and
-`frontend/src/UI_DESIGN_REPORT.md` predate the current code and contain claims that are no longer
-true. Verify anything you take from them.
-
-The four analysis reports that used to sit alongside them were triaged and deleted (issue #3).
-Almost everything they reported had already been fixed; what survived is now issues #17-#20.
 
 ## API contract
 
