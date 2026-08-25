@@ -112,11 +112,16 @@ wall draws with one material.
 > coordinate helpers. **Nothing imports it.** It is dead code that contradicts ADR-0001; do not
 > treat it as the coordinate reference and do not extend it. Issue #18 deletes it.
 
-The cut and the rendered opening still measure the wall differently, on both axes. Vertically every
-opening component is `wallHeight/2` low, because it uses the wall-local Y formula while being
-positioned in shed space (issue #26). Horizontally, on left and right walls the cut spans
-`shedLength - 2 * WALL_THICKNESS` while the components span `shedLength`, so they drift apart by up
-to 6in toward the wall ends (issue #17). Same seven files, same cause; fix them together.
+**`openingTransform` is the only place opening coordinates are worked out.** The cut and every
+visible part of an opening — door slab, window, trim frame, shutters — derive from it, so the two
+cannot drift apart (ADR-0011). Pass how far proud of the wall face the part sits; pass
+`-WALL_THICKNESS / 2` to land exactly on the centre of the hole, which is what the test asserts on
+all four walls. `wallSpan` gives the wall's own width, and `coordinateUtils` uses it to invert a
+click back into a Placement.
+
+Do not recompute a position from `normalizedX`/`normalizedY` inside a component. Seven of them did,
+each with its own copy of the formula, and every copy was wrong in at least one way (issues #17,
+#26).
 
 CSG is expensive and has a performance ceiling — read ADR-0005 before adding placements or moving
 this work.
@@ -175,8 +180,12 @@ Foundation constants live in `STANDARD_FOUNDATION`: height `1.5 ft`, overhang `0
 ## Placements
 
 A Placement is `{ id, type, wall, normalizedX, normalizedY, width, height }`. Position is
-normalized `0.0–1.0` across the wall; `(0,0)` is bottom-left. Size is **absolute feet**, which is
-why resizing a shed can leave an Opening that no longer fits.
+normalized `0.0–1.0` across the wall; `(0,0)` is bottom-left — `normalizedY` 0 is the floor, 1 is
+the eave, and `normalizedX` runs across **that wall's** span, which for left and right is
+`shedLength - 2 * WALL_THICKNESS`, not the full length. Size is **absolute feet**, which is why
+resizing a shed can leave an Opening that no longer fits.
+
+Ask `openingTransform` for the position — never rebuild it from the normalized values.
 
 `ShedWall` renders `door`, `window`, `garage_door`, `barn_door` and `swing_barn_door`.
 

@@ -24,3 +24,6 @@ Thumbs.db
 *.log
 
 reference/
+
+# Go live-reload build artifacts
+backend/tmp/

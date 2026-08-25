@@ -14,6 +14,65 @@ import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
  * which is exactly how every opening in this app silently failed to be cut.
  */
 
+/** Wall thickness in feet (6 inches). */
+export const WALL_THICKNESS = 0.5;
+
+/**
+ * How wide a wall actually is, in feet.
+ *
+ * Front and back span the full width of the shed. Left and right fit *between*
+ * them, so they stop a wall thickness short at each end. A Placement's
+ * `normalizedX` runs across this, not across the shed — measuring it against
+ * the full `shedLength` is what put every left/right opening up to 6in away
+ * from its own hole (issue #17).
+ */
+export function wallSpan(wall, shedWidth, shedLength) {
+	return (wall === 'front' || wall === 'back')
+		? shedWidth
+		: shedLength - WALL_THICKNESS * 2;
+}
+
+/**
+ * Where an Opening sits in shed space, and which way it faces.
+ *
+ * The single source of truth for opening placement: `cutOpenings` cuts the
+ * hole in wall-local space and every visible component — door slab, window,
+ * trim frame, shutters — positions itself in shed space. Both derive from this
+ * one function so the two cannot drift apart.
+ *
+ * Y is measured from the floor: `normalizedY` 0 is the floor, 1 is the eave.
+ * Components used to copy the wall-LOCAL formula (`-wallHeight/2 + ...`) into
+ * shed space, which rendered every opening half a wall too low (issue #26).
+ *
+ * Rotation carries the component's local +Z — the face every one of them
+ * builds toward — onto the wall's outward normal.
+ *
+ * @param {Object} placement - the Placement being drawn
+ * @param {{width: number, length: number, wallHeight: number}} shedDimensions
+ * @param {number} faceOffset - how far proud of the wall's outer face to sit.
+ *   Pass `-WALL_THICKNESS / 2` to land exactly on the centre of the hole.
+ * @returns {{position: number[], rotation: number[]}}
+ */
+export function openingTransform(placement, shedDimensions, faceOffset = 0) {
+	const { wall, normalizedX, normalizedY } = placement;
+	const { width, length, wallHeight } = shedDimensions;
+
+	const span = wallSpan(wall, width, length);
+	// Same expression the cut uses for its local X — that is the point.
+	const along = -span / 2 + normalizedX * span;
+	const y = normalizedY * wallHeight;
+	const halfW = width / 2;
+	const halfL = length / 2;
+
+	switch (wall) {
+		case 'front': return { position: [along, y, halfL + faceOffset],    rotation: [0, 0, 0] };
+		case 'back':  return { position: [along, y, -(halfL + faceOffset)], rotation: [0, Math.PI, 0] };
+		case 'left':  return { position: [-(halfW + faceOffset), y, along], rotation: [0, -Math.PI / 2, 0] };
+		case 'right': return { position: [halfW + faceOffset, y, along],    rotation: [0, Math.PI / 2, 0] };
+		default:      return { position: [0, y, 0], rotation: [0, 0, 0] };
+	}
+}
+
 // One shared Evaluator — CSG is sequential so there is no concurrency issue.
 const evaluator = new Evaluator();
 // A wall is drawn with one material, so the result should be one un-grouped

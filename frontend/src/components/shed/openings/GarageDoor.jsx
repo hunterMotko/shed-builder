@@ -1,28 +1,7 @@
 import { useMemo } from 'react';
-import * as THREE from 'three';
+import { openingTransform } from '../../../utils/wallOpenings';
 
-/**
- * Compute world-space position and rotation for a placement on a given wall.
- * Mirrors the formula used by DoorObject so all opening types align correctly.
- */
-function getOpeningTransform(placement, shedDimensions) {
-  const { width, length, wallHeight } = shedDimensions;
-  const { normalizedX, normalizedY, wall } = placement;
-  const halfWidth  = width / 2;
-  const halfLength = length / 2;
-  const OFFSET = 0.3;
-
-  const cx = -halfWidth + normalizedX * width;
-  const cy = -wallHeight / 2 + normalizedY * wallHeight;
-
-  switch (wall) {
-    case 'front': return { pos: [cx, cy, halfLength + OFFSET],  rot: [0, 0, 0] };
-    case 'back':  return { pos: [cx, cy, -halfLength - OFFSET], rot: [0, Math.PI, 0] };
-    case 'left':  return { pos: [-halfWidth - OFFSET, cy, -halfLength + normalizedX * length], rot: [0,  Math.PI / 2, 0] };
-    case 'right': return { pos: [ halfWidth + OFFSET, cy, -halfLength + normalizedX * length], rot: [0, -Math.PI / 2, 0] };
-    default:      return { pos: [0, 0, 0], rot: [0, 0, 0] };
-  }
-}
+const OFFSET = 0.3;
 
 /**
  * GarageDoor — sectional overhead garage door.
@@ -45,8 +24,8 @@ export const GarageDoor = ({
   const ribCount   = Math.ceil(elemHeight / RIB_HEIGHT);
   const actualRibH = elemHeight / ribCount;
 
-  const { pos, rot } = useMemo(
-    () => getOpeningTransform(placement, shedDimensions),
+  const { position: pos, rotation: rot } = useMemo(
+    () => openingTransform(placement, shedDimensions, OFFSET),
     [placement, shedDimensions]
   );
 

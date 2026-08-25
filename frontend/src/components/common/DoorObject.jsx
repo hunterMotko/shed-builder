@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import * as THREE from 'three';
+import { openingTransform } from '../../utils/wallOpenings';
 
 export const DoorObject = ({
   placement,
@@ -7,26 +7,13 @@ export const DoorObject = ({
   trimColor = '#654321',
   wallColor = '#8B4513',
 }) => {
-  const { width: elemWidth, height: elemHeight, normalizedX, normalizedY, wall } = placement;
-  const { width, length, wallHeight } = shedDimensions;
-  const halfWidth = width / 2;
-  const halfLength = length / 2;
+  const { width: elemWidth, height: elemHeight } = placement;
 
-  const position = useMemo(() => {
-    switch (wall) {
-      case 'front':  return new THREE.Vector3(-halfWidth + normalizedX * width, -wallHeight / 2 + normalizedY * wallHeight, halfLength + 0.3);
-      case 'back':   return new THREE.Vector3(-halfWidth + normalizedX * width, -wallHeight / 2 + normalizedY * wallHeight, -halfLength - 0.3);
-      case 'left':   return new THREE.Vector3(-halfWidth - 0.3, -wallHeight / 2 + normalizedY * wallHeight, -halfLength + normalizedX * length);
-      case 'right':  return new THREE.Vector3(halfWidth + 0.3, -wallHeight / 2 + normalizedY * wallHeight, -halfLength + normalizedX * length);
-      default:       return new THREE.Vector3(0, 0, 0);
-    }
-  }, [normalizedX, normalizedY, wall, width, length, wallHeight, halfWidth, halfLength]);
-
-  const rotation = useMemo(() => {
-    if (wall === 'left')  return [0, Math.PI / 2, 0];
-    if (wall === 'right') return [0, -Math.PI / 2, 0];
-    return [0, 0, 0];
-  }, [wall]);
+  // Door slab sits 0.3 ft proud of the wall face.
+  const { position, rotation } = useMemo(
+    () => openingTransform(placement, shedDimensions, 0.3),
+    [placement, shedDimensions]
+  );
 
   const W = elemWidth;
   const H = elemHeight;

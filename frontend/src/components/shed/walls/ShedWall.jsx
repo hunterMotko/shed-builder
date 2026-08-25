@@ -1,6 +1,6 @@
 import { useMemo, useEffect, forwardRef } from 'react';
 import * as THREE from 'three';
-import { cutOpenings } from '../../../utils/wallOpenings';
+import { cutOpenings, wallSpan, WALL_THICKNESS } from '../../../utils/wallOpenings';
 import { makeSidingShader } from '../../../utils/shaders';
 import { useShedStore } from '../../../store/shedStore';
 import { DoorFrame } from '../../common/DoorFrame';
@@ -10,12 +10,6 @@ import { WindowObject } from '../../common/WindowObject';
 import { GarageDoor } from '../openings/GarageDoor';
 import { SwingBarnDoor } from '../openings/SwingBarnDoor';
 import { Shutters } from '../extras/Shutters';
-
-/**
- * Wall thickness in feet (6 inches).
- * Exported so GableEnd / roof components can align their positions correctly.
- */
-export const WALL_THICKNESS = 0.5;
 
 /**
  * ShedWall — independently renderable individual wall section.
@@ -57,9 +51,7 @@ export const ShedWall = forwardRef(function ShedWall(
   const tHalf = WALL_THICKNESS / 2;
 
   // Front/back span full shed width; left/right fit between the front/back inner faces.
-  const localGeomWidth = (side === 'front' || side === 'back')
-    ? shedWidth
-    : shedLength - WALL_THICKNESS * 2;
+  const localGeomWidth = wallSpan(side, shedWidth, shedLength);
 
   const baseGeometry = useMemo(
     () => new THREE.BoxGeometry(localGeomWidth, wallHeight, WALL_THICKNESS),
