@@ -2,7 +2,6 @@ import { useMemo, useEffect, forwardRef } from 'react';
 import * as THREE from 'three';
 import { cutOpenings, wallSpan, WALL_THICKNESS } from '../../../utils/wallOpenings';
 import { makeSidingShader } from '../../../utils/shaders';
-import { useShedStore } from '../../../store/shedStore';
 import { DoorFrame } from '../../common/DoorFrame';
 import { WindowFrame } from '../../common/WindowFrame';
 import { DoorObject } from '../../common/DoorObject';
@@ -38,14 +37,13 @@ export const ShedWall = forwardRef(function ShedWall(
     trimColor,
     trimWidth = 0.25,
     doorStyle = 'sectional',
+    showShutters = false,
     placements = [],
     castShadow = true,
     receiveShadow = true,
   },
   ref
 ) {
-  const shuttersEnabled = useShedStore((s) => s.options.shutters.enabled);
-
   const halfW = shedWidth / 2;
   const halfL = shedLength / 2;
   const tHalf = WALL_THICKNESS / 2;
@@ -195,7 +193,7 @@ export const ShedWall = forwardRef(function ShedWall(
       })}
 
       {/* Vinyl shutters — render alongside every window when shutters add-on is enabled */}
-      {shuttersEnabled && placements
+      {showShutters && placements
         .filter((p) => p.type === 'window')
         .map((p) => (
           <Shutters

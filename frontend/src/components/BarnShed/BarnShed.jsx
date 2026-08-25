@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import { useShedStore } from '../../store/shedStore';
 import { WALL_SIDES, routePlacements } from '../../utils/wallSides';
+import { overlayDesign } from '../../utils/design';
 import { ShedWall } from '../shed/walls/ShedWall';
 import { GambrelRoof } from '../shed/roofs/GambrelRoof';
 import { Porch } from '../shed/extras/Porch';
@@ -19,22 +20,41 @@ import { BarnTrim } from '../shed/trim/BarnTrim';
  * nothing to Z-fight (ADR-0010).
  */
 export const BarnShed = ({
-	width = 10,
-	length = 12,
-	wallHeight = 8,
-	color = '#8B4513',
-	roofColor = '#2F4F4F',
+	width: widthProp = 10,
+	length: lengthProp = 12,
+	wallHeight: wallHeightProp = 8,
+	color: colorProp = '#8B4513',
+	roofColor: roofColorProp = '#2F4F4F',
+	design = null,
 	onShedMeshReady = null,
 }) => {
-	const placements = useShedStore((s) => s.placements);
-	const trimColor = useShedStore((s) => s.trimColor);
-	const sidingTexture = useShedStore((s) => s.sidingTexture);
-	const roofMaterial = useShedStore((s) => s.roofMaterial);
-	const roofLowerPitch = useShedStore((s) => s.roofLowerPitch);
-	const roofUpperPitch = useShedStore((s) => s.roofUpperPitch);
-	const porch = useShedStore((s) => s.porch);
-	const options = useShedStore((s) => s.options);
-	const garageDoorStyle = useShedStore((s) => s.options.garageDoor.style ?? 'sectional');
+	const storeDesign = {
+		width: widthProp,
+		length: lengthProp,
+		wallHeight: wallHeightProp,
+		color: colorProp,
+		roofColor: roofColorProp,
+		placements: useShedStore((s) => s.placements),
+		trimColor: useShedStore((s) => s.trimColor),
+		sidingTexture: useShedStore((s) => s.sidingTexture),
+		roofMaterial: useShedStore((s) => s.roofMaterial),
+		roofLowerPitch: useShedStore((s) => s.roofLowerPitch),
+		roofUpperPitch: useShedStore((s) => s.roofUpperPitch),
+		porch: useShedStore((s) => s.porch),
+		options: useShedStore((s) => s.options),
+	};
+
+	// A fixed Design wins over the one the customer is configuring. Pass a
+	// module-level constant, not an object literal: `placements` identity is
+	// what keys the CSG cut, so a fresh array each render re-cuts every opening.
+	const d = overlayDesign(storeDesign, design);
+	const {
+		width, length, wallHeight, color, roofColor,
+		placements, trimColor, sidingTexture, roofMaterial,
+		roofLowerPitch, roofUpperPitch, porch, options,
+	} = d;
+	const garageDoorStyle = options.garageDoor.style ?? 'sectional';
+
 	useEffect(() => {
 		// Barn has no discrete front wall mesh — placement raycasting not yet wired
 		if (onShedMeshReady) onShedMeshReady(null, { width, length, wallHeight });
@@ -60,6 +80,7 @@ export const BarnShed = ({
 					trimColor={trimColor}
 					placements={byWall[side]}
 					doorStyle={garageDoorStyle}
+					showShutters={options.shutters.enabled}
 				/>
 			))}
 

@@ -1,9 +1,49 @@
-import { Suspense } from 'react';
+import { Suspense, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
-import { RefBarnScene } from './reference-match/RefBarnScene';
+import { BarnShed } from '../components/BarnShed/BarnShed';
+import { GableShed } from '../components/GableShed/GableShed';
+import { REFERENCE_TARGETS } from './referenceTargets';
 
+const badge = {
+  position: 'absolute', top: 12, left: 12, zIndex: 1,
+  background: 'rgba(15,23,42,0.85)',
+  color: '#94a3b8', fontSize: 11, fontWeight: 600,
+  padding: '4px 10px', borderRadius: 4,
+  letterSpacing: '0.05em', textTransform: 'uppercase',
+};
+
+const caption = {
+  position: 'absolute', bottom: 12, left: '50%',
+  transform: 'translateX(-50%)', zIndex: 1,
+  background: 'rgba(15,23,42,0.75)',
+  color: '#64748b', fontSize: 11,
+  padding: '3px 10px', borderRadius: 4,
+  whiteSpace: 'nowrap',
+};
+
+const targetBtn = (active) => ({
+  background: active ? '#1e293b' : 'transparent',
+  border: '1px solid #334155',
+  color: active ? '#93c5fd' : '#94a3b8',
+  fontSize: 11, fontWeight: active ? 600 : 400,
+  padding: '3px 10px', borderRadius: 4, cursor: 'pointer',
+});
+
+/**
+ * Reference Match — a Reference Photo beside the same building rendered by the
+ * real shed components.
+ *
+ * The reconstruction goes through `BarnShed` / `GableShed` driven by a Design
+ * fixture, so anything done to close the gap with the photo lands in the
+ * product (ADR-0012). It used to be a fork of those components, and fidelity
+ * work done in the fork reached nothing.
+ */
 export function ReferenceMatch() {
+  const [targetId, setTargetId] = useState(REFERENCE_TARGETS[0].id);
+  const target = REFERENCE_TARGETS.find((t) => t.id === targetId) ?? REFERENCE_TARGETS[0];
+  const Shed = target.model === 'Barn' ? BarnShed : GableShed;
+
   return (
     <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
 
@@ -17,61 +57,40 @@ export function ReferenceMatch() {
         alignItems: 'center',
         justifyContent: 'center',
       }}>
-        <span style={{
-          position: 'absolute', top: 12, left: 12,
-          background: 'rgba(15,23,42,0.85)',
-          color: '#94a3b8', fontSize: 11, fontWeight: 600,
-          padding: '4px 10px', borderRadius: 4,
-          letterSpacing: '0.05em', textTransform: 'uppercase',
-        }}>
-          Reference Photo
-        </span>
+        <span style={badge}>Reference Photo</span>
+
+        {REFERENCE_TARGETS.length > 1 && (
+          <div style={{
+            position: 'absolute', top: 12, right: 12, zIndex: 1,
+            display: 'flex', gap: 6,
+          }}>
+            {REFERENCE_TARGETS.map((t) => (
+              <button
+                key={t.id}
+                style={targetBtn(t.id === target.id)}
+                onClick={() => setTargetId(t.id)}
+              >
+                {t.id}
+              </button>
+            ))}
+          </div>
+        )}
+
         <img
-          src="/ref_barn_barndoors.jpg"
-          alt="Reference: dark green barn shed with double barn doors and white trim"
-          style={{
-            maxWidth: '100%',
-            maxHeight: '100%',
-            objectFit: 'contain',
-          }}
+          src={target.photo}
+          alt={target.photoAlt}
+          style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
         />
-        <div style={{
-          position: 'absolute', bottom: 12, left: '50%',
-          transform: 'translateX(-50%)',
-          background: 'rgba(15,23,42,0.75)',
-          color: '#64748b', fontSize: 11,
-          padding: '3px 10px', borderRadius: 4,
-          whiteSpace: 'nowrap',
-        }}>
-          barn_barndoors.jpg — target: dark green · white trim · silver metal roof
-        </div>
+        <div style={caption}>{target.photoCaption}</div>
       </div>
 
       {/* ── Right: 3D reconstruction ─────────────────────────────── */}
       <div style={{ flex: 1, position: 'relative' }}>
-        <span style={{
-          position: 'absolute', top: 12, left: 12, zIndex: 1,
-          background: 'rgba(15,23,42,0.85)',
-          color: '#94a3b8', fontSize: 11, fontWeight: 600,
-          padding: '4px 10px', borderRadius: 4,
-          letterSpacing: '0.05em', textTransform: 'uppercase',
-        }}>
-          3D Reconstruction
-        </span>
-        <div style={{
-          position: 'absolute', bottom: 12, left: '50%',
-          transform: 'translateX(-50%)',
-          zIndex: 1,
-          background: 'rgba(15,23,42,0.75)',
-          color: '#64748b', fontSize: 11,
-          padding: '3px 10px', borderRadius: 4,
-          whiteSpace: 'nowrap',
-        }}>
-          12 × 20 × 8 ft · #2B5219 · white trim · silver metal
-        </div>
+        <span style={badge}>3D Reconstruction</span>
+        <div style={caption}>{target.designCaption}</div>
 
         <Canvas
-          camera={{ position: [22, 12, 24], fov: 45 }}
+          camera={target.camera}
           shadows
           style={{ width: '100%', height: '100%', background: '#d4d8d0' }}
         >
@@ -85,9 +104,9 @@ export function ReferenceMatch() {
           />
           <pointLight position={[-12, 16, -12]} intensity={0.35} />
           <Suspense fallback={null}>
-            <RefBarnScene />
+            <Shed design={target.design} />
           </Suspense>
-          <OrbitControls target={[0, 4, 0]} minDistance={8} maxDistance={60} />
+          <OrbitControls target={target.target} minDistance={8} maxDistance={60} />
         </Canvas>
       </div>
     </div>

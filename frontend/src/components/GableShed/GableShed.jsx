@@ -1,6 +1,7 @@
 import { useRef, useEffect, useMemo } from 'react';
 import { useShedStore } from '../../store/shedStore';
 import { WALL_SIDES, routePlacements } from '../../utils/wallSides';
+import { overlayDesign } from '../../utils/design';
 import { ShedWall } from '../shed/walls/ShedWall';
 import { GableRoof } from '../shed/roofs/GableRoof';
 import { GableEnd } from '../shed/roofs/GableEnd';
@@ -17,21 +18,39 @@ const ROOF_HEIGHT = 4; // ft above wall top
  * All geometry and shader logic lives in the individual components.
  */
 export const GableShed = ({
-	width = 10,
-	length = 12,
-	wallHeight = 8,
-	color = '#8B4513',
-	roofColor = '#2F4F4F',
+	width: widthProp = 10,
+	length: lengthProp = 12,
+	wallHeight: wallHeightProp = 8,
+	color: colorProp = '#8B4513',
+	roofColor: roofColorProp = '#2F4F4F',
+	design = null,
 	onShedMeshReady = null,
 }) => {
 	const frontWallRef = useRef();
-	const placements = useShedStore((s) => s.placements);
-	const trimColor = useShedStore((s) => s.trimColor);
-	const sidingTexture = useShedStore((s) => s.sidingTexture);
-	const roofMaterial = useShedStore((s) => s.roofMaterial);
-	const porch = useShedStore((s) => s.porch);
-	const options = useShedStore((s) => s.options);
-	const garageDoorStyle = useShedStore((s) => s.options.garageDoor.style ?? 'sectional');
+
+	const storeDesign = {
+		width: widthProp,
+		length: lengthProp,
+		wallHeight: wallHeightProp,
+		color: colorProp,
+		roofColor: roofColorProp,
+		placements: useShedStore((s) => s.placements),
+		trimColor: useShedStore((s) => s.trimColor),
+		sidingTexture: useShedStore((s) => s.sidingTexture),
+		roofMaterial: useShedStore((s) => s.roofMaterial),
+		porch: useShedStore((s) => s.porch),
+		options: useShedStore((s) => s.options),
+	};
+
+	// A fixed Design wins over the one the customer is configuring. Pass a
+	// module-level constant, not an object literal: `placements` identity is
+	// what keys the CSG cut, so a fresh array each render re-cuts every opening.
+	const d = overlayDesign(storeDesign, design);
+	const {
+		width, length, wallHeight, color, roofColor,
+		placements, trimColor, sidingTexture, roofMaterial, porch, options,
+	} = d;
+	const garageDoorStyle = options.garageDoor.style ?? 'sectional';
 
 	// Expose front-wall mesh for raycasting / placement interaction
 	useEffect(() => {
@@ -61,6 +80,7 @@ export const GableShed = ({
 					trimColor={trimColor}
 					placements={byWall[side]}
 					doorStyle={garageDoorStyle}
+					showShutters={options.shutters.enabled}
 				/>
 			))}
 
