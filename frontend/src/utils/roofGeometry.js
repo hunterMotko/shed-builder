@@ -275,3 +275,20 @@ export const STANDARD_FOUNDATION = {
 	color: '#8B7355', // Brown/tan
 	overhang: 0.5, // 0.5 feet wider than walls
 };
+
+/**
+ * The material slots an extruded roof addresses, in order.
+ *
+ * `ExtrudeGeometry` emits exactly two groups: one covering *both* end-caps and
+ * one covering the extruded sides. It is not one group per cap. A three-entry
+ * array — `[frontCap, backCap, slopes]` — parks the roof material at an index
+ * nothing addresses and hands the slopes the cap material instead, which is why
+ * every Barn roof drew in the siding colour (issue #30).
+ *
+ * @param {*} capMaterial - drawn on the end-caps (group 0)
+ * @param {*} slopeMaterial - drawn on the roof slopes (group 1)
+ * @returns {Array} the material array to hand the mesh
+ */
+export function roofMaterialSlots(capMaterial, slopeMaterial) {
+	return [capMaterial, slopeMaterial];
+}

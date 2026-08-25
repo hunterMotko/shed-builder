@@ -1,16 +1,20 @@
 import { useMemo, useEffect } from 'react';
 import * as THREE from 'three';
 import { makeSidingShader, makeRoofShader } from '../../../utils/shaders';
+import { roofMaterialSlots } from '../../../utils/roofGeometry';
 import { Skylight } from '../extras/Skylight';
 
 /**
  * GambrelRoof — independently renderable gambrel (barn-style) roof.
  *
  * Two ExtrudeGeometry meshes: lower trapezoid (steep) + upper triangle (gentle).
- * Each mesh uses THREE material groups:
- *   Group 0 — front end-cap  → siding material (barn gable, back of shed)
- *   Group 1 — back end-cap   → siding material (barn gable, front of shed)
- *   Group 2 — slope faces    → roof material (metal or shingle)
+ * Each mesh uses THREE material groups. ExtrudeGeometry emits exactly TWO:
+ *   Group 0 — both end-caps  → siding material (the barn's gable faces)
+ *   Group 1 — extruded sides → roof material (metal or shingle)
+ *
+ * It is one group for the pair of caps, not one per cap. A three-entry array
+ * put the roof material at an index nothing addresses and handed the slopes
+ * the siding, so every Barn roof drew in the siding colour (issue #30).
  *
  * The end-caps cover only the ROOF profile (Y=wallHeight upward). Below the
  * eave, BarnShed's front/back ShedWalls cover floor to eave — real walls that
@@ -67,8 +71,8 @@ export const GambrelRoof = ({
     [shedLength]
   );
 
-  // End-cap faces (groups 0 & 1) use siding shader so barn gable faces match the walls.
-  // Slope faces (group 2) use roof shader.
+  // End-caps (group 0) use the siding shader so the barn's gable faces match
+  // the walls. The slopes (group 1) use the roof shader.
   const sidingMat = useMemo(() => {
     const mat = new THREE.ShaderMaterial(makeSidingShader(color, sidingTexture));
     mat.side = THREE.DoubleSide;
@@ -84,9 +88,8 @@ export const GambrelRoof = ({
   useEffect(() => () => { sidingMat.dispose(); }, [sidingMat]);
   useEffect(() => () => { roofMat.dispose(); }, [roofMat]);
 
-  // [front-cap, back-cap, slopes] — matches ExtrudeGeometry group indices
   const materials = useMemo(
-    () => [sidingMat, sidingMat, roofMat],
+    () => roofMaterialSlots(sidingMat, roofMat),
     [sidingMat, roofMat]
   );
 

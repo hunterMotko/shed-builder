@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import * as THREE from 'three';
 import {
 	pitchToRadians,
 	calculateRise,
@@ -9,6 +10,7 @@ import {
 	getRakeTrimAngles,
 	createLowerRoofShape,
 	createUpperRoofShape,
+	roofMaterialSlots,
 } from './roofGeometry';
 
 // Expected values here come from trigonometry, not from the implementation:
@@ -76,5 +78,35 @@ describe('rake trim', () => {
 		// once claimed was inverted: lower 24:12 is steeper than upper 6:12.
 		const { lowerRakeRotation, upperRakeRotation } = getRakeTrimAngles(24, 6);
 		expect(lowerRakeRotation).toBeGreaterThan(upperRakeRotation);
+	});
+});
+
+describe('roofMaterialSlots', () => {
+	// A gambrel lower slope: the same four-point profile GambrelRoof extrudes,
+	// on a 12ft-wide shed with the knuckle 2.2ft above the eave.
+	const extrudedGambrel = () =>
+		new THREE.ExtrudeGeometry(createLowerRoofShape(6, 0, 2.2), {
+			depth: 16,
+			bevelEnabled: false,
+		});
+
+	// The bug this guards (issue #30): the component handed the mesh three
+	// materials for a geometry that only ever addresses two group indices, so
+	// the roof material sat at index 2 unused and the slopes drew in siding.
+	it('gives one material per group the geometry actually addresses', () => {
+		const indices = new Set(extrudedGambrel().groups.map((g) => g.materialIndex));
+
+		expect(roofMaterialSlots('cap', 'slope')).toHaveLength(indices.size);
+	});
+
+	it('puts the slope material on the group the slopes are in', () => {
+		const geometry = extrudedGambrel();
+		const slots = roofMaterialSlots('cap', 'slope');
+
+		// The caps are two triangles per end — far fewer vertices than the
+		// slopes, which run the whole 16 ft length. The bigger group is the roof.
+		const biggest = geometry.groups.reduce((a, b) => (b.count > a.count ? b : a));
+
+		expect(slots[biggest.materialIndex]).toBe('slope');
 	});
 });
