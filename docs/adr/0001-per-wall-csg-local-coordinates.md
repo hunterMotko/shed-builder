@@ -6,6 +6,7 @@
 | Date | Description |
 |------|-------------|
 | 2026-04-11 | Document created |
+| 2026-08-26 | `csgOperations.js` deleted (issue #18). Implementation step 5 is done and the two parallel coordinate systems in Tradeoffs no longer coexist — the local-space path is the only one. |
 
 ## Context
 
@@ -25,7 +26,7 @@ We will perform CSG operations in each wall's local coordinate space by centerin
 
 **Tradeoffs:**
 - Normalized placement coordinates must be interpreted relative to the geometry width, not the logical shed width. For front and back walls `geomWidth === shedWidth`, but for left and right walls `geomWidth === shedLength - WALL_THICKNESS * 2` (the fit-between span). Any consumer that forgets this distinction will misplace cutouts by up to one wall thickness on each side.
-- The `getWorldCoordinates` method in `CSGShedModifier` still exists for legacy callers and roof CSG, and it computes differently than the local-space path. Two parallel coordinate systems coexist until legacy callers are removed.
+- The `getWorldCoordinates` method in `CSGShedModifier` still exists for legacy callers and roof CSG, and it computes differently than the local-space path. Two parallel coordinate systems coexist until legacy callers are removed. *(Resolved 2026-08-26: there were never any callers. `CSGShedModifier` was deleted in issue #18 and local space is now the only coordinate system.)*
 - The `applyWallPlacements` method in `CSGShedModifier` was written to call `subtractOpening` (the world-space path) inside a loop that sets up local coordinates—a latent bug showing the two systems were not cleanly separated during migration.
 
 **Operational Implications:**
@@ -38,7 +39,7 @@ We will perform CSG operations in each wall's local coordinate space by centerin
 2. Construct the cut mesh at `(localX, localY, 0)` with depth `WALL_THICKNESS + 0.1` before calling `evaluator.evaluate()`.
 3. Export `WALL_THICKNESS` from `ShedWall.jsx` so roof and gable components can align their geometry to wall surfaces without hardcoding the constant.
 4. Pass only the placements belonging to a given side down to that `ShedWall` instance: `placements.filter((p) => p.wall === side)`.
-5. Retire `applyWallPlacements` in `csgOperations.js` once all consumers have migrated to the `ShedWall`-internal CSG path.
+5. ~~Retire `applyWallPlacements` in `csgOperations.js` once all consumers have migrated to the `ShedWall`-internal CSG path.~~ Done 2026-08-26 — the whole module went, since nothing had ever imported it (issue #18).
 
 ## Related Decisions
 

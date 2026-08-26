@@ -56,6 +56,15 @@ export const ShedWall = forwardRef(function ShedWall(
     [localGeomWidth, wallHeight]
   );
 
+  // A wall with no Openings renders this slab, and it reaches the mesh through
+  // the same <primitive> the cut geometry does — so the memo owns its lifetime
+  // too. Without this, every distinct size the store passes through leaves a
+  // BoxGeometry behind with its GPU buffers still allocated: four per width the
+  // customer drags past, never collected (issue #20). The cleanup runs after
+  // the commit that swapped the geometry, so the mesh is already pointing at
+  // the new one by the time the old is disposed.
+  useEffect(() => () => baseGeometry.dispose(), [baseGeometry]);
+
   // World position + rotation for this wall side
   const [position, rotation] = useMemo(() => {
     switch (side) {

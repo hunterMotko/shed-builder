@@ -27,7 +27,7 @@ frontend/src/
 ├── store/
 │   └── shedStore.js                 # Zustand configuration store
 ├── utils/
-│   ├── csgOperations.js             # CSG boolean operations for cutouts
+│   ├── wallOpenings.js              # CSG: cut Openings out of a wall
 │   ├── roofGeometry.js              # Roof geometry calculations
 │   └── [other utilities]
 └── index.css / App.css

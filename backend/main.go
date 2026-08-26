@@ -58,15 +58,66 @@ func lookupBasePrice(width, length int, tier string) (float64, bool) {
 }
 
 // Placement represents a door or window placement on the shed.
+//
+// The coordinates are pointers so that "absent" is distinguishable from
+// "zero". A client that produced a non-finite coordinate serializes it as
+// `null`, which decodes into a plain float64 as 0 without complaint — the
+// Opening would be accepted and quietly moved to the bottom-left corner of
+// its wall instead of being refused (issue #19). Once validated they are
+// always non-nil, so the stored JSON is unchanged.
 type Placement struct {
-	ID          string  `json:"id"`
-	Type        string  `json:"type"` // "door", "window", "garage_door", "swing_barn_door", "entry_door"
-	Wall        string  `json:"wall"` // "front", "back", "left", "right"
-	NormalizedX float64 `json:"normalizedX"`
-	NormalizedY float64 `json:"normalizedY"`
-	Width       float64 `json:"width"`
-	Height      float64 `json:"height"`
-	RotationZ   float64 `json:"rotationZ,omitempty"`
+	ID          string   `json:"id"`
+	Type        string   `json:"type"` // "door", "window", "garage_door", "swing_barn_door", "entry_door"
+	Wall        string   `json:"wall"` // "front", "back", "left", "right"
+	NormalizedX *float64 `json:"normalizedX"`
+	NormalizedY *float64 `json:"normalizedY"`
+	Width       *float64 `json:"width"`
+	Height      *float64 `json:"height"`
+	RotationZ   float64  `json:"rotationZ,omitempty"`
+}
+
+// wallSides are the four walls every Model renders (ADR-0010).
+var wallSides = map[string]bool{"front": true, "back": true, "left": true, "right": true}
+
+// validatePlacements rejects any Placement the renderer could not draw.
+//
+// This mirrors validateDesignConfig in the frontend. The client check is the
+// only other one there is, so this must not be the weaker of the two: a
+// Design is stored exactly as it arrives and is handed straight back to the
+// renderer on load.
+func validatePlacements(placements []*Placement) error {
+	for i, p := range placements {
+		if p == nil {
+			return fmt.Errorf("placement %d is missing", i)
+		}
+		where := p.ID
+		if where == "" {
+			where = fmt.Sprintf("index %d", i)
+		}
+		for name, value := range map[string]*float64{
+			"normalizedX": p.NormalizedX,
+			"normalizedY": p.NormalizedY,
+		} {
+			if value == nil {
+				return fmt.Errorf("placement %s has no %s", where, name)
+			}
+			if *value < 0 || *value > 1 {
+				return fmt.Errorf("placement %s has %s outside its wall", where, name)
+			}
+		}
+		for name, value := range map[string]*float64{
+			"width":  p.Width,
+			"height": p.Height,
+		} {
+			if value == nil || *value <= 0 {
+				return fmt.Errorf("placement %s has an invalid %s", where, name)
+			}
+		}
+		if !wallSides[p.Wall] {
+			return fmt.Errorf("placement %s names a wall the shed does not have: %q", where, p.Wall)
+		}
+	}
+	return nil
 }
 
 // OptionConfig holds the client-supplied add-on state.
@@ -215,6 +266,11 @@ func saveDesign(c *gin.Context) {
 
 	if input.Model != "Gable" && input.Model != "Barn" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Model must be 'Gable' or 'Barn'"})
+		return
+	}
+
+	if err := validatePlacements(input.Placements); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 

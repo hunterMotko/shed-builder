@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -107,5 +108,76 @@ func TestWideSizesAreDeluxeOnly(t *testing.T) {
 	rec, _ := post(t, `{"width":16,"length":24,"tier":"Standard","model":"Barn"}`)
 	if rec.Code != http.StatusBadRequest {
 		t.Errorf("want 400 for a 16 wide Standard, got %d", rec.Code)
+	}
+}
+
+// A Placement is stored exactly as the client sends it, so the server is the
+// last chance to reject one that cannot be rendered (issue #19).
+//
+// The coordinates matter more than they look. A client that produced a NaN
+// serializes it as `null`, because that is what JSON.stringify does with a
+// non-finite number — and Go decodes `null` into a float64 as 0, not as an
+// error. Without an explicit presence check the Opening is accepted and lands
+// in the bottom-left corner of its wall rather than being refused.
+func TestRejectsPlacementWithMissingCoordinate(t *testing.T) {
+	design := `{"width":12,"length":16,"tier":"Standard","model":"Gable","placements":[%s]}`
+
+	cases := map[string]string{
+		"null X":   `{"id":"a","type":"window","wall":"front","normalizedX":null,"normalizedY":0.5,"width":3,"height":3}`,
+		"null Y":   `{"id":"a","type":"window","wall":"front","normalizedX":0.5,"normalizedY":null,"width":3,"height":3}`,
+		"absent X": `{"id":"a","type":"window","wall":"front","normalizedY":0.5,"width":3,"height":3}`,
+		"absent Y": `{"id":"a","type":"window","wall":"front","normalizedX":0.5,"width":3,"height":3}`,
+	}
+
+	for name, placement := range cases {
+		t.Run(name, func(t *testing.T) {
+			rec, _ := post(t, fmt.Sprintf(design, placement))
+			if rec.Code != http.StatusBadRequest {
+				t.Errorf("want 400 for a Placement with a %s, got %d: %s", name, rec.Code, rec.Body.String())
+			}
+		})
+	}
+}
+
+func TestRejectsUnrenderablePlacement(t *testing.T) {
+	design := `{"width":12,"length":16,"tier":"Standard","model":"Gable","placements":[%s]}`
+
+	cases := map[string]string{
+		"X past the end of the wall": `{"id":"a","type":"window","wall":"front","normalizedX":1.4,"normalizedY":0.5,"width":3,"height":3}`,
+		"Y below the floor":          `{"id":"a","type":"window","wall":"front","normalizedX":0.5,"normalizedY":-0.2,"width":3,"height":3}`,
+		"no width":                   `{"id":"a","type":"window","wall":"front","normalizedX":0.5,"normalizedY":0.5,"width":0,"height":3}`,
+		"negative height":            `{"id":"a","type":"window","wall":"front","normalizedX":0.5,"normalizedY":0.5,"width":3,"height":-3}`,
+		"a wall the shed lacks":      `{"id":"a","type":"window","wall":"roof","normalizedX":0.5,"normalizedY":0.5,"width":3,"height":3}`,
+	}
+
+	for name, placement := range cases {
+		t.Run(name, func(t *testing.T) {
+			rec, _ := post(t, fmt.Sprintf(design, placement))
+			if rec.Code != http.StatusBadRequest {
+				t.Errorf("want 400 for a Placement with %s, got %d: %s", name, rec.Code, rec.Body.String())
+			}
+		})
+	}
+}
+
+// The guard must not refuse Openings the configurator can legitimately make:
+// 0 is the floor and the left edge, 1 is the eave and the right edge.
+func TestAcceptsPlacementAtTheEdgesOfItsWall(t *testing.T) {
+	rec, saved := post(t, `{"width":12,"length":16,"tier":"Standard","model":"Gable","placements":[
+		{"id":"a","type":"window","wall":"front","normalizedX":0,"normalizedY":1,"width":3,"height":3},
+		{"id":"b","type":"door","wall":"left","normalizedX":1,"normalizedY":0,"width":3,"height":6.67}
+	]}`)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("want 201, got %d: %s", rec.Code, rec.Body.String())
+	}
+	if len(saved.Placements) != 2 {
+		t.Fatalf("want both Placements stored, got %d", len(saved.Placements))
+	}
+	if got := saved.Placements[0].NormalizedX; got == nil || *got != 0 {
+		t.Errorf("want normalizedX 0 echoed back, got %v", got)
+	}
+	if got := saved.Placements[1].NormalizedY; got == nil || *got != 0 {
+		t.Errorf("want normalizedY 0 echoed back, got %v", got)
 	}
 }
