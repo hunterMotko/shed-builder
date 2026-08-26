@@ -16,12 +16,25 @@ Peak Height follows from the Model and the width rather than being chosen.
 _Avoid_: style, type, variant
 
 **Barn**:
-The Model with a two-slope gambrel roof and 80.5in wall studs.
+The Model with a two-slope gambrel roof and 80.5in wall studs. Build spec: the sides are
+a **12 pitch** and the top is a **4 pitch**.
 _Avoid_: gambrel (that names the roof alone, not the product)
 
 **Gable**:
-The Model with a single-pitch triangular roof and 84in wall studs. Sold at Deluxe grade
-only — the catalog's Standard section prices barns.
+The Model with a single-pitch triangular roof and 84in wall studs. Build spec: a **6
+pitch**, quoted equivalently as **25%**. Sold at Deluxe grade only — the catalog's
+Standard section prices barns.
+
+**Pitch**:
+A roof's slope as `X:12` — X inches of rise per 12 inches of run. The business also
+quotes the traditional form, rise over *span*, where the same 6:12 roof is "25%" because
+6 is a quarter of 24. Both Models work out to 25% overall.
+_Avoid_: angle, slope (say Pitch, and give it as X:12)
+
+**Knuckle**:
+Where a gambrel's steep lower slope meets its shallow upper one. Not a stored value — it
+is placed so each slope carries half the roof's rise, which for the 12:12 / 4:12 spec puts
+it three quarters of the way out from the ridge.
 
 _A third roof form, a single-slope **skillion**, is built and photographed but is not
 modelled, named in the app, or sold through it yet. Recorded here so nobody assumes two
