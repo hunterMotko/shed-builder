@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { useShedStore } from '../../store/shedStore';
 import {
   CATALOG_WIDTHS,
@@ -35,6 +36,10 @@ const LABEL = {
 };
 
 export const DimensionsSection = () => {
+  // A styled <label> next to a <select> names nothing on its own — a screen
+  // reader announced "combo box, 12 ft" with no clue which dimension it was
+  // (issue #21). useId keeps the pairing correct if the drawer ever mounts twice.
+  const id = useId();
   const width      = useShedStore((s) => s.width);
   const length     = useShedStore((s) => s.length);
   const tier       = useShedStore((s) => s.tier);
@@ -49,8 +54,8 @@ export const DimensionsSection = () => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div>
-        <label style={LABEL}>Width</label>
-        <select style={SELECT} value={width} onChange={(e) => setWidth(parseInt(e.target.value, 10))}>
+        <label style={LABEL} htmlFor={`${id}-width`}>Width</label>
+        <select id={`${id}-width`} style={SELECT} value={width} onChange={(e) => setWidth(parseInt(e.target.value, 10))}>
           {CATALOG_WIDTHS.map((w) => (
             <option key={w} value={w}>{w} ft</option>
           ))}
@@ -58,8 +63,8 @@ export const DimensionsSection = () => {
       </div>
 
       <div>
-        <label style={LABEL}>Length</label>
-        <select style={SELECT} value={length} onChange={(e) => setLength(parseInt(e.target.value, 10))}>
+        <label style={LABEL} htmlFor={`${id}-length`}>Length</label>
+        <select id={`${id}-length`} style={SELECT} value={length} onChange={(e) => setLength(parseInt(e.target.value, 10))}>
           {availableLengths.map((l) => (
             <option key={l} value={l}>{l} ft</option>
           ))}
@@ -67,8 +72,8 @@ export const DimensionsSection = () => {
       </div>
 
       <div>
-        <label style={LABEL}>Build</label>
-        <select style={SELECT} value={tier} onChange={(e) => setTier(e.target.value)}>
+        <label style={LABEL} htmlFor={`${id}-tier`}>Build</label>
+        <select id={`${id}-tier`} style={SELECT} value={tier} onChange={(e) => setTier(e.target.value)}>
           {availableTiers.map((t) => (
             <option key={t} value={t}>{t}</option>
           ))}

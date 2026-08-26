@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { useShedStore } from '../../store/shedStore';
 import { getEffectiveTrimColor } from '../../utils/advancedColorUtils';
 
@@ -55,6 +56,8 @@ const PillToggle = ({ value, onChange, options }) => (
 );
 
 export const TrimAndDetailsSection = () => {
+  // Bind each styled <label> to the control it names (issue #21).
+  const id = useId();
   const {
     color: wallColor,
     roofColor,
@@ -79,8 +82,8 @@ export const TrimAndDetailsSection = () => {
 
       {/* Siding Texture */}
       <div>
-        <label style={LABEL}>Siding Texture</label>
-        <select style={SELECT} value={sidingTexture} onChange={(e) => setSidingTexture(e.target.value)}>
+        <label style={LABEL} htmlFor={`${id}-siding`}>Siding Texture</label>
+        <select id={`${id}-siding`} style={SELECT} value={sidingTexture} onChange={(e) => setSidingTexture(e.target.value)}>
           <option value="T1-11">T1-11 Plywood (Ribbed)</option>
           <option value="smooth">Smooth Board</option>
         </select>
@@ -88,8 +91,8 @@ export const TrimAndDetailsSection = () => {
 
       {/* Roof Material */}
       <div>
-        <label style={LABEL}>Roof Material</label>
-        <select style={SELECT} value={roofMaterial} onChange={(e) => setRoofMaterial(e.target.value)}>
+        <label style={LABEL} htmlFor={`${id}-roof-material`}>Roof Material</label>
+        <select id={`${id}-roof-material`} style={SELECT} value={roofMaterial} onChange={(e) => setRoofMaterial(e.target.value)}>
           <option value="metal">Metal (Corrugated)</option>
           <option value="shingle">Asphalt Shingle</option>
         </select>
@@ -110,7 +113,10 @@ export const TrimAndDetailsSection = () => {
         {/* Auto sub-option */}
         {trimColorMode === 'automatic' && (
           <div style={{ marginTop: 10 }}>
-            <select style={SELECT} value={trimAutoMode} onChange={(e) => setTrimAutoMode(e.target.value)}>
+            <select
+              aria-label="Automatic trim color rule"
+              style={SELECT}
+              value={trimAutoMode} onChange={(e) => setTrimAutoMode(e.target.value)}>
               <option value="matchRoof">Match Roof Color</option>
               <option value="contrast">Maximum Contrast</option>
             </select>
