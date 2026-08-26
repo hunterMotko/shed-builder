@@ -1,71 +1,18 @@
 import React, { useMemo } from 'react';
 import * as THREE from 'three';
+import { openingTransform } from '../../utils/wallOpenings';
 
 /**
  * Renders a window frame and panes at a placement location
  */
 export const WindowObject = ({ placement, shedDimensions, trimColor = '#654321', frameColor = '#8B7355' }) => {
-  const {
-    width: elemWidth,
-    height: elemHeight,
-    normalizedX,
-    normalizedY,
-    wall,
-  } = placement;
+  const { width: elemWidth, height: elemHeight } = placement;
 
-  const { width, length, wallHeight } = shedDimensions;
-  const halfWidth = width / 2;
-  const halfLength = length / 2;
-
-  // Calculate world position
-  const position = useMemo(() => {
-    let pos;
-    switch (wall) {
-      case 'front':
-        pos = new THREE.Vector3(
-          -halfWidth + normalizedX * width,
-          -wallHeight / 2 + normalizedY * wallHeight,
-          halfLength + 0.25
-        );
-        break;
-      case 'back':
-        pos = new THREE.Vector3(
-          -halfWidth + normalizedX * width,
-          -wallHeight / 2 + normalizedY * wallHeight,
-          -halfLength - 0.25
-        );
-        break;
-      case 'left':
-        pos = new THREE.Vector3(
-          -halfWidth - 0.25,
-          -wallHeight / 2 + normalizedY * wallHeight,
-          -halfLength + normalizedX * length
-        );
-        break;
-      case 'right':
-        pos = new THREE.Vector3(
-          halfWidth + 0.25,
-          -wallHeight / 2 + normalizedY * wallHeight,
-          -halfLength + normalizedX * length
-        );
-        break;
-      default:
-        pos = new THREE.Vector3(0, 0, 0);
-    }
-    return pos;
-  }, [normalizedX, normalizedY, wall, width, length, wallHeight, halfWidth, halfLength]);
-
-  // Calculate rotation for side walls
-  const rotation = useMemo(() => {
-    switch (wall) {
-      case 'left':
-        return [0, Math.PI / 2, 0];
-      case 'right':
-        return [0, -Math.PI / 2, 0];
-      default:
-        return [0, 0, 0];
-    }
-  }, [wall]);
+  // Window sits 0.25 ft proud of the wall face.
+  const { position, rotation } = useMemo(
+    () => openingTransform(placement, shedDimensions, 0.25),
+    [placement, shedDimensions]
+  );
 
   // Calculate grid for window panes
   const gridX = Math.max(2, Math.ceil(elemWidth / 2));

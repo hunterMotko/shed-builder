@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { calculateTotalPrice, snapToValidCombo } from '../utils/pricingUtils';
+import { GAMBREL_LOWER_PITCH, GAMBREL_UPPER_PITCH } from '../utils/roofGeometry';
 
 /**
  * Placement represents a door or window on the shed
@@ -17,7 +18,10 @@ export const useShedStore = create((set) => ({
 	// Configuration state — defaults to smallest standard barn (12×16×10)
 	width: 12,
 	length: 16,
-	wallHeight: 10, // 10 = Standard, 11 = Deluxe, 12 = Special
+	// Tier, not a height. Every catalog size is 11ft to the peak now, so the
+	// height stopped telling the two grades apart and Tier does it instead.
+	// The geometry's wall height comes from the Model (utils/modelSpec.js).
+	tier: 'Standard',
 	model: 'Gable',
 	color: '#D2691E',
 	roofColor: '#8B4513',
@@ -29,8 +33,11 @@ export const useShedStore = create((set) => ({
 	sidingTexture: 'T1-11', // 'T1-11', 'smooth'
 	roofMaterial: 'metal', // 'metal', 'shingle'
 	// Gambrel Roof Configuration (when model === 'Barn')
-	roofLowerPitch: 24, // 24:12 pitch (~63° — classic steep barn eave slope)
-	roofUpperPitch: 6,  // 6:12 pitch (~26.6° — gentle barn ridge slope)
+	// The Barn's gambrel. The Knuckle is not stored — it follows from these two
+	// (see gambrelKnuckleRatio), so a steeper side also shortens the side and
+	// lengthens the top, which is how the roof was corrected against the photos.
+	roofLowerPitch: GAMBREL_LOWER_PITCH, // 20:12 (~59°) — the steep side slope
+	roofUpperPitch: GAMBREL_UPPER_PITCH, //  4:12 (~18°) — shallow, at the ridge
 	// Foundation Configuration
 	foundationHeight: 1.5, // feet
 	foundationColor: '#8B7355', // brown/tan concrete/timber appearance
@@ -59,16 +66,16 @@ export const useShedStore = create((set) => ({
 	placements: [],
 	// Configuration Actions
 	setWidth: (width) => set((s) => {
-		const snapped = snapToValidCombo(width, s.length, s.wallHeight);
-		return { width: snapped.width, length: snapped.length, wallHeight: snapped.wallHeight };
+		const snapped = snapToValidCombo(width, s.length, s.tier);
+		return { width: snapped.width, length: snapped.length, tier: snapped.tier };
 	}),
 	setLength: (length) => set((s) => {
-		const snapped = snapToValidCombo(s.width, length, s.wallHeight);
-		return { width: snapped.width, length: snapped.length, wallHeight: snapped.wallHeight };
+		const snapped = snapToValidCombo(s.width, length, s.tier);
+		return { width: snapped.width, length: snapped.length, tier: snapped.tier };
 	}),
-	setWallHeight: (wallHeight) => set((s) => {
-		const snapped = snapToValidCombo(s.width, s.length, wallHeight);
-		return { width: snapped.width, length: snapped.length, wallHeight: snapped.wallHeight };
+	setTier: (tier) => set((s) => {
+		const snapped = snapToValidCombo(s.width, s.length, tier);
+		return { width: snapped.width, length: snapped.length, tier: snapped.tier };
 	}),
 	setModel: (model) => set((s) => ({
 		model,
@@ -130,7 +137,7 @@ export const useShedStore = create((set) => ({
 	reset: () => set({
 		width: 12,
 		length: 16,
-		wallHeight: 10,
+		tier: 'Standard',
 		model: 'Gable',
 		color: '#D2691E',
 		roofColor: '#8B4513',
@@ -139,8 +146,8 @@ export const useShedStore = create((set) => ({
 		trimAutoMode: 'matchRoof',
 		sidingTexture: 'T1-11',
 		roofMaterial: 'metal',
-		roofLowerPitch: 24,
-		roofUpperPitch: 6,
+		roofLowerPitch: GAMBREL_LOWER_PITCH,
+		roofUpperPitch: GAMBREL_UPPER_PITCH,
 		foundationHeight: 1.5,
 		foundationColor: '#8B7355',
 		porch: { enabled: false, wall: 'front', depth: 6 },
@@ -161,7 +168,7 @@ export const useShedStore = create((set) => ({
 	// Get calculated price (derived state)
 	getPrice: () => {
 		const state = useShedStore.getState();
-		return calculateTotalPrice(state.width, state.length, state.wallHeight, state.options);
+		return calculateTotalPrice(state.width, state.length, state.tier, state.options);
 	},
 	// Get full configuration
 	getConfig: () => {
@@ -169,7 +176,7 @@ export const useShedStore = create((set) => ({
 		return {
 			width: state.width,
 			length: state.length,
-			wallHeight: state.wallHeight,
+			tier: state.tier,
 			model: state.model,
 			color: state.color,
 			roofColor: state.roofColor,
@@ -185,7 +192,7 @@ export const useShedStore = create((set) => ({
 			placements: state.placements,
 			porch: state.porch,
 			options: state.options,
-			price: calculateTotalPrice(state.width, state.length, state.wallHeight, state.options),
+			price: calculateTotalPrice(state.width, state.length, state.tier, state.options),
 		};
 	},
 }));

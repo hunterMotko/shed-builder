@@ -1,16 +1,15 @@
 import { useShedStore } from '../../store/shedStore';
-import { lookupBasePrice, getShedTier, getOptionLineItems } from '../../utils/pricingUtils';
+import { lookupBasePrice, CATALOG_PEAK_HEIGHT, getOptionLineItems } from '../../utils/pricingUtils';
 
 export const PriceDisplay = () => {
   const width      = useShedStore((s) => s.width);
   const length     = useShedStore((s) => s.length);
-  const wallHeight = useShedStore((s) => s.wallHeight);
+  const tier       = useShedStore((s) => s.tier);
   const options     = useShedStore((s) => s.options);
 
-  const basePrice  = lookupBasePrice(width, length, wallHeight) ?? 0;
+  const basePrice  = lookupBasePrice(width, length, tier) ?? 0;
   const lineItems  = getOptionLineItems(options);
   const total      = basePrice + lineItems.reduce((s, i) => s + i.amount, 0);
-  const tier       = getShedTier(wallHeight);
 
   return (
     <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-5 border-2 border-green-200 shadow-sm">
@@ -20,7 +19,7 @@ export const PriceDisplay = () => {
 
       {/* Base price line */}
       <div className="flex justify-between items-center text-sm text-gray-700 mb-1">
-        <span>Base ({width}×{length}×{wallHeight} {tier})</span>
+        <span>Base ({width}×{length}×{CATALOG_PEAK_HEIGHT} {tier})</span>
         <span className="font-medium">${basePrice.toLocaleString()}</span>
       </div>
 

@@ -10,20 +10,79 @@ what lumber to buy to build it.
 
 **Model**:
 A product line a customer chooses between — Barn or Gable. A Model determines the
-roof profile, wall height, stud length, and trim set as one bundle, not as
-independent choices.
+roof profile, Wall Height, and trim set as one bundle, not as independent choices.
+Wall Height is fixed by the Model's stud length; the roof sits on top of it, so the
+Peak Height follows from the Model and the width rather than being chosen.
 _Avoid_: style, type, variant
 
 **Barn**:
-The Model with a two-slope gambrel roof and 80.5in wall studs.
+The Model with a two-slope gambrel roof and 80.5in wall studs. The top is a **4 pitch**;
+the sides are a **20 pitch**, measured off the reference photographs at 59.6° and 59.9°
+on the two steep edges. (Quoted as a 12 pitch, but 12:12 is 45° and the built roof is
+visibly steeper.)
 _Avoid_: gambrel (that names the roof alone, not the product)
 
 **Gable**:
-The Model with a single-pitch triangular roof and 84in wall studs.
+The Model with a single-pitch triangular roof and 84in wall studs. Build spec: a **6
+pitch**, quoted equivalently as **25%**. Sold at Deluxe grade only — the catalog's
+Standard section prices barns.
+
+**Pitch**:
+A roof's slope as `X:12` — X inches of rise per 12 inches of run. The business also
+quotes the traditional form, rise over *span*, where the same 6:12 roof is "25%" because
+6 is a quarter of 24.
+_Avoid_: angle, slope (say Pitch, and give it as X:12)
+
+A Barn and a Gable come to within two inches of each other at every width the catalog
+sells — the Barn's taller roof very nearly cancels its shorter studs. That is what lets
+one nominal Peak Height sit on every SKU regardless of Model.
+
+**Knuckle**:
+Where a gambrel's steep lower slope meets its shallow upper one. Not a stored value — it
+is placed so each slope carries half the roof's rise, which for the 20:12 / 4:12 spec puts
+it five sixths of the way out from the ridge.
+
+This is why the roof has one adjustment rather than three. Steepening the sides shortens
+them *and* lengthens the top, because a steeper slope needs less run to carry its half of
+the rise. Reach for the side pitch, not the Knuckle.
+
+_A third roof form, a single-slope **skillion**, is built and photographed but is not
+modelled, named in the app, or sold through it yet. Recorded here so nobody assumes two
+Models is the whole product._
 
 **Tier**:
-The build grade a wall height implies — Standard (10ft), Deluxe (11ft), Special (12ft).
-Tier and Model together with width and length select a catalog price.
+The build grade — **Standard** or **Deluxe**. A grade, not a size: a Deluxe is framed with
+2x6 rafters and 12in floor joists where a Standard uses 2x4 and 16in, and it carries a
+roll-up garage door and a 36in entry door where a Standard carries double swing barn
+doors. Both stand the same height, so **Tier is what selects a price** alongside width and
+length — a `12x16` costs $6,089 as a Standard and $6,389 as a Deluxe. Widths above 12ft
+are Deluxe only.
+_Avoid_: Special (no such grade), and reading a height as a grade — the catalog's third
+number is the same 11 on both
+
+**Deluxe Barn**:
+The Deluxe-grade Barn. `db` in the reference photo filenames. Not a taller building — a
+Barn's wall is the same 85in at either grade — but a heavier one: 2x6 rafters, 12in floor
+joists, a roll-up door and a 36in entry door.
+
+**Wall Height**:
+Floor to eave, set by the Model's stud length plus its plates, and the same on every size
+that Model is sold in: **85in for a Barn** (80.5in studs) and **88.5in for a Gable** (84in
+studs). An input to the geometry, not a customer choice — nothing in the catalog sells a
+taller wall on the same Model. Lives in `utils/modelSpec.js`, not in the store.
+_Avoid_: height (ambiguous — say Wall Height or Peak Height)
+
+**Peak Height**:
+Ground to ridge, including the Runners. An *outcome* — Wall Height plus the roof's rise —
+so a wider shed of the same Model peaks higher: a 12ft Gable comes to 10.8ft and a 16ft
+one to 11.8ft. Derived and display-only; nothing is built from it.
+
+The third number in every catalog size is **a nominal 11**. It is a rounded label on the
+SKU, not a measurement and not a grade — the real height is within about ten inches of it
+either way. The 10ft sizes the price list used to carry were an older design and are no
+longer built.
+_Avoid_: wall height (a different measurement, and the one the app used to confuse this
+with); treating the 11 as geometry
 
 ### What a customer builds
 
@@ -70,7 +129,8 @@ The break point on a Barn roof where the steep lower slope meets the gentle uppe
 slope.
 
 **Rake**:
-The sloped edge of a roof at a gable or barn end.
+The sloped edge of a roof at a gable or barn end. Straight on a Gable; on a Barn it breaks
+at the Knuckle and runs as two boards per side.
 
 **Eave**:
 The horizontal lower edge of a roof, along the long walls.
@@ -81,19 +141,35 @@ fascia, rake boards. Trim is part of a Model, not an Option: a customer chooses
 its colour, never its pieces.
 
 **Trim Set**:
-The trim a Model carries. Part of the Model bundle, alongside roof profile, wall
-height and stud length. A Barn and a Gable do not carry the same set — that is a
-difference in the product, not a difference in the renderer.
-_The contents of each set are still being settled against the Reference Photos;
-see issues #5, #6 and #22._
+The trim a Model carries. Part of the Model bundle, alongside roof profile and Wall
+Height. A Barn and a Gable do not carry the same set — that is a difference in the
+product, not a difference in the renderer.
+
+| | Corner Boards | Fascia | Rake | Eave overhang |
+|---|---|---|---|---|
+| Gable | yes | yes | yes, overhanging ~5in with a return at the eave | yes |
+| Barn | yes | **no** | yes, following the gambrel | ~none, roof stops at the wall |
+
+Trim stock measures about 5.5in (1x6) against a known width in the Reference Photos, not
+the 4in the renderer assumes. Every roof also carries a **Ridge Cap** the renderer does
+not draw. Read off the Reference Photos; see issue #22.
 
 **Corner Board**:
 A vertical trim board at a corner of the shed, covering the siding joint. Four
 in a standard build.
 
 **Fascia**:
-A horizontal trim board along the eave, closing the roof edge above the wall.
+A horizontal trim board along the eave, closing the roof edge above the wall. A Gable has
+it; a Barn does not — its roof edge terminates against the wall with no board.
 _Avoid_: eave board, trim board (say which board)
+
+**Ridge Cap**:
+The folded metal closure over the ridge of a Gable or the peak of a gambrel. Present on
+every Reference Photo; not modelled.
+
+Trim colour is one colour. Where a photo appears to show two, the second is the window's
+or door's own factory frame — a white vinyl window or a white steel entry door — sitting
+inside a trim board that does match the Trim colour.
 
 ### Fidelity
 

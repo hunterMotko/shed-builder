@@ -1,3 +1,4 @@
+import { wallSpan } from './wallOpenings';
 /**
  * Coordinate system utilities for door/window placement
  * Converts between world coordinates and normalized wall coordinates
@@ -42,22 +43,20 @@ export function getWallFromIntersection(point, width, length) {
  * @returns {{normalizedX: number, normalizedY: number}} Normalized coordinates 0-1
  */
 export function getWallNormalizedCoordinates(point, wall, width, length, wallHeight) {
-	const halfWidth = width / 2;
-	const halfLength = length / 2;
 	let normalizedX, normalizedY;
-	// Y is always height-based (same for all walls)
-	normalizedY = (point.y + wallHeight / 2) / wallHeight;
-	// X depends on which wall
+	// The inverse of openingTransform: Y is measured from the floor, and X runs
+	// across the wall's own span, not across the shed.
+	normalizedY = point.y / wallHeight;
+	const span = wallSpan(wall, width, length);
 	switch (wall) {
 		case 'front':
 		case 'back':
-			// X ranges from -halfWidth to +halfWidth
-			normalizedX = (point.x + halfWidth) / width;
+			normalizedX = (point.x + span / 2) / span;
 			break;
 		case 'left':
 		case 'right':
-			// X ranges along Z axis from -halfLength to +halfLength
-			normalizedX = (point.z + halfLength) / length;
+			// This wall runs along Z
+			normalizedX = (point.z + span / 2) / span;
 			break;
 		default:
 			normalizedX = 0;

@@ -1,5 +1,8 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useMemo } from 'react';
 import { useShedStore } from '../../store/shedStore';
+import { WALL_SIDES, routePlacements } from '../../utils/wallSides';
+import { overlayDesign } from '../../utils/design';
+import { gableRoofRise } from '../../utils/roofGeometry';
 import { ShedWall } from '../shed/walls/ShedWall';
 import { GableRoof } from '../shed/roofs/GableRoof';
 import { GableEnd } from '../shed/roofs/GableEnd';
@@ -8,30 +11,49 @@ import { Ramp } from '../shed/extras/Ramp';
 import { Runners } from '../common/Runners';
 import { GableTrim } from '../shed/trim/GableTrim';
 
-const WALL_SIDES = ['front', 'back', 'left', 'right'];
-const ROOF_HEIGHT = 4; // ft above wall top
-
 /**
  * GableShed — composition wrapper.
  * Assembles: 4× ShedWall + 2× GableEnd + GableRoof + Runners + optional Porch.
  * All geometry and shader logic lives in the individual components.
  */
 export const GableShed = ({
-	width = 10,
-	length = 12,
-	wallHeight = 8,
-	color = '#8B4513',
-	roofColor = '#2F4F4F',
+	width: widthProp = 10,
+	length: lengthProp = 12,
+	wallHeight: wallHeightProp = 8,
+	color: colorProp = '#8B4513',
+	roofColor: roofColorProp = '#2F4F4F',
+	design = null,
 	onShedMeshReady = null,
 }) => {
 	const frontWallRef = useRef();
-	const placements = useShedStore((s) => s.placements);
-	const trimColor = useShedStore((s) => s.trimColor);
-	const sidingTexture = useShedStore((s) => s.sidingTexture);
-	const roofMaterial = useShedStore((s) => s.roofMaterial);
-	const porch = useShedStore((s) => s.porch);
-	const options = useShedStore((s) => s.options);
-	const garageDoorStyle = useShedStore((s) => s.options.garageDoor.style ?? 'sectional');
+
+	const storeDesign = {
+		width: widthProp,
+		length: lengthProp,
+		wallHeight: wallHeightProp,
+		color: colorProp,
+		roofColor: roofColorProp,
+		placements: useShedStore((s) => s.placements),
+		trimColor: useShedStore((s) => s.trimColor),
+		sidingTexture: useShedStore((s) => s.sidingTexture),
+		roofMaterial: useShedStore((s) => s.roofMaterial),
+		porch: useShedStore((s) => s.porch),
+		options: useShedStore((s) => s.options),
+	};
+
+	// A fixed Design wins over the one the customer is configuring. Pass a
+	// module-level constant, not an object literal: `placements` identity is
+	// what keys the CSG cut, so a fresh array each render re-cuts every opening.
+	const d = overlayDesign(storeDesign, design);
+	const {
+		width, length, wallHeight, color, roofColor,
+		placements, trimColor, sidingTexture, roofMaterial, porch, options,
+	} = d;
+	const garageDoorStyle = options.garageDoor.style ?? 'sectional';
+
+	// The rafters are cut to one pitch, so the rise follows the span. This was
+	// a flat 4ft, which quietly changed the pitch with the width (issue #29).
+	const roofHeight = gableRoofRise(width);
 
 	// Expose front-wall mesh for raycasting / placement interaction
 	useEffect(() => {
@@ -39,6 +61,11 @@ export const GableShed = ({
 			onShedMeshReady(frontWallRef.current, { width, length, wallHeight });
 		}
 	}, [width, length, wallHeight, onShedMeshReady]);
+
+	// Routed once per placements change, not per render: ShedWall's CSG effect
+	// keys on the array it is handed, so a fresh filter() each render would
+	// re-cut every opening on every render.
+	const { byWall } = useMemo(() => routePlacements(placements), [placements]);
 
 	return (
 		<group name="gableShed">
@@ -54,8 +81,9 @@ export const GableShed = ({
 					color={color}
 					sidingTexture={sidingTexture}
 					trimColor={trimColor}
-					placements={placements.filter((p) => p.wall === side)}
+					placements={byWall[side]}
 					doorStyle={garageDoorStyle}
+					showShutters={options.shutters.enabled}
 				/>
 			))}
 
@@ -65,7 +93,7 @@ export const GableShed = ({
 				shedWidth={width}
 				shedLength={length}
 				wallHeight={wallHeight}
-				roofHeight={ROOF_HEIGHT}
+				roofHeight={roofHeight}
 				color={color}
 				sidingTexture={sidingTexture}
 				showOctagonWindow={options.octagonWindow.enabled}
@@ -76,7 +104,7 @@ export const GableShed = ({
 				shedWidth={width}
 				shedLength={length}
 				wallHeight={wallHeight}
-				roofHeight={ROOF_HEIGHT}
+				roofHeight={roofHeight}
 				color={color}
 				sidingTexture={sidingTexture}
 				showOctagonWindow={options.octagonWindow.enabled}
@@ -87,7 +115,7 @@ export const GableShed = ({
 				shedWidth={width}
 				shedLength={length}
 				wallHeight={wallHeight}
-				roofHeight={ROOF_HEIGHT}
+				roofHeight={roofHeight}
 				trimColor={trimColor}
 				overhangEave={0.5}
 			/>
@@ -97,7 +125,7 @@ export const GableShed = ({
 				shedWidth={width}
 				shedLength={length}
 				wallHeight={wallHeight}
-				roofHeight={ROOF_HEIGHT}
+				roofHeight={roofHeight}
 				roofColor={roofColor}
 				roofMaterial={roofMaterial}
 				skylight={options.skylight}

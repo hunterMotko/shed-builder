@@ -1,15 +1,40 @@
 import { describe, it, expect } from 'vitest';
-import { lookupBasePrice, getOptionLineItems, calculateTotalPrice } from './pricingUtils';
+import {
+	lookupBasePrice,
+	getOptionLineItems,
+	calculateTotalPrice,
+	getAvailableTiers,
+	PRICE_TABLE,
+} from './pricingUtils';
 
 // Expected prices come from shed-options.md, the catalog of record.
 
 describe('base price', () => {
-	it('quotes a 12x16x10 Standard from the catalog', () => {
-		expect(lookupBasePrice(12, 16, 10)).toBe(6089);
+	it('quotes a 12x16 Standard from the catalog', () => {
+		expect(lookupBasePrice(12, 16, 'Standard')).toBe(6089);
+	});
+
+	// The same size at the other grade is a different building and a different
+	// price. Both are 11ft to the peak, so only the Tier tells them apart.
+	it('quotes the same size at the other Tier for its own price', () => {
+		expect(lookupBasePrice(12, 16, 'Deluxe')).toBe(6389);
 	});
 
 	it('refuses a combination the catalog does not sell', () => {
-		expect(lookupBasePrice(13, 17, 10)).toBeNull();
+		expect(lookupBasePrice(13, 17, 'Standard')).toBeNull();
+	});
+
+	// Every catalog size is 11ft now, so a key built from the height would map
+	// all seven Standard sizes onto their Deluxe twin and lose a price.
+	it('keeps a price for every size the catalog lists', () => {
+		// shed-options.md: 7 Standard sizes and 18 Deluxe.
+		expect(Object.keys(PRICE_TABLE)).toHaveLength(25);
+	});
+
+	// Widths above 12 appear only in the Deluxe list.
+	it('sells the wide sizes at Deluxe only', () => {
+		expect(getAvailableTiers(12)).toEqual(['Standard', 'Deluxe']);
+		expect(getAvailableTiers(16)).toEqual(['Deluxe']);
 	});
 });
 
@@ -55,7 +80,7 @@ describe('Option line items', () => {
 
 describe('total', () => {
 	it('adds enabled Options to the catalog base price', () => {
-		const total = calculateTotalPrice(12, 16, 10, { octagonWindow: { enabled: true } });
+		const total = calculateTotalPrice(12, 16, 'Standard', { octagonWindow: { enabled: true } });
 		expect(total).toBe(6089 + 85);
 	});
 });

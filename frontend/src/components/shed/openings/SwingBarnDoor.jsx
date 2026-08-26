@@ -1,22 +1,6 @@
-import * as THREE from 'three';
+import { openingTransform } from '../../../utils/wallOpenings';
 
 const OFFSET = 0.1;
-
-function getOpeningTransform(placement, shedDimensions) {
-  const { width, length, wallHeight } = shedDimensions;
-  const { normalizedX, normalizedY, wall } = placement;
-  const halfWidth  = width / 2;
-  const halfLength = length / 2;
-  const cx = -halfWidth + normalizedX * width;
-  const cy = -wallHeight / 2 + normalizedY * wallHeight;
-  switch (wall) {
-    case 'front': return { pos: [cx, cy, halfLength + OFFSET],  rot: [0, 0, 0] };
-    case 'back':  return { pos: [cx, cy, -halfLength - OFFSET], rot: [0, Math.PI, 0] };
-    case 'left':  return { pos: [-halfWidth - OFFSET, cy, -halfLength + normalizedX * length], rot: [0,  Math.PI / 2, 0] };
-    case 'right': return { pos: [ halfWidth + OFFSET, cy, -halfLength + normalizedX * length], rot: [0, -Math.PI / 2, 0] };
-    default:      return { pos: [0, 0, 0], rot: [0, 0, 0] };
-  }
-}
 
 // Module-level component — not re-created on each render
 function DoorLeaf({ leafW, leafH, isRight, woodColor, trimColor, metalColor }) {
@@ -111,7 +95,7 @@ export const SwingBarnDoor = ({
 }) => {
   const leafW = placement.width / 2;
   const leafH = placement.height;
-  const { pos, rot } = getOpeningTransform(placement, shedDimensions);
+  const { position: pos, rotation: rot } = openingTransform(placement, shedDimensions, OFFSET);
 
   return (
     <group position={pos} rotation={rot}>

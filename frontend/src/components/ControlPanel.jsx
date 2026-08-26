@@ -20,10 +20,10 @@ export const ControlPanel = ({ onClose }) => {
   const [activeTab, setActiveTab] = useState('dimensions');
 
   const { model, color, roofColor, setModel, setColor, setRoofColor,
-          width, length, wallHeight, options, reset } = useShedStore();
+          width, length, tier, options, reset } = useShedStore();
   const { save, load, isLoading } = useDesignPersistence();
 
-  const base     = lookupBasePrice(width, length, wallHeight) ?? 0;
+  const base     = lookupBasePrice(width, length, tier) ?? 0;
   const optionAmt = getOptionLineItems(options).reduce((s, i) => s + i.amount, 0);
   const total    = base + optionAmt;
 

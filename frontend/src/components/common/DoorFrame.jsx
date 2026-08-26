@@ -1,3 +1,5 @@
+import { openingTransform } from '../../utils/wallOpenings';
+
 /**
  * DoorFrame (Trim) Component
  *
@@ -10,52 +12,10 @@ export const DoorFrame = ({
 	trimColor = '#654321',
 	trimWidth = 0.25,
 }) => {
-	const { width, length, wallHeight } = shedDimensions;
-	const { normalizedX, normalizedY, width: elemWidth, height: elemHeight, wall } = placement;
-	const halfWidth = width / 2;
-	const halfLength = length / 2;
+	const { width: elemWidth, height: elemHeight } = placement;
 
-	// Calculate position
-	let position;
-	let rotation;
-
-	switch (wall) {
-		case 'front':
-			position = [
-				-halfWidth + normalizedX * width,
-				-wallHeight / 2 + normalizedY * wallHeight,
-				halfLength + trimWidth / 2,
-			];
-			rotation = [0, 0, 0];
-			break;
-		case 'back':
-			position = [
-				-halfWidth + normalizedX * width,
-				-wallHeight / 2 + normalizedY * wallHeight,
-				-halfLength - trimWidth / 2,
-			];
-			rotation = [0, 0, 0];
-			break;
-		case 'left':
-			position = [
-				-halfWidth - trimWidth / 2,
-				-wallHeight / 2 + normalizedY * wallHeight,
-				-halfLength + normalizedX * length,
-			];
-			rotation = [0, Math.PI / 2, 0];
-			break;
-		case 'right':
-			position = [
-				halfWidth + trimWidth / 2,
-				-wallHeight / 2 + normalizedY * wallHeight,
-				-halfLength + normalizedX * length,
-			];
-			rotation = [0, Math.PI / 2, 0];
-			break;
-		default:
-			position = [0, 0, 0];
-			rotation = [0, 0, 0];
-	}
+	// Trim sits half its own stock proud of the wall face.
+	const { position, rotation } = openingTransform(placement, shedDimensions, trimWidth / 2);
 
 	// Group origin is at the CENTER of the opening (matching CSG localY).
 	// All trim offsets are relative to that center.

@@ -43,7 +43,8 @@ export const GableEnd = ({
   );
 
   // Push the triangle 0.01 ft proud of the wall outer face to prevent Z-fighting.
-  // The front wall face is at exactly Z = halfLength (wall center + WALL_THICKNESS/2).
+  // The front wall face is at exactly Z = halfLength (wall center + WALL_THICKNESS/2,
+  // from utils/wallOpenings.js).
   const EPSILON = 0.01;
   const posZ = side === 'front' ? halfLength + EPSILON : -(halfLength + EPSILON);
 

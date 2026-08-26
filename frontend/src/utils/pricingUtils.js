@@ -2,44 +2,53 @@
  * Pricing Utilities
  *
  * Authoritative price data from shed-options.md.
- * Base prices are fixed per width×length×wallHeight combination.
+ * Base prices are fixed per width×length×Tier combination.
  * Add-on prices are fixed per item/unit.
  */
 
 // ─── Base price lookup table ─────────────────────────────────────────────────
-// Key format: `${width}x${length}x${wallHeight}`
+// Key format: `${width}x${length}x${tier}`
+//
+// The catalog used to key on the height, because a Standard was 10ft and a
+// Deluxe 11ft. The 10ft build is retired — every size is 11ft to the peak now —
+// so the height carries no information and all seven Standard sizes would
+// collide with their Deluxe twin. Tier is the axis that actually separates
+// them, and always was: a Standard is 2x4 rafters, 16in joists and swing barn
+// doors; a Deluxe is 2x6, 12in and a roll-up.
+
+export const TIERS = ['Standard', 'Deluxe'];
+
+/** Every size in the catalog is 11ft to the peak. Nominal — see CONTEXT.md. */
+export const CATALOG_PEAK_HEIGHT = 11;
 
 export const PRICE_TABLE = {
-  // Standard barns — 10ft wall
-  '10x12x10': 4689,
-  '10x16x10': 5189,
-  '10x20x10': 5689,
-  '12x12x10': 5589,
-  '12x16x10': 6089,
-  '12x20x10': 6589,
-  '12x24x10': 7089,
-  // Deluxe barns & gables — 11ft wall
-  '10x12x11': 5789,
-  '10x16x11': 6389,
-  '10x20x11': 6989,
-  '12x12x11': 5989,
-  '12x16x11': 6389,
-  '12x20x11': 7189,
-  '12x24x11': 7789,
-  '12x26x11': 8389,
-  '12x32x11': 8989,
-  '14x20x11': 11189,
-  '14x24x11': 11789,
-  '14x28x11': 12389,
-  '14x32x11': 12989,
-  '14x36x11': 13589,
-  '16x24x11': 12189,
-  '16x28x11': 12789,
-  '16x32x11': 13389,
-  '16x36x11': 13989,
-  // Special — 12ft wall
-  '14x28x12': 13189,
-  '16x36x12': 14789,
+  // Standard barns
+  '10x12xStandard': 4689,
+  '10x16xStandard': 5189,
+  '10x20xStandard': 5689,
+  '12x12xStandard': 5589,
+  '12x16xStandard': 6089,
+  '12x20xStandard': 6589,
+  '12x24xStandard': 7089,
+  // Deluxe barns & gables
+  '10x12xDeluxe': 5789,
+  '10x16xDeluxe': 6389,
+  '10x20xDeluxe': 6989,
+  '12x12xDeluxe': 5989,
+  '12x16xDeluxe': 6389,
+  '12x20xDeluxe': 7189,
+  '12x24xDeluxe': 7789,
+  '12x26xDeluxe': 8389,
+  '12x32xDeluxe': 8989,
+  '14x20xDeluxe': 11189,
+  '14x24xDeluxe': 11789,
+  '14x28xDeluxe': 12389,
+  '14x32xDeluxe': 12989,
+  '14x36xDeluxe': 13589,
+  '16x24xDeluxe': 12189,
+  '16x28xDeluxe': 12789,
+  '16x32xDeluxe': 13389,
+  '16x36xDeluxe': 13989,
 };
 
 // ─── Add-on price constants ──────────────────────────────────────────────────
@@ -72,22 +81,20 @@ export const CATALOG_WIDTHS = [...new Set(
 )].sort((a, b) => a - b);
 
 /**
- * Returns wall heights available for a given width.
+ * Returns the Tiers a given width is sold in.
  */
-export function getAvailableHeights(width) {
-  return [...new Set(
-    Object.keys(PRICE_TABLE)
-      .filter((k) => k.startsWith(`${width}x`))
-      .map((k) => parseInt(k.split('x')[2], 10))
-  )].sort((a, b) => a - b);
+export function getAvailableTiers(width) {
+  return TIERS.filter((tier) =>
+    Object.keys(PRICE_TABLE).some((k) => k.startsWith(`${width}x`) && k.endsWith(`x${tier}`))
+  );
 }
 
 /**
- * Returns lengths available for a given width + wallHeight combination.
+ * Returns lengths available for a given width + Tier combination.
  */
-export function getAvailableLengths(width, wallHeight) {
+export function getAvailableLengths(width, tier) {
   return Object.keys(PRICE_TABLE)
-    .filter((k) => k.startsWith(`${width}x`) && k.endsWith(`x${wallHeight}`))
+    .filter((k) => k.startsWith(`${width}x`) && k.endsWith(`x${tier}`))
     .map((k) => parseInt(k.split('x')[1], 10))
     .sort((a, b) => a - b);
 }
@@ -95,55 +102,46 @@ export function getAvailableLengths(width, wallHeight) {
 /**
  * Returns true if the given combo exists in the price table.
  */
-export function isValidCombo(width, length, wallHeight) {
-  return `${width}x${length}x${wallHeight}` in PRICE_TABLE;
+export function isValidCombo(width, length, tier) {
+  return `${width}x${length}x${tier}` in PRICE_TABLE;
 }
 
 /**
  * Returns the base price for a combo, or null if not in the table.
  */
-export function lookupBasePrice(width, length, wallHeight) {
-  return PRICE_TABLE[`${width}x${length}x${wallHeight}`] ?? null;
-}
-
-/**
- * Human-readable tier name for a given wall height.
- */
-export function getShedTier(wallHeight) {
-  if (wallHeight === 10) return 'Standard';
-  if (wallHeight === 11) return 'Deluxe';
-  if (wallHeight === 12) return 'Special';
-  return '';
+export function lookupBasePrice(width, length, tier) {
+  return PRICE_TABLE[`${width}x${length}x${tier}`] ?? null;
 }
 
 /**
  * Snaps to the nearest valid combo when a dimension changes.
- * Prefers same width & wallHeight; picks the closest available length.
+ * Prefers same width & Tier; picks the closest available length.
  */
-export function snapToValidCombo(width, length, wallHeight) {
+export function snapToValidCombo(width, length, tier) {
   // First try exact match
-  if (isValidCombo(width, length, wallHeight)) return { width, length, wallHeight };
+  if (isValidCombo(width, length, tier)) return { width, length, tier };
 
-  // Try same width + wallHeight with closest length
-  const lengths = getAvailableLengths(width, wallHeight);
+  // Try same width + Tier with closest length
+  const lengths = getAvailableLengths(width, tier);
   if (lengths.length > 0) {
     const closest = lengths.reduce((a, b) =>
       Math.abs(b - length) < Math.abs(a - length) ? b : a
     );
-    return { width, length: closest, wallHeight };
+    return { width, length: closest, tier };
   }
 
-  // Try same width with first available height and its first length
-  const heights = getAvailableHeights(width);
-  if (heights.length > 0) {
-    const h = heights[0];
-    const ls = getAvailableLengths(width, h);
-    return { width, length: ls[0], wallHeight: h };
+  // Try same width in whichever Tier it is sold in. A 14 or 16 wide is Deluxe
+  // only, so asking for a Standard one has to land somewhere.
+  const tiers = getAvailableTiers(width);
+  if (tiers.length > 0) {
+    const t = tiers[0];
+    const ls = getAvailableLengths(width, t);
+    return { width, length: ls[0], tier: t };
   }
 
   // Fallback to first entry in the table
-  const first = Object.keys(PRICE_TABLE)[0].split('x').map(Number);
-  return { width: first[0], length: first[1], wallHeight: first[2] };
+  const [w, l, t] = Object.keys(PRICE_TABLE)[0].split('x');
+  return { width: Number(w), length: Number(l), tier: t };
 }
 
 // ─── Add-on total ────────────────────────────────────────────────────────────
@@ -222,8 +220,8 @@ export function calculateOptionTotal(options) {
 /**
  * Full total price: base lookup + all enabled Options.
  */
-export function calculateTotalPrice(width, length, wallHeight, options = {}) {
-  const base = lookupBasePrice(width, length, wallHeight) ?? 0;
+export function calculateTotalPrice(width, length, tier, options = {}) {
+  const base = lookupBasePrice(width, length, tier) ?? 0;
   return base + calculateOptionTotal(options);
 }
 

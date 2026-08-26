@@ -1,3 +1,5 @@
+import { openingTransform } from '../../../utils/wallOpenings';
+
 const SHUTTER_WIDTH = 1.25;  // ft per shutter panel
 const SHUTTER_THICK = 0.04;  // ft
 const BORDER_W      = 0.06;  // ft frame border width (stiles & rails)
@@ -91,33 +93,9 @@ export const Shutters = ({
   shedDimensions,
   shutterColor = '#FFFFFF',
 }) => {
-  const { wall, normalizedX, normalizedY, width: elemWidth, height: elemHeight } = placement;
-  const { width, length, wallHeight } = shedDimensions;
-  const halfWidth  = width / 2;
-  const halfLength = length / 2;
+  const { width: elemWidth, height: elemHeight } = placement;
 
-  let pos, rot;
-  switch (wall) {
-    case 'front':
-      pos = [-halfWidth + normalizedX * width, -wallHeight / 2 + normalizedY * wallHeight, halfLength + TRIM_OFFSET];
-      rot = [0, 0, 0];
-      break;
-    case 'back':
-      pos = [-halfWidth + normalizedX * width, -wallHeight / 2 + normalizedY * wallHeight, -halfLength - TRIM_OFFSET];
-      rot = [0, 0, 0];
-      break;
-    case 'left':
-      pos = [-halfWidth - TRIM_OFFSET, -wallHeight / 2 + normalizedY * wallHeight, -halfLength + normalizedX * length];
-      rot = [0, Math.PI / 2, 0];
-      break;
-    case 'right':
-      pos = [halfWidth + TRIM_OFFSET, -wallHeight / 2 + normalizedY * wallHeight, -halfLength + normalizedX * length];
-      rot = [0, Math.PI / 2, 0];
-      break;
-    default:
-      pos = [0, 0, 0];
-      rot = [0, 0, 0];
-  }
+  const { position: pos, rotation: rot } = openingTransform(placement, shedDimensions, TRIM_OFFSET);
 
   const leftX  = -(elemWidth / 2 + SHUTTER_WIDTH / 2 + 0.04);
   const rightX =  (elemWidth / 2 + SHUTTER_WIDTH / 2 + 0.04);

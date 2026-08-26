@@ -1,34 +1,38 @@
 import { useMemo, useEffect } from 'react';
 import * as THREE from 'three';
 import { makeSidingShader, makeRoofShader } from '../../../utils/shaders';
+import {
+  roofMaterialSlots,
+  gambrelKnuckleRatio,
+  GAMBREL_LOWER_PITCH,
+  GAMBREL_UPPER_PITCH,
+} from '../../../utils/roofGeometry';
 import { Skylight } from '../extras/Skylight';
 
 /**
  * GambrelRoof — independently renderable gambrel (barn-style) roof.
  *
  * Two ExtrudeGeometry meshes: lower trapezoid (steep) + upper triangle (gentle).
- * Each mesh uses THREE material groups:
- *   Group 0 — front end-cap  → siding material (barn gable, back of shed)
- *   Group 1 — back end-cap   → siding material (barn gable, front of shed)
- *   Group 2 — slope faces    → roof material (metal or shingle)
+ * Each mesh uses THREE material groups. ExtrudeGeometry emits exactly TWO:
+ *   Group 0 — both end-caps  → siding material (the barn's gable faces)
+ *   Group 1 — extruded sides → roof material (metal or shingle)
  *
- * The end-caps cover only the ROOF profile (Y=wallHeight upward).
- * Two separate wall panels (barnWallFront/Back) cover the rectangular
- * gable area from floor (Y=0) to eave (Y=wallHeight), positioned 0.01 ft
- * proud of the end-caps so there is no Z-fighting between them.
+ * It is one group for the pair of caps, not one per cap. A three-entry array
+ * put the roof material at an index nothing addresses and handed the slopes
+ * the siding, so every Barn roof drew in the siding colour (issue #30).
  *
- * BarnShed renders only left/right ShedWalls; these panels + end-caps
- * together form the complete front/back gable faces.
+ * The end-caps cover only the ROOF profile (Y=wallHeight upward). Below the
+ * eave, BarnShed's front/back ShedWalls cover floor to eave — real walls that
+ * take CSG openings, which the flat panels this component used to draw could
+ * not (ADR-0010). The two are disjoint in Y and meet at the eave line.
  */
-
-const KNUCKLE_X_RATIO = 0.82;
 
 export const GambrelRoof = ({
   shedWidth,
   shedLength,
   wallHeight,
-  roofLowerPitch = 5,
-  roofUpperPitch = 10,
+  roofLowerPitch = GAMBREL_LOWER_PITCH,
+  roofUpperPitch = GAMBREL_UPPER_PITCH,
   roofColor,
   roofMaterial,
   color,         // siding color for gable end-caps
@@ -40,7 +44,9 @@ export const GambrelRoof = ({
 }) => {
   const halfWidth = shedWidth / 2;
 
-  const knuckleX = halfWidth * KNUCKLE_X_RATIO;
+  // The Knuckle follows from the two pitches — each slope carries half the
+  // rise — rather than from a hand-set ratio (see gambrelKnuckleRatio).
+  const knuckleX = halfWidth * gambrelKnuckleRatio(roofLowerPitch, roofUpperPitch);
   // Rise is calculated from the full eave-to-knuckle run (including overhang)
   // so the visual slope angle matches the specified pitch ratio.
   const knuckleY = (halfWidth + overhangEave - knuckleX) * (roofLowerPitch / 12);
@@ -70,8 +76,8 @@ export const GambrelRoof = ({
     [shedLength]
   );
 
-  // End-cap faces (groups 0 & 1) use siding shader so barn gable faces match the walls.
-  // Slope faces (group 2) use roof shader.
+  // End-caps (group 0) use the siding shader so the barn's gable faces match
+  // the walls. The slopes (group 1) use the roof shader.
   const sidingMat = useMemo(() => {
     const mat = new THREE.ShaderMaterial(makeSidingShader(color, sidingTexture));
     mat.side = THREE.DoubleSide;
@@ -87,9 +93,8 @@ export const GambrelRoof = ({
   useEffect(() => () => { sidingMat.dispose(); }, [sidingMat]);
   useEffect(() => () => { roofMat.dispose(); }, [roofMat]);
 
-  // [front-cap, back-cap, slopes] — matches ExtrudeGeometry group indices
   const materials = useMemo(
-    () => [sidingMat, sidingMat, roofMat],
+    () => roofMaterialSlots(sidingMat, roofMat),
     [sidingMat, roofMat]
   );
 
@@ -97,10 +102,6 @@ export const GambrelRoof = ({
 
   // Peak in world space: wallHeight + peakY (peakY is relative to wallHeight base)
   const worldPeakY = wallHeight + peakY;
-
-  // Front/back wall panel dimensions — covers rectangular gable from floor to eave
-  const halfLen = shedLength / 2;
-  const WALL_PANEL_OFFSET = 0.01; // ft proud of end-caps to prevent Z-fighting
 
   return (
     <group name="gambrelRoof">
@@ -112,28 +113,6 @@ export const GambrelRoof = ({
       <mesh name="gambrelRoofUpper" position={pos} castShadow={castShadow} receiveShadow={receiveShadow}>
         <extrudeGeometry args={[upperShape, extrudeSettings]} />
         <primitive object={materials} attach="material" />
-      </mesh>
-
-      {/* Front barn wall face — rectangular panel from floor to eave */}
-      <mesh
-        name="barnWallFront"
-        position={[0, wallHeight / 2, halfLen + WALL_PANEL_OFFSET]}
-        castShadow={castShadow}
-        receiveShadow={receiveShadow}
-      >
-        <boxGeometry args={[shedWidth, wallHeight, 0.01]} />
-        <primitive object={sidingMat} attach="material" />
-      </mesh>
-
-      {/* Back barn wall face — rectangular panel from floor to eave */}
-      <mesh
-        name="barnWallBack"
-        position={[0, wallHeight / 2, -(halfLen + WALL_PANEL_OFFSET)]}
-        castShadow={castShadow}
-        receiveShadow={receiveShadow}
-      >
-        <boxGeometry args={[shedWidth, wallHeight, 0.01]} />
-        <primitive object={sidingMat} attach="material" />
       </mesh>
 
       {skylight?.enabled && (

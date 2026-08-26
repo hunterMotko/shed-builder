@@ -1,9 +1,9 @@
 import { useShedStore } from '../../store/shedStore';
 import {
   CATALOG_WIDTHS,
-  getAvailableHeights,
+  CATALOG_PEAK_HEIGHT,
+  getAvailableTiers,
   getAvailableLengths,
-  getShedTier,
 } from '../../utils/pricingUtils';
 
 const TIER_STYLE = {
@@ -37,14 +37,13 @@ const LABEL = {
 export const DimensionsSection = () => {
   const width      = useShedStore((s) => s.width);
   const length     = useShedStore((s) => s.length);
-  const wallHeight = useShedStore((s) => s.wallHeight);
+  const tier       = useShedStore((s) => s.tier);
   const setWidth      = useShedStore((s) => s.setWidth);
   const setLength     = useShedStore((s) => s.setLength);
-  const setWallHeight = useShedStore((s) => s.setWallHeight);
+  const setTier       = useShedStore((s) => s.setTier);
 
-  const availableHeights = getAvailableHeights(width);
-  const availableLengths = getAvailableLengths(width, wallHeight);
-  const tier = getShedTier(wallHeight);
+  const availableTiers   = getAvailableTiers(width);
+  const availableLengths = getAvailableLengths(width, tier);
   const tierStyle = TIER_STYLE[tier] ?? TIER_STYLE.Standard;
 
   return (
@@ -68,10 +67,10 @@ export const DimensionsSection = () => {
       </div>
 
       <div>
-        <label style={LABEL}>Wall Height</label>
-        <select style={SELECT} value={wallHeight} onChange={(e) => setWallHeight(parseInt(e.target.value, 10))}>
-          {availableHeights.map((h) => (
-            <option key={h} value={h}>{h} ft — {getShedTier(h)}</option>
+        <label style={LABEL}>Build</label>
+        <select style={SELECT} value={tier} onChange={(e) => setTier(e.target.value)}>
+          {availableTiers.map((t) => (
+            <option key={t} value={t}>{t}</option>
           ))}
         </select>
       </div>
@@ -86,7 +85,7 @@ export const DimensionsSection = () => {
         marginTop: 2,
       }}>
         <span style={{ color: '#93c5fd', fontSize: 12 }}>
-          {width} × {length} × {wallHeight} ft &nbsp;·&nbsp; {width * length} sq ft
+          {width} × {length} × {CATALOG_PEAK_HEIGHT} ft &nbsp;·&nbsp; {width * length} sq ft
         </span>
         <span style={{
           padding: '2px 8px', borderRadius: 10, fontSize: 11, fontWeight: 600,
