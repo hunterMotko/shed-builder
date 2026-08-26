@@ -19,8 +19,8 @@ Read these before changing anything substantial:
 
 | Term | Meaning |
 |---|---|
-| **Model** | The product line — `Gable` or `Barn`. Carries roof profile, wall height, stud length (84in vs 80.5in) and trim set as one bundle. Not a roof toggle. |
-| **Tier** | What a wall height implies: 10ft Standard, 11ft Deluxe, 12ft Special. |
+| **Model** | The product line — `Gable` or `Barn`. Carries roof profile, wall height (84in vs 80.5in studs) and trim set as one bundle. Not a roof toggle. |
+| **Tier** | The build grade — `Standard` or `Deluxe`. Not a height: both stand the same, and Tier is what selects a price alongside width and length. |
 | **Design** | One complete specification: Model, dimensions, colors, Options with their Placements. |
 | **Option** | A priced catalog item. An **Opening** cuts a wall (doors, windows); an **Attachment** does not (ramp, shutters, skylight, porch, loft). |
 | **Placement** | Where an Option sits on the shed. |
@@ -59,14 +59,18 @@ Single global store: `frontend/src/store/shedStore.js`. Components read it with 
 outside React use `useShedStore.getState()`. Never mutate state directly — every change goes
 through an action.
 
-Defaults: `width: 12`, `length: 16`, `wallHeight: 10`, `model: 'Gable'`, `sidingTexture: 'T1-11'`,
-`roofMaterial: 'metal'`, `foundationHeight: 1.5`, `roofLowerPitch: 24`, `roofUpperPitch: 6`.
+Defaults: `width: 12`, `length: 16`, `tier: 'Standard'`, `model: 'Gable'`,
+`sidingTexture: 'T1-11'`, `roofMaterial: 'metal'`, `roofLowerPitch: 12`, `roofUpperPitch: 4`.
+
+There is no `wallHeight` in the store. The wall is a Model constant in `utils/modelSpec.js`
+(85in Barn, 88.5in Gable) and the Peak Height is derived from it for display only. The
+catalog's third number is a nominal 11 on every size — a label on the SKU, not geometry.
 
 `options` holds nine Options, all disabled by default. `placements` is a flat array. `porch` is
 separate from `options` and currently has **no price** (issue #9).
 
 **The store may only ever hold a Design the catalog sells.** `setWidth`, `setLength` and
-`setWallHeight` all run `snapToValidCombo`, which falls back to the nearest sellable combination
+`setTier` all run `snapToValidCombo`, which falls back to the nearest sellable combination
 rather than accepting an arbitrary size. There is a test for this invariant.
 
 `setModel` also switches the garage door: Barn gets `'rollup'`, Gable gets `'sectional'`.
@@ -142,9 +146,10 @@ CORS is wide open (`*`).
 
 ## Pricing and the Quote
 
-Base prices are a **fixed catalog of 27 width×length×wallHeight combinations** from
-`shed-options.md` — not a formula. Widths sold: 10, 12, 14, 16. There is no square-foot rate and
-no Model surcharge.
+Base prices are a **fixed catalog of 25 width×length×Tier combinations** from
+`shed-options.md` — not a formula. Widths sold: 10, 12, 14, 16; above 12 is Deluxe only. There
+is no square-foot rate and no Model surcharge. The key is the Tier, not the height: every size
+is 11ft, so a height key would collapse all seven Standard sizes onto their Deluxe twin.
 
 Options are priced per item or per unit (per foot, per sheet, per pair, per sqft).
 
@@ -152,8 +157,8 @@ Workbench, pegboard and loft are priced on both sides but are **not yet in the s
 `options` defaults**, so nothing can enable them from the UI (issue #9).
 
 The catalog currently exists twice — `frontend/src/utils/pricingUtils.js` and `backend/main.go` —
-and the two can drift. They agree today (27 combinations each, no price disagreements); nothing
-but diligence keeps them that way. The server recomputes the price on every save and ignores whatever the
+and the two can drift. They agree today (25 combinations each, checked against
+`shed-options.md`); nothing but diligence keeps them that way. The server recomputes the price on every save and ignores whatever the
 client sent; **the server's number is the Quote** (ADR-0008). Issue #8 moves the catalog behind
 `GET /api/catalog` so there is one copy.
 
@@ -162,17 +167,27 @@ client sent; **the server's number is the Quote** (ADR-0008). Issue #8 moves the
 `frontend/src/utils/roofGeometry.js` holds the math. Pitch is `X:12` — rise in inches per 12
 inches of run.
 
-**Gable**: one triangular profile extruded along the length. Rake angle is
+Both Models are cut to a fixed pitch, so the rise follows the span — the reverse of a fixed
+rise, which silently changes the pitch with the width.
+
+**Gable**: one triangular profile extruded along the length, at a **6:12** pitch. Rake angle is
 `atan(roofHeight / halfWidth)`; rake length is the hypotenuse.
 
 **Barn (gambrel)**: two extrusions meeting at the **Knuckle**. The lower slope is the steep one.
-The store drives this with **24:12 lower and 6:12 upper** — `GambrelRoof.jsx` declares defaults of
-5 and 10, but they are always overridden by the store, so the running geometry is 24/6. A lower
-pitch shallower than the upper one is not a barn.
+Build spec is **12:12 lower and 4:12 upper**. A lower pitch shallower than the upper one is not
+a barn. The Knuckle is not stored — `gambrelKnuckleRatio` derives it from the two pitches by
+placing it so each slope carries half the rise, which is 0.75 for this spec. Both Models then
+rise a quarter of their span, which is the "25%" the business quotes.
 
 Useful functions: `pitchToRadians`, `calculateRise`, `calculateKnucklePoint`,
 `calculateGambrelProfile`, `createLowerRoofShape`, `createUpperRoofShape`, `getRakeTrimAngles`,
-`calculateSlopeLength`, `calculateGableRakeAngle`, `calculateGableRakeTrimLength`.
+`calculateSlopeLength`, `calculateGableRakeAngle`, `calculateGableRakeTrimLength`,
+`gableRoofRise`, `gambrelKnuckleRatio`, `roofMaterialSlots`.
+
+`frontend/src/utils/modelSpec.js` holds what a Model bundles: `wallHeightFt`, `roofRiseFt`,
+`peakHeightFt`, and `FOUNDATION_HEIGHT` — the deck plus a Runner, which is what `Runners`
+actually draws. The store's `foundationHeight` of 1.5ft is a concrete-pad leftover nothing
+renders; do not quote a height off it.
 
 Foundation constants live in `STANDARD_FOUNDATION`: height `1.5 ft`, overhang `0.5 ft`, color
 `#8B7355`. `components/common/Runners.jsx` renders the floor deck plus five 4x4 runners.
@@ -276,7 +291,7 @@ computed server-side ($6,089 for 12x16x10, plus $500 for the 8x7 door).
 
 ```json
 {
-  "width": 12, "length": 16, "wallHeight": 10,
+  "width": 12, "length": 16, "tier": "Standard",
   "model": "Gable",
   "color": "#D2691E", "roofColor": "#8B4513", "trimColor": "#654321",
   "placements": [],
@@ -290,7 +305,7 @@ computed server-side ($6,089 for 12x16x10, plus $500 for the 8x7 door).
 ```json
 {
   "id": "4667e8ca-6e22-42e8-8491-53610f81a023",
-  "width": 12, "length": 16, "wallHeight": 10,
+  "width": 12, "length": 16, "tier": "Standard",
   "model": "Gable",
   "color": "#D2691E", "roofColor": "#8B4513", "trimColor": "#654321",
   "placements": [],
@@ -320,6 +335,8 @@ frontend/src/
   components/common/              door/window frames and objects, Runners
   pages/ReferenceMatch.jsx        photo vs render (its scene is a fork — issue #4)
   utils/roofGeometry.js           roof math
+  utils/modelSpec.js              what a Model bundles: wall height, rise, peak
+  utils/design.js                 overlay a fixed Design on the store's (ADR-0012)
   utils/wallOpenings.js           CSG: cut Openings out of a wall (Brush, local space)
   utils/wallSides.js              the four walls, and routing Placements onto them
   utils/pricingUtils.js           catalog and Option line items
