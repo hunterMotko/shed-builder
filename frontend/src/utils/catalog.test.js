@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import catalog from '../../../backend/catalog.json';
+import catalog from '../../../catalog.json';
 import { PRICE_TABLE, OPTION_PRICES } from './pricingUtils';
 
 /**
- * The catalog used to exist twice — here and in backend/main.go — and nothing
+ * The catalog used to exist twice — here and in main.go — and nothing
  * but diligence kept the two in step (issue #8). There is now one file, which
  * the frontend imports and the Go server embeds at compile time.
  *

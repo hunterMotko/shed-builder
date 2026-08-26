@@ -6,10 +6,10 @@ export default defineConfig({
 	plugins: [react()],
 	server: {
 		fs: {
-			// The catalog lives in backend/catalog.json, one level above this
-			// root — it has to, because go:embed cannot reach outside its own
-			// module (issue #8). Vite's dev server refuses to serve files
-			// outside the root unless they are allowed explicitly.
+			// The catalog lives in catalog.json at the repo root, one level
+			// above this one, so that the frontend and the Go server can share
+			// a single copy (issue #8). Vite's dev server refuses to serve
+			// files outside its root unless they are allowed explicitly.
 			allow: ['..'],
 		},
 	},

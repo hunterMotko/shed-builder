@@ -5,21 +5,18 @@
  * Base prices are fixed per width×length×Tier combination.
  * Add-on prices are fixed per item/unit.
  *
- * The numbers themselves live in `backend/catalog.json` — one file, imported
+ * The numbers themselves live in `catalog.json` at the repo root — one file, imported
  * here and embedded into the Go server at compile time. They used to be typed
  * out in both places, and nothing but diligence kept the two in step (issue
  * #8). There is no fetch: the import is resolved at build time, so a price is
  * available synchronously and `snapToValidCombo` still cannot be asked a
  * question it has no answer for.
  *
- * The file sits under `backend/` because `go:embed` cannot reach outside its
- * own module, and `go.mod` is there.
- *
  * The derived helpers below stay here — they are how this app asks questions
  * of the catalog, not part of the catalog itself.
  */
 
-import catalog from '../../../backend/catalog.json';
+import catalog from '../../../catalog.json';
 
 // ─── Base price lookup table ─────────────────────────────────────────────────
 // Key format: `${width}x${length}x${tier}`
