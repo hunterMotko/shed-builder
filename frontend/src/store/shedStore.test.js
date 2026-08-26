@@ -14,23 +14,35 @@ beforeEach(() => {
 
 describe('dimensions', () => {
 	it('starts on a Design the catalog can sell', () => {
-		const { width, length, wallHeight } = state();
-		expect(lookupBasePrice(width, length, wallHeight)).not.toBeNull();
+		const { width, length, tier } = state();
+		expect(lookupBasePrice(width, length, tier)).not.toBeNull();
 	});
 
 	it('never lands on a Design the catalog cannot sell', () => {
 		// 13ft wide is not a width we sell at any Tier.
 		state().setWidth(13);
-		const { width, length, wallHeight } = state();
-		expect(lookupBasePrice(width, length, wallHeight)).not.toBeNull();
+		const { width, length, tier } = state();
+		expect(lookupBasePrice(width, length, tier)).not.toBeNull();
 	});
 
-	it('carries the wall height up with a width sold only at a higher Tier', () => {
-		// 16ft wide exists at 11ft and 12ft walls, never at the 10ft Standard.
+	it('carries the Tier up with a width sold only at Deluxe', () => {
+		// 16ft wide is in the Deluxe list only, so a Standard cannot stay one.
 		state().setWidth(16);
-		const { width, length, wallHeight } = state();
-		expect(lookupBasePrice(width, length, wallHeight)).not.toBeNull();
-		expect(wallHeight).toBeGreaterThan(10);
+		const { width, length, tier } = state();
+		expect(lookupBasePrice(width, length, tier)).not.toBeNull();
+		expect(tier).toBe('Deluxe');
+	});
+
+	// Both grades are 11ft to the peak, so switching Tier is a change of build,
+	// not of size — the size must survive it wherever the catalog sells both.
+	it('keeps the size when the Tier changes, if that size is sold at both', () => {
+		state().setWidth(12);
+		state().setLength(16);
+		state().setTier('Deluxe');
+
+		expect(state().width).toBe(12);
+		expect(state().length).toBe(16);
+		expect(state().tier).toBe('Deluxe');
 	});
 });
 

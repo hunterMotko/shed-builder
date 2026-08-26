@@ -17,7 +17,10 @@ export const useShedStore = create((set) => ({
 	// Configuration state — defaults to smallest standard barn (12×16×10)
 	width: 12,
 	length: 16,
-	wallHeight: 10, // 10 = Standard, 11 = Deluxe, 12 = Special
+	// Tier, not a height. Every catalog size is 11ft to the peak now, so the
+	// height stopped telling the two grades apart and Tier does it instead.
+	// The geometry's wall height comes from the Model (utils/modelSpec.js).
+	tier: 'Standard',
 	model: 'Gable',
 	color: '#D2691E',
 	roofColor: '#8B4513',
@@ -61,16 +64,16 @@ export const useShedStore = create((set) => ({
 	placements: [],
 	// Configuration Actions
 	setWidth: (width) => set((s) => {
-		const snapped = snapToValidCombo(width, s.length, s.wallHeight);
-		return { width: snapped.width, length: snapped.length, wallHeight: snapped.wallHeight };
+		const snapped = snapToValidCombo(width, s.length, s.tier);
+		return { width: snapped.width, length: snapped.length, tier: snapped.tier };
 	}),
 	setLength: (length) => set((s) => {
-		const snapped = snapToValidCombo(s.width, length, s.wallHeight);
-		return { width: snapped.width, length: snapped.length, wallHeight: snapped.wallHeight };
+		const snapped = snapToValidCombo(s.width, length, s.tier);
+		return { width: snapped.width, length: snapped.length, tier: snapped.tier };
 	}),
-	setWallHeight: (wallHeight) => set((s) => {
-		const snapped = snapToValidCombo(s.width, s.length, wallHeight);
-		return { width: snapped.width, length: snapped.length, wallHeight: snapped.wallHeight };
+	setTier: (tier) => set((s) => {
+		const snapped = snapToValidCombo(s.width, s.length, tier);
+		return { width: snapped.width, length: snapped.length, tier: snapped.tier };
 	}),
 	setModel: (model) => set((s) => ({
 		model,
@@ -132,7 +135,7 @@ export const useShedStore = create((set) => ({
 	reset: () => set({
 		width: 12,
 		length: 16,
-		wallHeight: 10,
+		tier: 'Standard',
 		model: 'Gable',
 		color: '#D2691E',
 		roofColor: '#8B4513',
@@ -163,7 +166,7 @@ export const useShedStore = create((set) => ({
 	// Get calculated price (derived state)
 	getPrice: () => {
 		const state = useShedStore.getState();
-		return calculateTotalPrice(state.width, state.length, state.wallHeight, state.options);
+		return calculateTotalPrice(state.width, state.length, state.tier, state.options);
 	},
 	// Get full configuration
 	getConfig: () => {
@@ -171,7 +174,7 @@ export const useShedStore = create((set) => ({
 		return {
 			width: state.width,
 			length: state.length,
-			wallHeight: state.wallHeight,
+			tier: state.tier,
 			model: state.model,
 			color: state.color,
 			roofColor: state.roofColor,
@@ -187,7 +190,7 @@ export const useShedStore = create((set) => ({
 			placements: state.placements,
 			porch: state.porch,
 			options: state.options,
-			price: calculateTotalPrice(state.width, state.length, state.wallHeight, state.options),
+			price: calculateTotalPrice(state.width, state.length, state.tier, state.options),
 		};
 	},
 }));

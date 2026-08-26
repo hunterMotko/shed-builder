@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { useShedStore } from '../store/shedStore';
 import { PRESETS_BY_TYPE } from '../utils/placementPresets';
 import { validatePlacement, checkPlacementConflicts } from '../utils/placementValidator';
+import { wallHeightFt } from '../utils/modelSpec';
 
 const PLACEMENT_TYPES = [
   { value: 'door',            label: 'Entry Door' },
@@ -22,7 +23,9 @@ export const PlacementDialog = ({
 	normalizedY = 0.5,
 	onClose = null,
 }) => {
-	const { addPlacement, width: shedWidth, length: shedLength, wallHeight, placements } = useShedStore();
+	const { addPlacement, width: shedWidth, length: shedLength, model, placements } = useShedStore();
+	// Wall height is a Model constant now, not a stored field (issue #29).
+	const wallHeight = wallHeightFt(model);
 	const [placementType, setPlacementType] = useState('door');
 	const [width, setWidth] = useState(3);
 	const [height, setHeight] = useState(6.8);

@@ -1,12 +1,16 @@
-# Standard barn prices
-- 10x12x10: $4689
-- 10x16x10: $5189
-- 10x20x10: $5689
+> Every size is 11ft to the peak. The 10ft heights this list used to carry were an older
+> design and are no longer built; the height is the same on both grades, so **Tier** is
+> what separates them.
 
-- 12x12x10: $5589
-- 12x16x10: $6089
-- 12x20x10: $6589
-- 12x24x10: $7089
+# Standard barn prices
+- 10x12x11: $4689
+- 10x16x11: $5189
+- 10x20x11: $5689
+
+- 12x12x11: $5589
+- 12x16x11: $6089
+- 12x20x11: $6589
+- 12x24x11: $7089
 
 # Deluxe barns & gables
 - 10x12x11: $5789
@@ -42,7 +46,7 @@
 - 1/2 loft
 - premium steel roof with under laminate
 
-# 14x28x12 Deluxe Gable garage
+# 14x28 Deluxe Gable garage
 - 5 4x4 PT runners
 - 3/4 in PT plywood sheathing
 - 12 in on center 2x4 pt floor joist
@@ -52,7 +56,7 @@
 - 8x7 roll up door & 36in entry door
 - premium steel roof with under laminate
 
-# 16x36x12 Deluxe Grambrel Barn 
+# 16x36 Deluxe Gambrel Barn
 - 5 4x4 PT runners
 - 3/4 in PT plywood sheathing
 - 12 in on center 2x4 pt floor joist

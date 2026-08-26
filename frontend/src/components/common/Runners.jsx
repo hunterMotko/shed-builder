@@ -1,9 +1,8 @@
 import * as THREE from 'three';
+import { RUNNER_SIZE, FLOOR_THICKNESS } from '../../utils/modelSpec';
 
-// 4×4 nominal lumber: 3.5" actual = ~0.292 ft, rounded to 0.333 for visual clarity
-const RUNNER_SIZE = 0.333;
-// Nominal floor deck thickness (~1.5" T&G planks)
-const FLOOR_THICKNESS = 0.125;
+// Both come from utils/modelSpec so the Peak Height quoted in the UI is
+// measured against what is actually drawn under the shed.
 const NUM_RUNNERS = 5;
 
 /**

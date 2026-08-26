@@ -19,7 +19,7 @@ export const useDesignPersistence = () => {
 	const {
 		setWidth,
 		setLength,
-		setWallHeight,
+		setTier,
 		setModel,
 		setColor,
 		setRoofColor,
@@ -84,7 +84,7 @@ export const useDesignPersistence = () => {
 			// Restore all configuration fields from the saved design
 			setWidth(design.width);
 			setLength(design.length);
-			if (design.wallHeight != null) setWallHeight(design.wallHeight);
+			if (design.tier != null) setTier(design.tier);
 			setModel(design.model);
 			setColor(design.color);
 			setRoofColor(design.roofColor);

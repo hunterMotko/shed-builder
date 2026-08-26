@@ -28,7 +28,7 @@ func post(t *testing.T, body string) (*httptest.ResponseRecorder, Design) {
 // The Quote is the server's number, not the client's. Expected prices come
 // from shed-options.md.
 func TestQuoteIgnoresClientSuppliedPrice(t *testing.T) {
-	rec, design := post(t, `{"width":12,"length":16,"wallHeight":10,"model":"Gable","price":1}`)
+	rec, design := post(t, `{"width":12,"length":16,"tier":"Standard","model":"Gable","price":1}`)
 
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("want 201, got %d: %s", rec.Code, rec.Body.String())
@@ -39,7 +39,7 @@ func TestQuoteIgnoresClientSuppliedPrice(t *testing.T) {
 }
 
 func TestRejectsCombinationNotInCatalog(t *testing.T) {
-	rec, _ := post(t, `{"width":13,"length":17,"wallHeight":10,"model":"Gable"}`)
+	rec, _ := post(t, `{"width":13,"length":17,"tier":"Standard","model":"Gable"}`)
 
 	if rec.Code != http.StatusBadRequest {
 		t.Errorf("want 400 for a combination we do not sell, got %d", rec.Code)
@@ -47,7 +47,7 @@ func TestRejectsCombinationNotInCatalog(t *testing.T) {
 }
 
 func TestRejectsUnknownModel(t *testing.T) {
-	rec, _ := post(t, `{"width":12,"length":16,"wallHeight":10,"model":"Tudor"}`)
+	rec, _ := post(t, `{"width":12,"length":16,"tier":"Standard","model":"Tudor"}`)
 
 	if rec.Code != http.StatusBadRequest {
 		t.Errorf("want 400 for an unknown Model, got %d", rec.Code)
@@ -55,7 +55,7 @@ func TestRejectsUnknownModel(t *testing.T) {
 }
 
 func TestSavedDesignCanBeFetchedByID(t *testing.T) {
-	_, saved := post(t, `{"width":12,"length":16,"wallHeight":10,"model":"Gable"}`)
+	_, saved := post(t, `{"width":12,"length":16,"tier":"Standard","model":"Gable"}`)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/design/"+saved.ID, nil)
 	rec := httptest.NewRecorder()
@@ -75,7 +75,7 @@ func TestSavedDesignCanBeFetchedByID(t *testing.T) {
 
 // Interior Options: workbench $35/running ft, pegboard $70/sheet, loft $4/sqft.
 func TestQuotePricesInteriorOptions(t *testing.T) {
-	_, design := post(t, `{"width":12,"length":16,"wallHeight":10,"model":"Gable","options":{
+	_, design := post(t, `{"width":12,"length":16,"tier":"Standard","model":"Gable","options":{
 		"workbench":{"enabled":true,"runningFt":8},
 		"pegboard":{"enabled":true,"sheets":3},
 		"loft":{"enabled":true,"sqft":96}}}`)
@@ -83,5 +83,29 @@ func TestQuotePricesInteriorOptions(t *testing.T) {
 	want := 6089.0 + 8*35 + 3*70 + 96*4
 	if design.Price != want {
 		t.Errorf("want Quote %v, got %v", want, design.Price)
+	}
+}
+
+// Every catalog size is 11ft to the peak, so the height cannot tell a Standard
+// from a Deluxe and the Tier is what selects the price. The same 12x16 costs
+// $6089 as a Standard and $6389 as a Deluxe; a key built from the height would
+// have collapsed the two.
+func TestTierSelectsThePrice(t *testing.T) {
+	_, standard := post(t, `{"width":12,"length":16,"tier":"Standard","model":"Barn"}`)
+	if standard.Price != 6089 {
+		t.Errorf("want the Standard catalog price 6089, got %v", standard.Price)
+	}
+
+	_, deluxe := post(t, `{"width":12,"length":16,"tier":"Deluxe","model":"Barn"}`)
+	if deluxe.Price != 6389 {
+		t.Errorf("want the Deluxe catalog price 6389, got %v", deluxe.Price)
+	}
+}
+
+// 14 and 16 wide appear in the Deluxe list only.
+func TestWideSizesAreDeluxeOnly(t *testing.T) {
+	rec, _ := post(t, `{"width":16,"length":24,"tier":"Standard","model":"Barn"}`)
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("want 400 for a 16 wide Standard, got %d", rec.Code)
 	}
 }

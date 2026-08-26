@@ -7,7 +7,8 @@ import { ControlPanel } from './components/ControlPanel';
 import { ComponentPreview } from './pages/ComponentPreview';
 import { ReferenceMatch } from './pages/ReferenceMatch';
 import { useShedStore } from './store/shedStore';
-import { lookupBasePrice, getOptionLineItems, getShedTier } from './utils/pricingUtils';
+import { lookupBasePrice, getOptionLineItems, CATALOG_PEAK_HEIGHT } from './utils/pricingUtils';
+import { wallHeightFt, peakHeightFt, FOUNDATION_HEIGHT } from './utils/modelSpec';
 import './App.css';
 
 const NAV_H  = 48;
@@ -28,13 +29,19 @@ export default function App() {
   const [page, setPage]           = useState('configurator');
   const [drawerOpen, setDrawerOpen] = useState(true);
 
-  const { width, length, wallHeight, model, color, roofColor, options } = useShedStore();
+  const { width, length, tier, model, color, roofColor, options,
+          roofLowerPitch, roofUpperPitch } = useShedStore();
+
+  // The wall is a fixed stud length per Model; the roof sits on top of it, so
+  // the peak follows from the Model and the width (issue #29).
+  const wallHeight = wallHeightFt(model);
+  const peak = peakHeightFt(model, width, FOUNDATION_HEIGHT,
+    { lowerPitch: roofLowerPitch, upperPitch: roofUpperPitch });
 
   // Price for canvas overlay
-  const base      = lookupBasePrice(width, length, wallHeight) ?? 0;
+  const base      = lookupBasePrice(width, length, tier) ?? 0;
   const optionTotal = getOptionLineItems(options).reduce((s, i) => s + i.amount, 0);
   const total     = base + optionTotal;
-  const tier      = getShedTier(wallHeight);
 
   return (
     <div style={{ width: '100%', height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -143,7 +150,8 @@ export default function App() {
               }}
             >
               <span style={{ color: '#94a3b8', fontSize: 13 }}>
-                {width} × {length} × {wallHeight} ft &nbsp;·&nbsp; {tier}
+                {width} × {length} × {CATALOG_PEAK_HEIGHT} ft &nbsp;·&nbsp; {tier}
+                &nbsp;·&nbsp; {peak.toFixed(1)} ft to the peak
               </span>
               <span style={{ color: '#4ade80', fontSize: 16, fontWeight: 700 }}>
                 ${total.toLocaleString()}

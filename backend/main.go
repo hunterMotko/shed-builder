@@ -9,20 +9,25 @@ import (
 	"time"
 )
 
-// priceTable maps "WxLxH" to base price in dollars.
+// priceTable maps "WxLxTier" to base price in dollars.
+//
+// Keyed on the Tier rather than the height: every catalog size is 11ft to the
+// peak now, so the height tells the two grades apart no longer and all seven
+// Standard sizes would collide with their Deluxe twin. Must stay in step with
+// frontend/src/utils/pricingUtils.js until issue #8 gives it one home.
 var priceTable = map[string]float64{
-	// Standard — 10ft wall height
-	"10x12x10": 4689, "10x16x10": 5189, "10x20x10": 5689,
-	"12x12x10": 5589, "12x16x10": 6089, "12x20x10": 6589, "12x24x10": 7089,
-	// Deluxe — 11ft wall height
-	"10x12x11": 5789, "10x16x11": 6389, "10x20x11": 6989,
-	"12x12x11": 5989, "12x16x11": 6389, "12x20x11": 7189,
-	"12x24x11": 7789, "12x26x11": 8389, "12x32x11": 8989,
-	"14x20x11": 11189, "14x24x11": 11789, "14x28x11": 12389,
-	"14x32x11": 12989, "14x36x11": 13589,
-	"16x24x11": 12189, "16x28x11": 12789, "16x32x11": 13389, "16x36x11": 13989,
-	// Special — 12ft wall height
-	"14x28x12": 13189, "16x36x12": 14789,
+	// Standard barns
+	"10x12xStandard": 4689, "10x16xStandard": 5189, "10x20xStandard": 5689,
+	"12x12xStandard": 5589, "12x16xStandard": 6089,
+	"12x20xStandard": 6589, "12x24xStandard": 7089,
+	// Deluxe barns & gables
+	"10x12xDeluxe": 5789, "10x16xDeluxe": 6389, "10x20xDeluxe": 6989,
+	"12x12xDeluxe": 5989, "12x16xDeluxe": 6389, "12x20xDeluxe": 7189,
+	"12x24xDeluxe": 7789, "12x26xDeluxe": 8389, "12x32xDeluxe": 8989,
+	"14x20xDeluxe": 11189, "14x24xDeluxe": 11789, "14x28xDeluxe": 12389,
+	"14x32xDeluxe": 12989, "14x36xDeluxe": 13589,
+	"16x24xDeluxe": 12189, "16x28xDeluxe": 12789,
+	"16x32xDeluxe": 13389, "16x36xDeluxe": 13989,
 }
 
 // optionPrices maps add-on keys to dollar amounts.
@@ -46,8 +51,8 @@ var optionPrices = map[string]float64{
 
 // lookupBasePrice returns the catalog price for the given dimensions.
 // Returns (price, true) if found, (0, false) if not a valid catalog combo.
-func lookupBasePrice(width, length, wallHeight int) (float64, bool) {
-	key := fmt.Sprintf("%dx%dx%d", width, length, wallHeight)
+func lookupBasePrice(width, length int, tier string) (float64, bool) {
+	key := fmt.Sprintf("%dx%dx%s", width, length, tier)
 	price, ok := priceTable[key]
 	return price, ok
 }
@@ -166,7 +171,7 @@ type Design struct {
 	ID         string       `json:"id"`
 	Width      int          `json:"width"`
 	Length     int          `json:"length"`
-	WallHeight int          `json:"wallHeight"`
+	Tier       string       `json:"tier"`
 	Model      string       `json:"model"`
 	Color      string       `json:"color"`
 	RoofColor  string       `json:"roofColor"`
@@ -191,18 +196,18 @@ func saveDesign(c *gin.Context) {
 		return
 	}
 
-	// Default wallHeight to 10 if not supplied
-	if input.WallHeight == 0 {
-		input.WallHeight = 10
+	// Default Tier to Standard if not supplied
+	if input.Tier == "" {
+		input.Tier = "Standard"
 	}
 
 	// Validate combo against price table
-	basePrice, valid := lookupBasePrice(input.Width, input.Length, input.WallHeight)
+	basePrice, valid := lookupBasePrice(input.Width, input.Length, input.Tier)
 	if !valid {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": fmt.Sprintf(
-				"Invalid combination: %dx%dx%d is not in the catalog",
-				input.Width, input.Length, input.WallHeight,
+				"Invalid combination: %dx%d %s is not in the catalog",
+				input.Width, input.Length, input.Tier,
 			),
 		})
 		return
@@ -220,7 +225,7 @@ func saveDesign(c *gin.Context) {
 		ID:         uuid.New().String(),
 		Width:      input.Width,
 		Length:     input.Length,
-		WallHeight: input.WallHeight,
+		Tier:       input.Tier,
 		Model:      input.Model,
 		Color:      input.Color,
 		RoofColor:  input.RoofColor,
