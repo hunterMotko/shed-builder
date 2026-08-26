@@ -55,10 +55,10 @@ shed_app/
 │   │   └── utils/               # Geometry & utility functions
 │   └── package.json
 │
-├── backend/
-│   ├── main.go                  # Go API server
-│   ├── go.mod / go.sum          # Dependencies
-│   └── shed-server              # Compiled binary
+├── main.go                      # Go API server (module root)
+├── catalog.json                 # prices, shared with the frontend
+├── go.mod / go.sum              # Dependencies
+├── shed-server                  # Compiled binary
 │
 └── README.md (this file)
 ```

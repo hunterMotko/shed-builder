@@ -181,3 +181,54 @@ func TestAcceptsPlacementAtTheEdgesOfItsWall(t *testing.T) {
 		t.Errorf("want normalizedY 0 echoed back, got %v", got)
 	}
 }
+
+// The catalog is one file now, embedded at compile time rather than typed out
+// here as well (issue #8). These expectations come from shed-options.md, the
+// catalog of record — not from the JSON, which would only prove it equals
+// itself.
+func TestEmbeddedCatalogMatchesTheCatalogOfRecord(t *testing.T) {
+	if len(priceTable) != 25 {
+		t.Errorf("want 25 combinations, got %d", len(priceTable))
+	}
+
+	base := map[string]float64{
+		"12x16xStandard": 6089,
+		"12x16xDeluxe":   6389,
+		"10x12xStandard": 4689,
+		"16x36xDeluxe":   13989,
+	}
+	for key, want := range base {
+		if got := priceTable[key]; got != want {
+			t.Errorf("%s: want %v, got %v", key, want, got)
+		}
+	}
+
+	options := map[string]float64{
+		"garage_door_6x7":    450,
+		"garage_door_8x7":    500,
+		"window_vinyl_slide": 275,
+		"skylight_per_ft":    5,
+		"loft_per_sqft":      4,
+	}
+	for key, want := range options {
+		if got := optionPrices[key]; got != want {
+			t.Errorf("option %s: want %v, got %v", key, want, got)
+		}
+	}
+}
+
+// A catalog that failed to load would leave every combination invalid and
+// every Quote at zero, which is a worse failure than refusing to start.
+func TestCatalogIsLoadedBeforeAnyRequestIsServed(t *testing.T) {
+	if len(optionPrices) == 0 {
+		t.Fatal("option prices are empty — the embedded catalog did not load")
+	}
+
+	rec, design := post(t, `{"width":12,"length":16,"tier":"Standard","model":"Gable","price":1}`)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("want 201, got %d: %s", rec.Code, rec.Body.String())
+	}
+	if design.Price != 6089 {
+		t.Errorf("want the catalog price 6089 served from the shared file, got %v", design.Price)
+	}
+}

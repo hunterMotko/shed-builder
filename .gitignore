@@ -1,6 +1,6 @@
-# Backend
-backend/shed-server
-backend/*.exe
+# Backend (module root)
+shed-server
+*.exe
 
 # Frontend
 frontend/node_modules/
@@ -26,4 +26,4 @@ Thumbs.db
 reference/
 
 # Go live-reload build artifacts
-backend/tmp/
+tmp/

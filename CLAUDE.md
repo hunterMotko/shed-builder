@@ -33,12 +33,17 @@ Do not reintroduce `style`, `addOn`, or `skid` — they were renamed deliberatel
 
 ### Backend (Go 1.25.4)
 
+The Go module is rooted at the repo root — `go.mod` and `main.go` live there, not in a
+`backend/` directory. Run these from the root:
+
 ```bash
-cd backend
 go build -o shed-server . && ./shed-server   # serves on :8080
 go test ./...                                # API tests via httptest
 go vet ./... && gofmt -l .
 ```
+
+**New backend packages use the standard Go layout from the root** — `internal/` for code
+nobody outside this module should import, and so on. `main.go` stays where it is.
 
 ### Frontend (Vite 7 + React 19)
 
@@ -141,7 +146,7 @@ this work.
 
 ### Backend API (Go + Gin)
 
-`backend/main.go`. Storage is an in-memory map behind a `sync.RWMutex`, so **every Design is lost
+`main.go`, at the repo root. Storage is an in-memory map behind a `sync.RWMutex`, so **every Design is lost
 on restart**, and `GET /api/designs` returns everything to anyone (issue #12).
 
 | Route | Behaviour |
@@ -172,11 +177,26 @@ Options are priced per item or per unit (per foot, per sheet, per pair, per sqft
 Workbench, pegboard and loft are priced on both sides but are **not yet in the store's
 `options` defaults**, so nothing can enable them from the UI (issue #9).
 
-The catalog currently exists twice — `frontend/src/utils/pricingUtils.js` and `backend/main.go` —
-and the two can drift. They agree today (25 combinations each, checked against
-`shed-options.md`); nothing but diligence keeps them that way. The server recomputes the price on every save and ignores whatever the
-client sent; **the server's number is the Quote** (ADR-0008). Issue #8 moves the catalog behind
-`GET /api/catalog` so there is one copy.
+**The numbers live in exactly one file: `catalog.json` at the repo root.** The frontend imports it and
+the Go server embeds it with `go:embed`, so a price change is a one-line edit to that file and
+neither side can drift from the other (issue #8). They used to be typed out in both places with
+nothing but diligence keeping them in step.
+
+It sits at the root because both sides read it and neither owns it. `go:embed` cannot reach
+outside its own module, which is why this only works with `go.mod` at the root.
+`frontend/vite.config.js` allows `..` in `server.fs` so the dev server will serve it.
+
+There is no catalog endpoint and no fetch. The import resolves at build time, so a price is
+available synchronously and `snapToValidCombo` cannot be asked a question it has no answer for.
+The tradeoff is that a price change still needs both artifacts rebuilt — the frontend bundle
+inlines the JSON and the Go binary embeds it.
+
+The derived helpers (`CATALOG_WIDTHS`, `getAvailableTiers`, `getAvailableLengths`,
+`snapToValidCombo`) stay in `pricingUtils.js`: they are how this app asks questions of the
+catalog, not part of the catalog itself.
+
+The server recomputes the price on every save and ignores whatever the client sent; **the
+server's number is the Quote** (ADR-0008).
 
 ## Geometry
 
@@ -281,7 +301,8 @@ under test is non-React.
 | Trim placement | `utils/trimGeometry.test.js` |
 | Store behaviour | `store/shedStore.test.js` |
 | The save gate | `services/designApi.test.js` |
-| HTTP API | `backend/main_test.go` |
+| The shared catalog file | `utils/catalog.test.js` |
+| HTTP API | `main_test.go` |
 
 Two rules that matter more than coverage:
 
@@ -380,8 +401,9 @@ frontend/src/
   utils/pricingUtils.js           catalog and Option line items
   services/designApi.js           axios client
 
-backend/main.go                   catalog, pricing, routes, in-memory store
-backend/main_test.go              API tests
+catalog.json                      the catalog: 25 base prices and 15 Option prices, shared
+main.go                           pricing, routes, in-memory store (module root)
+main_test.go                      API tests
 ```
 
 ## Agent skills

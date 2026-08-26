@@ -32,8 +32,9 @@ frontend/src/
 │   └── [other utilities]
 └── index.css / App.css
 
-backend/
+(repo root)
 ├── main.go                           # Go backend with API routes
+├── catalog.json                      # prices, shared with the frontend
 ├── go.mod / go.sum                   # Go dependencies
 └── shed-server                       # Compiled binary
 ```
@@ -377,7 +378,7 @@ go build -o shed-server
 ## Build Artifacts
 
 - **Frontend Build:** `/Users/huntermotko/Documents/go/shed_app/frontend/dist/`
-- **Backend Binary:** `/Users/huntermotko/Documents/go/shed_app/backend/shed-server`
+- **Backend Binary:** `shed-server`, built at the repo root
 
 To deploy to production:
 1. Build frontend: `npm run build` → creates `dist/` folder
