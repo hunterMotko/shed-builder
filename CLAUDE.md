@@ -238,6 +238,18 @@ a sticky footer (Save Design / Load / Reset). Tab ids match the CONTEXT.md terms
 
 `components/Canvas3D.jsx` and `components/ShedConfigurator.jsx` are not mounted anywhere.
 
+**Every form control needs a name of its own.** A styled `<label>` next to a `<select>` names
+nothing — bind them with `htmlFor`/`id` (via `useId`), or give the control an `aria-label`. Watch
+`OptionsSection` in particular: its `Checkbox` wraps children in the `<label>` that names the
+checkbox, so a `<select>` nested inside inherits nothing and must name itself (issue #21).
+
+The 3D canvas is the whole output of the product and says nothing to a screen reader, so
+`describeDesign` in `utils/describeDesign.js` renders the Design as one spoken sentence. It is
+both the canvas's `aria-label` and the page's single `aria-live` region — the visual price bar is
+`aria-hidden` because it repeats what the sentence already says, and two live regions means
+hearing it twice. Note R3F puts `role`/`aria-label` on its own wrapper `<div>`, not on the
+`<canvas>`.
+
 ## Testing
 
 Tests live beside their subject as `*.test.js` and run in node — no jsdom, because every seam
@@ -251,6 +263,7 @@ under test is non-React.
 | Cutting openings | `utils/wallOpenings.test.js` |
 | Walls and Placement routing | `utils/wallSides.test.js` |
 | Store behaviour | `store/shedStore.test.js` |
+| The spoken Design summary | `utils/describeDesign.test.js` |
 | HTTP API | `backend/main_test.go` |
 
 Two rules that matter more than coverage:

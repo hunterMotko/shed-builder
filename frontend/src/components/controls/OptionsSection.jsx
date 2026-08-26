@@ -27,6 +27,9 @@ const Checkbox = ({ checked, onChange, label, price, children }) => (
   </label>
 );
 
+// A Checkbox wraps its children in the <label> that names the checkbox, so a
+// <select> nested inside inherits nothing — the label is already spoken for.
+// Each sub-control names itself (issue #21).
 const SUB_SELECT = {
   background: '#1e293b',
   color: '#cbd5e1',
@@ -112,7 +115,7 @@ export const OptionsSection = () => {
           price={options.garageDoor.size === '8x7' ? OPTION_PRICES.garage_door_8x7 : OPTION_PRICES.garage_door_6x7}
         >
           {options.garageDoor.enabled && (
-            <select style={SUB_SELECT} value={options.garageDoor.size} onChange={(e) => set('garageDoor', { size: e.target.value })}>
+            <select aria-label="Roll-up garage door size" style={SUB_SELECT} value={options.garageDoor.size} onChange={(e) => set('garageDoor', { size: e.target.value })}>
               <option value="6x7">6×7 — $450</option>
               <option value="8x7">8×7 — $500</option>
             </select>
@@ -133,7 +136,7 @@ export const OptionsSection = () => {
           price={options.entryDoor.type === 'nine_light' ? OPTION_PRICES.entry_door_nine_light : OPTION_PRICES.entry_door_steel}
         >
           {options.entryDoor.enabled && (
-            <select style={SUB_SELECT} value={options.entryDoor.type} onChange={(e) => set('entryDoor', { type: e.target.value })}>
+            <select aria-label="Entry door type" style={SUB_SELECT} value={options.entryDoor.type} onChange={(e) => set('entryDoor', { type: e.target.value })}>
               <option value="steel">Steel Panel — $375</option>
               <option value="nine_light">Nine-Light — $425</option>
             </select>
@@ -151,12 +154,12 @@ export const OptionsSection = () => {
         >
           {options.vinylWindows.enabled && (
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <select style={SUB_SELECT} value={options.vinylWindows.count} onChange={(e) => set('vinylWindows', { count: parseInt(e.target.value, 10) })}>
+              <select aria-label="Number of vinyl slide windows" style={SUB_SELECT} value={options.vinylWindows.count} onChange={(e) => set('vinylWindows', { count: parseInt(e.target.value, 10) })}>
                 {[1,2,3,4,5,6].map((n) => (
                   <option key={n} value={n}>{n} window{n > 1 ? 's' : ''}</option>
                 ))}
               </select>
-              <select style={SUB_SELECT} value={options.vinylWindows.windowSize} onChange={(e) => set('vinylWindows', { windowSize: e.target.value })}>
+              <select aria-label="Vinyl slide window size" style={SUB_SELECT} value={options.vinylWindows.windowSize} onChange={(e) => set('vinylWindows', { windowSize: e.target.value })}>
                 <option value="2x2">24×24</option>
                 <option value="2x3">24×36</option>
                 <option value="3x3">36×36</option>
@@ -182,6 +185,7 @@ export const OptionsSection = () => {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <input
                 type="range" min="4" max="20" step="2"
+                aria-label="Ridge skylight length in feet"
                 value={options.skylight.runningFt}
                 onChange={(e) => set('skylight', { runningFt: parseInt(e.target.value, 10) })}
                 style={{ flex: 1, accentColor: '#3b82f6' }}
@@ -210,7 +214,7 @@ export const OptionsSection = () => {
           price={OPTION_PRICES.shutters_per_pair * (options.shutters.pairs || 1)}
         >
           {options.shutters.enabled && (
-            <select style={SUB_SELECT} value={options.shutters.pairs} onChange={(e) => set('shutters', { pairs: parseInt(e.target.value, 10) })}>
+            <select aria-label="Number of shutter pairs" style={SUB_SELECT} value={options.shutters.pairs} onChange={(e) => set('shutters', { pairs: parseInt(e.target.value, 10) })}>
               {[1,2,3,4].map((n) => (
                 <option key={n} value={n}>{n} pair{n > 1 ? 's' : ''} — ${(OPTION_PRICES.shutters_per_pair * n).toLocaleString()}</option>
               ))}

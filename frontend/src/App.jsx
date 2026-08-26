@@ -9,6 +9,7 @@ import { ReferenceMatch } from './pages/ReferenceMatch';
 import { useShedStore } from './store/shedStore';
 import { lookupBasePrice, getOptionLineItems, CATALOG_PEAK_HEIGHT } from './utils/pricingUtils';
 import { wallHeightFt, peakHeightFt, FOUNDATION_HEIGHT } from './utils/modelSpec';
+import { describeDesign } from './utils/describeDesign';
 import './App.css';
 
 const NAV_H  = 48;
@@ -30,7 +31,7 @@ export default function App() {
   const [drawerOpen, setDrawerOpen] = useState(true);
 
   const { width, length, tier, model, color, roofColor, options,
-          roofLowerPitch, roofUpperPitch } = useShedStore();
+          roofLowerPitch, roofUpperPitch, sidingTexture, roofMaterial } = useShedStore();
 
   // The wall is a fixed stud length per Model; the roof sits on top of it, so
   // the peak follows from the Model and the width (issue #29).
@@ -42,6 +43,11 @@ export default function App() {
   const base      = lookupBasePrice(width, length, tier) ?? 0;
   const optionTotal = getOptionLineItems(options).reduce((s, i) => s + i.amount, 0);
   const total     = base + optionTotal;
+
+  const designSummary = describeDesign({
+    model, width, length, tier, peakHeightFt: peak,
+    sidingTexture, roofMaterial, priceUsd: total, options,
+  });
 
   return (
     <div style={{ width: '100%', height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -118,8 +124,31 @@ export default function App() {
               </svg>
             </button>
 
+            {/*
+              The canvas is the whole output of the product and says nothing to
+              a screen reader — there is no keyboard path into the scene either.
+              The sentence below is the only non-visual route to the Design, and
+              it doubles as the canvas's own name so the two cannot disagree
+              (issue #21).
+            */}
+            <p
+              aria-live="polite"
+              style={{
+                position: 'absolute', width: 1, height: 1, overflow: 'hidden',
+                clip: 'rect(0 0 0 0)', clipPath: 'inset(50%)', whiteSpace: 'nowrap',
+                margin: -1, padding: 0, border: 0,
+              }}
+            >
+              {designSummary}
+            </p>
+
             {/* 3D Canvas */}
-            <Canvas camera={{ position: [25, 20, 25], fov: 50 }} style={{ width: '100%', height: '100%' }}>
+            <Canvas
+              role="img"
+              aria-label={designSummary}
+              camera={{ position: [25, 20, 25], fov: 50 }}
+              style={{ width: '100%', height: '100%' }}
+            >
               <ambientLight intensity={0.6} />
               <pointLight position={[15, 20, 10]} intensity={1} />
               <pointLight position={[-15, 20, -10]} intensity={0.5} />
@@ -133,9 +162,14 @@ export default function App() {
               <OrbitControls />
             </Canvas>
 
+            {/*
+              Hidden from the accessibility tree: it repeats the size, Tier,
+              peak and price that the live summary above already speaks, and
+              two live regions means hearing all of it twice on every change.
+            */}
             {/* Price overlay bar */}
             <div
-              aria-live="polite"
+              aria-hidden="true"
               style={{
                 position: 'absolute', bottom: 20, left: '50%',
                 transform: 'translateX(-50%)',
