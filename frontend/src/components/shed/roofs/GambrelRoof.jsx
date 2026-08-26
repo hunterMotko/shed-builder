@@ -1,7 +1,12 @@
 import { useMemo, useEffect } from 'react';
 import * as THREE from 'three';
 import { makeSidingShader, makeRoofShader } from '../../../utils/shaders';
-import { roofMaterialSlots } from '../../../utils/roofGeometry';
+import {
+  roofMaterialSlots,
+  gambrelKnuckleRatio,
+  GAMBREL_LOWER_PITCH,
+  GAMBREL_UPPER_PITCH,
+} from '../../../utils/roofGeometry';
 import { Skylight } from '../extras/Skylight';
 
 /**
@@ -22,14 +27,12 @@ import { Skylight } from '../extras/Skylight';
  * not (ADR-0010). The two are disjoint in Y and meet at the eave line.
  */
 
-const KNUCKLE_X_RATIO = 0.82;
-
 export const GambrelRoof = ({
   shedWidth,
   shedLength,
   wallHeight,
-  roofLowerPitch = 5,
-  roofUpperPitch = 10,
+  roofLowerPitch = GAMBREL_LOWER_PITCH,
+  roofUpperPitch = GAMBREL_UPPER_PITCH,
   roofColor,
   roofMaterial,
   color,         // siding color for gable end-caps
@@ -41,7 +44,9 @@ export const GambrelRoof = ({
 }) => {
   const halfWidth = shedWidth / 2;
 
-  const knuckleX = halfWidth * KNUCKLE_X_RATIO;
+  // The Knuckle follows from the two pitches — each slope carries half the
+  // rise — rather than from a hand-set ratio (see gambrelKnuckleRatio).
+  const knuckleX = halfWidth * gambrelKnuckleRatio(roofLowerPitch, roofUpperPitch);
   // Rise is calculated from the full eave-to-knuckle run (including overhang)
   // so the visual slope angle matches the specified pitch ratio.
   const knuckleY = (halfWidth + overhangEave - knuckleX) * (roofLowerPitch / 12);

@@ -11,6 +11,8 @@ import {
 	createLowerRoofShape,
 	createUpperRoofShape,
 	roofMaterialSlots,
+	gableRoofRise,
+	gambrelKnuckleRatio,
 } from './roofGeometry';
 
 // Expected values here come from trigonometry, not from the implementation:
@@ -108,5 +110,78 @@ describe('roofMaterialSlots', () => {
 		const biggest = geometry.groups.reduce((a, b) => (b.count > a.count ? b : a));
 
 		expect(slots[biggest.materialIndex]).toBe('slope');
+	});
+});
+
+describe('gableRoofRise', () => {
+	// Expectations are the definition of pitch, not the code's formula: a 6:12
+	// roof rises 6 inches per 12 inches of run, so over a half-span of 6 ft it
+	// rises 3 ft.
+	it('rises half the run on a 6:12 roof', () => {
+		expect(gableRoofRise(12)).toBeCloseTo(3, 10);
+		expect(gableRoofRise(16)).toBeCloseTo(4, 10);
+	});
+
+	// The bug it replaces (issue #29): a flat 4ft rise meant the pitch drifted
+	// with the width. Holding the pitch is the whole point.
+	it('holds one pitch across every width the catalog sells', () => {
+		for (const width of [10, 12, 14, 16]) {
+			const angle = Math.atan2(gableRoofRise(width), width / 2);
+
+			// atan(6/12) = 26.565 degrees, from trigonometry.
+			expect((angle * 180) / Math.PI).toBeCloseTo(26.565, 3);
+		}
+	});
+
+	it('is a quarter of the span, which is what a "25% pitch" means', () => {
+		// Traditional pitch is rise over span, so a 6:12 slope is 1/4 pitch.
+		expect(gableRoofRise(16) / 16).toBeCloseTo(0.25, 10);
+	});
+});
+
+describe('gambrelKnuckleRatio', () => {
+	// Expectations come from the geometry the rule states, worked out by hand,
+	// not from re-running L / (L + U).
+	it('splits the rise evenly between the two slopes', () => {
+		const halfSpan = 6;
+		const r = gambrelKnuckleRatio(12, 4);
+
+		// Upper slope: runs r x 6 ft at 4:12. Lower: the rest at 12:12.
+		const upperRise = r * halfSpan * (4 / 12);
+		const lowerRise = (1 - r) * halfSpan * (12 / 12);
+
+		expect(upperRise).toBeCloseTo(lowerRise, 10);
+	});
+
+	it('puts the Knuckle three quarters out for the 12:12 / 4:12 spec', () => {
+		expect(gambrelKnuckleRatio(12, 4)).toBeCloseTo(0.75, 10);
+	});
+
+	// The Gable's 6:12 is quoted as a 25% pitch — rise over span. The barn spec
+	// works out to the same overall proportion, so the two Models read alike.
+	it('rises a quarter of its span, matching the Gable', () => {
+		const span = 12;
+		const halfSpan = span / 2;
+		const r = gambrelKnuckleRatio(12, 4);
+		const rise = r * halfSpan * (4 / 12) + (1 - r) * halfSpan * (12 / 12);
+
+		expect(rise / span).toBeCloseTo(0.25, 10);
+	});
+
+	// A gambrel bends. If the Knuckle reached the eave or the ridge there would
+	// be one slope, and the shape would be a gable.
+	it('keeps the Knuckle strictly between the ridge and the eave', () => {
+		for (const [lower, upper] of [[12, 4], [24, 6], [16, 5], [8, 4]]) {
+			const r = gambrelKnuckleRatio(lower, upper);
+
+			expect(r).toBeGreaterThan(0);
+			expect(r).toBeLessThan(1);
+		}
+	});
+
+	it('moves the Knuckle out as the lower slope steepens', () => {
+		// A steeper side needs less run to gain its half of the rise, so the
+		// Knuckle sits further from the ridge.
+		expect(gambrelKnuckleRatio(24, 4)).toBeGreaterThan(gambrelKnuckleRatio(12, 4));
 	});
 });

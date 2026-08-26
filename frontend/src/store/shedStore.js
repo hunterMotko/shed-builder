@@ -29,8 +29,10 @@ export const useShedStore = create((set) => ({
 	sidingTexture: 'T1-11', // 'T1-11', 'smooth'
 	roofMaterial: 'metal', // 'metal', 'shingle'
 	// Gambrel Roof Configuration (when model === 'Barn')
-	roofLowerPitch: 24, // 24:12 pitch (~63° — classic steep barn eave slope)
-	roofUpperPitch: 6,  // 6:12 pitch (~26.6° — gentle barn ridge slope)
+	// The Barn's gambrel, to the build spec: the sides are a 12 pitch and the
+	// top is a 4 pitch. The Knuckle is not stored — it follows from these two.
+	roofLowerPitch: 12, // 12:12 (45°) — the steep side slope
+	roofUpperPitch: 4,  // 4:12 (~18.4°) — the shallow slope at the ridge
 	// Foundation Configuration
 	foundationHeight: 1.5, // feet
 	foundationColor: '#8B7355', // brown/tan concrete/timber appearance
@@ -139,8 +141,8 @@ export const useShedStore = create((set) => ({
 		trimAutoMode: 'matchRoof',
 		sidingTexture: 'T1-11',
 		roofMaterial: 'metal',
-		roofLowerPitch: 24,
-		roofUpperPitch: 6,
+		roofLowerPitch: 12,
+		roofUpperPitch: 4,
 		foundationHeight: 1.5,
 		foundationColor: '#8B7355',
 		porch: { enabled: false, wall: 'front', depth: 6 },

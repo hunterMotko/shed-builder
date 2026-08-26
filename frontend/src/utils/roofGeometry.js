@@ -277,6 +277,70 @@ export const STANDARD_FOUNDATION = {
 };
 
 /**
+ * The Barn's gambrel pitches, as X:12.
+ *
+ * Build spec: "the sides are a 12 pitch and the top is a 4 pitch". The lower
+ * slope is the steep one — a lower slope shallower than the upper is not a
+ * gambrel. The store shipped 24:12 and 6:12, which made every Barn roof far
+ * taller than any building in `reference/` (issue #29).
+ */
+export const GAMBREL_LOWER_PITCH = 12;
+export const GAMBREL_UPPER_PITCH = 4;
+
+/**
+ * Where the Knuckle sits, as a fraction of the half-span measured out from the
+ * ridge. 0 puts it at the ridge, 1 at the eave.
+ *
+ * Derived from the two pitches rather than set by hand: the Knuckle is placed
+ * so each slope carries half the roof's rise, which is what makes a gambrel
+ * read as a gambrel instead of a kinked gable. Solving
+ * `r·U = (1 - r)·L` gives `r = L / (L + U)`.
+ *
+ * For the 12:12 / 4:12 spec that is 0.75, and the roof then rises a quarter of
+ * its span — the same "25%" the Gable's 6:12 is quoted as, so the two Models
+ * carry the same overall proportion.
+ *
+ * The hand-set 0.82 it replaces has no recorded source. It happens to be close
+ * to what this rule gives for the old 24:12 / 6:12 pair (0.8), which suggests
+ * the ratio was never the problem — the pitches were.
+ *
+ * @param {number} lowerPitch - steep slope, as X:12
+ * @param {number} upperPitch - shallow slope, as X:12
+ * @returns {number} fraction of the half-span from ridge to Knuckle
+ */
+export function gambrelKnuckleRatio(
+	lowerPitch = GAMBREL_LOWER_PITCH,
+	upperPitch = GAMBREL_UPPER_PITCH
+) {
+	return lowerPitch / (lowerPitch + upperPitch);
+}
+
+/**
+ * The Gable's roof pitch, as X:12.
+ *
+ * A build spec, not a customer choice — the rafters are cut to one angle and
+ * the rise follows the span. Quoted by the business as "25% or a 6 pitch":
+ * traditional pitch is rise over *span*, so a 6:12 slope is 6/24 = 1/4 of the
+ * span, and the two names are the same roof.
+ *
+ * The renderer used a flat `ROOF_HEIGHT = 4`, which gave a 10ft-wide shed a
+ * 9.6:12 roof and a 16ft-wide shed a 6:12 one — the pitch drifted with the
+ * width instead of the rise following it (issue #29).
+ */
+export const GABLE_PITCH = 6;
+
+/**
+ * How far a Gable's ridge stands above its eave, in feet.
+ *
+ * @param {number} shedWidth - the span, in feet
+ * @param {number} pitchX - pitch as X:12; defaults to the Gable's build spec
+ * @returns {number} rise from the top of the wall to the ridge
+ */
+export function gableRoofRise(shedWidth, pitchX = GABLE_PITCH) {
+	return calculateRise(shedWidth / 2, pitchX);
+}
+
+/**
  * The material slots an extruded roof addresses, in order.
  *
  * `ExtrudeGeometry` emits exactly two groups: one covering *both* end-caps and
