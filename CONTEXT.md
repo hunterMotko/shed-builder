@@ -44,27 +44,35 @@ Models is the whole product._
 The build grade — **Standard** or **Deluxe**. A grade, not a size: a Deluxe is framed with
 2x6 rafters and 12in floor joists where a Standard uses 2x4 and 16in, and it carries a
 roll-up garage door and a 36in entry door where a Standard carries double swing barn
-doors. Tier and Model with width and length select a catalog price.
-_Avoid_: Special (no such grade — every 12ft build in the catalog is a Deluxe)
+doors. Both stand the same height, so **Tier is what selects a price** alongside width and
+length — a `12x16` costs $6,089 as a Standard and $6,389 as a Deluxe. Widths above 12ft
+are Deluxe only.
+_Avoid_: Special (no such grade), and reading a height as a grade — the catalog's third
+number is the same 11 on both
 
 **Deluxe Barn**:
-The Deluxe-grade Barn: the same gambrel roof on taller side walls, with standing headroom
-along the eaves. `db` in the reference photo filenames.
+The Deluxe-grade Barn. `db` in the reference photo filenames. Not a taller building — a
+Barn's wall is the same 85in at either grade — but a heavier one: 2x6 rafters, 12in floor
+joists, a roll-up door and a 36in entry door.
 
 **Wall Height**:
-Floor to eave, set by the Model's stud length and the same on every size that Model is
-sold in. It is an input to the geometry, not a customer choice — nothing in the catalog
-sells a taller wall on the same Model.
+Floor to eave, set by the Model's stud length plus its plates, and the same on every size
+that Model is sold in: **85in for a Barn** (80.5in studs) and **88.5in for a Gable** (84in
+studs). An input to the geometry, not a customer choice — nothing in the catalog sells a
+taller wall on the same Model. Lives in `utils/modelSpec.js`, not in the store.
 _Avoid_: height (ambiguous — say Wall Height or Peak Height)
 
 **Peak Height**:
-Ground to ridge, including the Runners. The third number in a catalog size: `10x16x11`
-is 10ft wide, 16ft long, **11ft to the peak**. It is an *outcome* — Wall Height plus the
-roof's rise — so a wider shed of the same Model peaks higher. Measured off the square-on
-reference photos, a 12ft Gable runs ~7.7ft walls and ~11ft to the ridge, and an 8ft Barn
-~7.2ft walls and ~10ft to the ridge.
-_Avoid_: wall height (a different measurement, and the one the store used to confuse this
-with)
+Ground to ridge, including the Runners. An *outcome* — Wall Height plus the roof's rise —
+so a wider shed of the same Model peaks higher: a 12ft Gable comes to 10.8ft and a 16ft
+one to 11.8ft. Derived and display-only; nothing is built from it.
+
+The third number in every catalog size is **a nominal 11**. It is a rounded label on the
+SKU, not a measurement and not a grade — the real height is within about ten inches of it
+either way. The 10ft sizes the price list used to carry were an older design and are no
+longer built.
+_Avoid_: wall height (a different measurement, and the one the app used to confuse this
+with); treating the 11 as geometry
 
 ### What a customer builds
 
