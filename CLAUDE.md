@@ -172,11 +172,26 @@ Options are priced per item or per unit (per foot, per sheet, per pair, per sqft
 Workbench, pegboard and loft are priced on both sides but are **not yet in the store's
 `options` defaults**, so nothing can enable them from the UI (issue #9).
 
-The catalog currently exists twice — `frontend/src/utils/pricingUtils.js` and `backend/main.go` —
-and the two can drift. They agree today (25 combinations each, checked against
-`shed-options.md`); nothing but diligence keeps them that way. The server recomputes the price on every save and ignores whatever the
-client sent; **the server's number is the Quote** (ADR-0008). Issue #8 moves the catalog behind
-`GET /api/catalog` so there is one copy.
+**The numbers live in exactly one file: `backend/catalog.json`.** The frontend imports it and
+the Go server embeds it with `go:embed`, so a price change is a one-line edit to that file and
+neither side can drift from the other (issue #8). They used to be typed out in both places with
+nothing but diligence keeping them in step.
+
+It sits under `backend/` because `go:embed` cannot reach outside its own module and `go.mod` is
+there — not because it belongs to the server. `frontend/vite.config.js` allows `..` in
+`server.fs` so the dev server will serve it.
+
+There is no catalog endpoint and no fetch. The import resolves at build time, so a price is
+available synchronously and `snapToValidCombo` cannot be asked a question it has no answer for.
+The tradeoff is that a price change still needs both artifacts rebuilt — the frontend bundle
+inlines the JSON and the Go binary embeds it.
+
+The derived helpers (`CATALOG_WIDTHS`, `getAvailableTiers`, `getAvailableLengths`,
+`snapToValidCombo`) stay in `pricingUtils.js`: they are how this app asks questions of the
+catalog, not part of the catalog itself.
+
+The server recomputes the price on every save and ignores whatever the client sent; **the
+server's number is the Quote** (ADR-0008).
 
 ## Geometry
 
@@ -281,6 +296,7 @@ under test is non-React.
 | Trim placement | `utils/trimGeometry.test.js` |
 | Store behaviour | `store/shedStore.test.js` |
 | The save gate | `services/designApi.test.js` |
+| The shared catalog file | `utils/catalog.test.js` |
 | HTTP API | `backend/main_test.go` |
 
 Two rules that matter more than coverage:
@@ -380,7 +396,8 @@ frontend/src/
   utils/pricingUtils.js           catalog and Option line items
   services/designApi.js           axios client
 
-backend/main.go                   catalog, pricing, routes, in-memory store
+backend/catalog.json              the catalog: 25 base prices and 15 Option prices, shared
+backend/main.go                   pricing, routes, in-memory store
 backend/main_test.go              API tests
 ```
 

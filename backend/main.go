@@ -1,6 +1,8 @@
 package main
 
 import (
+	_ "embed"
+	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -9,44 +11,43 @@ import (
 	"time"
 )
 
+// catalog.json is the one machine-readable copy of shed-options.md. The
+// frontend imports the same file; this embeds it at compile time, so the two
+// cannot drift and a catalog change needs no code edit on either side
+// (issue #8).
+//
+// Embedded rather than read at runtime: the binary then carries its own
+// prices and cannot be started next to a missing or stale file.
+//
+//go:embed catalog.json
+var catalogJSON []byte
+
 // priceTable maps "WxLxTier" to base price in dollars.
 //
 // Keyed on the Tier rather than the height: every catalog size is 11ft to the
 // peak now, so the height tells the two grades apart no longer and all seven
-// Standard sizes would collide with their Deluxe twin. Must stay in step with
-// frontend/src/utils/pricingUtils.js until issue #8 gives it one home.
-var priceTable = map[string]float64{
-	// Standard barns
-	"10x12xStandard": 4689, "10x16xStandard": 5189, "10x20xStandard": 5689,
-	"12x12xStandard": 5589, "12x16xStandard": 6089,
-	"12x20xStandard": 6589, "12x24xStandard": 7089,
-	// Deluxe barns & gables
-	"10x12xDeluxe": 5789, "10x16xDeluxe": 6389, "10x20xDeluxe": 6989,
-	"12x12xDeluxe": 5989, "12x16xDeluxe": 6389, "12x20xDeluxe": 7189,
-	"12x24xDeluxe": 7789, "12x26xDeluxe": 8389, "12x32xDeluxe": 8989,
-	"14x20xDeluxe": 11189, "14x24xDeluxe": 11789, "14x28xDeluxe": 12389,
-	"14x32xDeluxe": 12989, "14x36xDeluxe": 13589,
-	"16x24xDeluxe": 12189, "16x28xDeluxe": 12789,
-	"16x32xDeluxe": 13389, "16x36xDeluxe": 13989,
-}
+// Standard sizes would collide with their Deluxe twin.
+var priceTable map[string]float64
 
 // optionPrices maps add-on keys to dollar amounts.
-var optionPrices = map[string]float64{
-	"garage_door_6x7":        450,
-	"garage_door_8x7":        500,
-	"garage_door_additional": 600,
-	"entry_door_steel":       375,
-	"entry_door_nine_light":  425,
-	"window_vinyl_slide":     275, // per window
-	"window_octagon":         85,
-	"skylight_per_ft":        5,
-	"shutters_per_pair":      70,
-	"ramp_small":             275,
-	"ramp_large":             325,
-	"vent_octagon":           85,
-	"workbench_per_ft":       35,
-	"pegboard_per_sheet":     70,
-	"loft_per_sqft":          4,
+var optionPrices map[string]float64
+
+func init() {
+	var catalog struct {
+		BasePrices   map[string]float64 `json:"basePrices"`
+		OptionPrices map[string]float64 `json:"optionPrices"`
+	}
+	if err := json.Unmarshal(catalogJSON, &catalog); err != nil {
+		// Unreachable short of shipping a malformed catalog, and refusing to
+		// start is the right answer if we ever do: the alternative is a server
+		// that quotes every shed at zero and rejects every size as unsold.
+		panic(fmt.Sprintf("catalog.json is not valid JSON: %v", err))
+	}
+	if len(catalog.BasePrices) == 0 || len(catalog.OptionPrices) == 0 {
+		panic("catalog.json carries no prices")
+	}
+	priceTable = catalog.BasePrices
+	optionPrices = catalog.OptionPrices
 }
 
 // lookupBasePrice returns the catalog price for the given dimensions.

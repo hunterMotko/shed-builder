@@ -4,7 +4,22 @@
  * Authoritative price data from shed-options.md.
  * Base prices are fixed per width×length×Tier combination.
  * Add-on prices are fixed per item/unit.
+ *
+ * The numbers themselves live in `backend/catalog.json` — one file, imported
+ * here and embedded into the Go server at compile time. They used to be typed
+ * out in both places, and nothing but diligence kept the two in step (issue
+ * #8). There is no fetch: the import is resolved at build time, so a price is
+ * available synchronously and `snapToValidCombo` still cannot be asked a
+ * question it has no answer for.
+ *
+ * The file sits under `backend/` because `go:embed` cannot reach outside its
+ * own module, and `go.mod` is there.
+ *
+ * The derived helpers below stay here — they are how this app asks questions
+ * of the catalog, not part of the catalog itself.
  */
+
+import catalog from '../../../backend/catalog.json';
 
 // ─── Base price lookup table ─────────────────────────────────────────────────
 // Key format: `${width}x${length}x${tier}`
@@ -21,55 +36,16 @@ export const TIERS = ['Standard', 'Deluxe'];
 /** Every size in the catalog is 11ft to the peak. Nominal — see CONTEXT.md. */
 export const CATALOG_PEAK_HEIGHT = 11;
 
-export const PRICE_TABLE = {
-  // Standard barns
-  '10x12xStandard': 4689,
-  '10x16xStandard': 5189,
-  '10x20xStandard': 5689,
-  '12x12xStandard': 5589,
-  '12x16xStandard': 6089,
-  '12x20xStandard': 6589,
-  '12x24xStandard': 7089,
-  // Deluxe barns & gables
-  '10x12xDeluxe': 5789,
-  '10x16xDeluxe': 6389,
-  '10x20xDeluxe': 6989,
-  '12x12xDeluxe': 5989,
-  '12x16xDeluxe': 6389,
-  '12x20xDeluxe': 7189,
-  '12x24xDeluxe': 7789,
-  '12x26xDeluxe': 8389,
-  '12x32xDeluxe': 8989,
-  '14x20xDeluxe': 11189,
-  '14x24xDeluxe': 11789,
-  '14x28xDeluxe': 12389,
-  '14x32xDeluxe': 12989,
-  '14x36xDeluxe': 13589,
-  '16x24xDeluxe': 12189,
-  '16x28xDeluxe': 12789,
-  '16x32xDeluxe': 13389,
-  '16x36xDeluxe': 13989,
-};
+/**
+ * Base price by `${width}x${length}x${tier}`. 25 combinations, not a formula:
+ * there is no square-foot rate and no Model surcharge.
+ */
+export const PRICE_TABLE = catalog.basePrices;
 
 // ─── Add-on price constants ──────────────────────────────────────────────────
 
-export const OPTION_PRICES = {
-  garage_door_6x7:          450,
-  garage_door_8x7:          500,   // $450 base + 2ft × $25/ft
-  garage_door_additional:   600,
-  entry_door_steel:         375,
-  entry_door_nine_light:    425,
-  window_vinyl_slide:       275,   // per window
-  window_octagon:            85,
-  skylight_per_ft:            5,   // per running foot
-  shutters_per_pair:         70,
-  ramp_small:               275,   // 6–8ft × 4ft
-  ramp_large:               325,   // 8–10ft × 4ft
-  vent_octagon:              85,
-  workbench_per_ft:          35,   // per running foot
-  pegboard_per_sheet:        70,   // 4x8 white sheet
-  loft_per_sqft:              4,   // loft / shelving
-};
+/** Option prices, per item or per unit (per foot, sheet, pair, sqft). */
+export const OPTION_PRICES = catalog.optionPrices;
 
 // ─── Derived helpers ─────────────────────────────────────────────────────────
 
