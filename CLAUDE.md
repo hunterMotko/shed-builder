@@ -174,10 +174,12 @@ rise, which silently changes the pitch with the width.
 `atan(roofHeight / halfWidth)`; rake length is the hypotenuse.
 
 **Barn (gambrel)**: two extrusions meeting at the **Knuckle**. The lower slope is the steep one.
-Build spec is **12:12 lower and 4:12 upper**. A lower pitch shallower than the upper one is not
+Build spec is **20:12 lower and 4:12 upper** — the lower measured off the reference photos
+at ~59.7°, not the 12:12 it was first quoted as. A lower pitch shallower than the upper one is not
 a barn. The Knuckle is not stored — `gambrelKnuckleRatio` derives it from the two pitches by
-placing it so each slope carries half the rise, which is 0.75 for this spec. Both Models then
-rise a quarter of their span, which is the "25%" the business quotes.
+placing it so each slope carries half the rise, which is 5/6 for this spec. Steepening the
+sides therefore also shortens them and lengthens the top — reach for the side pitch, never
+the Knuckle.
 
 Useful functions: `pitchToRadians`, `calculateRise`, `calculateKnucklePoint`,
 `calculateGambrelProfile`, `createLowerRoofShape`, `createUpperRoofShape`, `getRakeTrimAngles`,
