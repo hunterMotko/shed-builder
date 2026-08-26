@@ -137,12 +137,19 @@ on restart**, and `GET /api/designs` returns everything to anyone (issue #12).
 
 | Route | Behaviour |
 |---|---|
-| `POST /api/save-design` | Validates the combination and the Model, computes the Quote, returns 201 with a UUID |
+| `POST /api/save-design` | Validates the combination, the Model and every Placement, computes the Quote, returns 201 with a UUID |
 | `GET /api/design/:id` | One Design, or 404 |
 | `GET /api/designs` | Every stored Design |
 
 `newRouter()` builds the router so tests can drive it with `httptest`; `main()` only serves it.
 CORS is wide open (`*`).
+
+A Design is stored exactly as it arrives and handed straight back to the renderer on load, so
+`validatePlacements` refuses any Placement that could not be drawn. **`Placement`'s coordinate
+fields are `*float64` on purpose**: a non-finite number serializes as `null`, and Go decodes
+`null` into a plain `float64` as `0` without complaint — the Opening would be accepted and
+quietly moved to the corner of its wall rather than refused (issue #19). It mirrors
+`validateDesignConfig` in `services/designApi.js`; neither may be the weaker of the two.
 
 ## Pricing and the Quote
 
@@ -251,6 +258,7 @@ under test is non-React.
 | Cutting openings | `utils/wallOpenings.test.js` |
 | Walls and Placement routing | `utils/wallSides.test.js` |
 | Store behaviour | `store/shedStore.test.js` |
+| The save gate | `services/designApi.test.js` |
 | HTTP API | `backend/main_test.go` |
 
 Two rules that matter more than coverage:

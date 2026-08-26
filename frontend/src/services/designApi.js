@@ -6,6 +6,8 @@
  */
 
 import axios from 'axios';
+import { isValidCombo, TIERS } from '../utils/pricingUtils';
+import { WALL_SIDES } from '../utils/wallSides';
 
 // API Configuration
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
@@ -78,17 +80,39 @@ export const listDesigns = async () => {
 };
 
 /**
- * Helper function to validate design configuration before saving
+ * The gate `useDesignPersistence.save()` runs before POSTing a Design.
+ *
+ * This is the only validation a Placement gets. The server checks the
+ * combination and the Model and then stores whatever `placements` array it
+ * was handed, so this check must not be the weaker of the two (issue #19).
+ *
+ * The hazard is a non-finite coordinate. `JSON.stringify(NaN)` is `"null"`,
+ * so such a Placement saves clean and comes back on load as an Opening whose
+ * cut box is at `null` — a wall that silently fails to cut its hole, or that
+ * throws inside the evaluator and logs to a console nobody is reading.
+ *
+ * What this deliberately does not check:
+ * - **whether an Opening fits its wall.** `validatePlacement` in
+ *   `utils/placementValidator.js` owns that, and it is a different question:
+ *   this asks whether the data is well-formed, that asks whether the shed is
+ *   buildable. Duplicating it here would give two answers to one question.
+ * - **`price`.** The server recomputes it and ignores whatever the client
+ *   sent (ADR-0008), so there is nothing here worth guarding.
+ *
+ * Every problem is reported, not just the first: a customer fixing one field
+ * at a time because the gate only ever names one is worse than a long list.
+ *
  * @param {Object} config - Design configuration to validate
- * @returns {Object} Validation result {isValid: boolean, errors: string[]}
+ * @returns {{isValid: boolean, errors: string[]}}
  */
 export const validateDesignConfig = (config) => {
 	const errors = [];
-	// Style validation
+
 	if (!['Barn', 'Gable'].includes(config.model)) {
-		errors.push('Style must be either "Barn" or "Gable"');
+		errors.push('Model must be either "Barn" or "Gable"');
 	}
-	// Color validation (basic hex format)
+
+	// Colours are optional; an invalid one is not.
 	const hexColorRegex = /^#[0-9A-Fa-f]{6}$/;
 	if (config.color && !hexColorRegex.test(config.color)) {
 		errors.push('Invalid shed color format');
@@ -99,6 +123,44 @@ export const validateDesignConfig = (config) => {
 	if (config.trimColor && !hexColorRegex.test(config.trimColor)) {
 		errors.push('Invalid trim color format');
 	}
+
+	// The catalog is a fixed list of combinations, not a formula, so a size
+	// outside it has no price to quote — check it before asking about it.
+	if (!Number.isFinite(config.width) || !Number.isFinite(config.length)) {
+		errors.push('Width and length must both be numbers');
+	} else if (!TIERS.includes(config.tier)) {
+		errors.push(`Tier must be one of ${TIERS.join(' or ')}`);
+	} else if (!isValidCombo(config.width, config.length, config.tier)) {
+		errors.push(
+			`The catalog does not sell ${config.width}x${config.length} as ${config.tier}`
+		);
+	}
+
+	if (config.placements !== undefined && !Array.isArray(config.placements)) {
+		errors.push('Placements must be an array');
+	} else if (Array.isArray(config.placements)) {
+		config.placements.forEach((placement, i) => {
+			const where = placement?.id ?? `index ${i}`;
+			for (const axis of ['normalizedX', 'normalizedY']) {
+				const value = placement?.[axis];
+				if (!Number.isFinite(value)) {
+					errors.push(`Placement ${where} has a non-finite ${axis}`);
+				} else if (value < 0 || value > 1) {
+					errors.push(`Placement ${where} has ${axis} outside its wall`);
+				}
+			}
+			for (const dimension of ['width', 'height']) {
+				const value = placement?.[dimension];
+				if (!Number.isFinite(value) || value <= 0) {
+					errors.push(`Placement ${where} has an invalid ${dimension}`);
+				}
+			}
+			if (!WALL_SIDES.includes(placement?.wall)) {
+				errors.push(`Placement ${where} names a wall the shed does not have`);
+			}
+		});
+	}
+
 	return {
 		isValid: errors.length === 0,
 		errors,
