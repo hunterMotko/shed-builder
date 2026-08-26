@@ -1,7 +1,13 @@
+import { cornerBoards, TRIM_WIDTH } from '../../../utils/trimGeometry';
+
 /**
- * GableTrim — style-specific trim for gable sheds.
+ * GableTrim — the trim set that comes with the Gable Model.
  * Renders: 4 corner boards + 2 eave fascia boards + 4 rake boards.
  * Only imported by GableShed — never shared with BarnShed.
+ *
+ * Corner positions come from `cornerBoards`, shared with BarnTrim — a corner
+ * board is the same board on both Models. What differs is everything else
+ * here, which is the Model's trim set and stays per-Model on purpose.
  */
 export const GableTrim = ({
   shedWidth,
@@ -9,7 +15,7 @@ export const GableTrim = ({
   wallHeight,
   roofHeight = 4,
   trimColor,
-  trimWidth = 0.333,
+  trimWidth = TRIM_WIDTH,
   overhangEave = 0.5,
 }) => {
   const halfW = shedWidth / 2;
@@ -21,13 +27,7 @@ export const GableTrim = ({
 
   const TRIM_MAT = { color: trimColor, roughness: 0.45, metalness: 0.1 };
 
-  // Corner board X/Z positions (4 corners)
-  const corners = [
-    [-(halfW - tw / 2),  halfL - tw / 2],
-    [+(halfW - tw / 2),  halfL - tw / 2],
-    [-(halfW - tw / 2), -(halfL - tw / 2)],
-    [+(halfW - tw / 2), -(halfL - tw / 2)],
-  ];
+  const corners = cornerBoards(shedWidth, shedLength, wallHeight, { trimWidth });
 
   // Rake board configs: [centerX, centerZ, rotZ]
   const rakes = [
@@ -40,9 +40,9 @@ export const GableTrim = ({
   return (
     <group name="gableTrim">
       {/* Corner boards */}
-      {corners.map(([cx, cz], i) => (
-        <mesh key={`corner-${i}`} position={[cx, wallHeight / 2, cz]} castShadow receiveShadow>
-          <boxGeometry args={[tw, wallHeight, tw]} />
+      {corners.map(({ corner, face, position, size }) => (
+        <mesh key={`corner-${corner}-${face}`} position={position} castShadow receiveShadow>
+          <boxGeometry args={size} />
           <meshStandardMaterial {...TRIM_MAT} />
         </mesh>
       ))}

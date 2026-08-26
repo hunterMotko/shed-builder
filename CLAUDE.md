@@ -60,7 +60,8 @@ outside React use `useShedStore.getState()`. Never mutate state directly — eve
 through an action.
 
 Defaults: `width: 12`, `length: 16`, `tier: 'Standard'`, `model: 'Gable'`,
-`sidingTexture: 'T1-11'`, `roofMaterial: 'metal'`, `roofLowerPitch: 12`, `roofUpperPitch: 4`.
+`sidingTexture: 'T1-11'`, `roofMaterial: 'metal'`, `roofLowerPitch: 20`, `roofUpperPitch: 4`
+(both from the `GAMBREL_*` constants, never typed as literals).
 
 There is no `wallHeight` in the store. The wall is a Model constant in `utils/modelSpec.js`
 (85in Barn, 88.5in Gable) and the Peak Height is derived from it for display only. The
@@ -95,8 +96,20 @@ Trim is per Model and deliberately not shared — `GableTrim` has corner boards,
 rake boards; `BarnTrim` has **corner boards only**. ADR-0006 says the Barn also has fascia; the
 code disagrees, and which one matches the product is settled against the Reference Photos in #5
 and #6, not by reading the component (issue #22). The Trim Set is part of the Model bundle, so
-treat it as a product question. Trim stock is `0.333 ft` (~4in); roof overhang at the eave is
-`0.5 ft`.
+treat it as a product question. Roof overhang at the eave is `0.5 ft`.
+
+A corner board, though, is the same board on both, and **`cornerBoards` in
+`utils/trimGeometry.js` is the only place corner positions are worked out** — the trim
+counterpart to `openingTransform` (ADR-0011). Both components ask it; neither computes.
+
+Trim stock has two numbers, and they are not the same number: `TRIM_WIDTH` is the face you see
+(`0.333 ft`, 4in) and `TRIM_THICKNESS` is how far the board stands off the siding (`0.0625 ft`,
+a dressed 1x). They used to be one value, which is what buried every corner board inside the
+wall with its faces exactly coplanar — nothing decided which surface won and each board rendered
+as hatched noise (issue #31). A corner board is nailed **on** the siding; the two boards at a
+corner lap rather than butt, so the front or back one runs past to cover the side board's end
+grain. The 4in face is what both components have always defaulted to; the Reference Photos
+measure the real stock nearer 5.5in, and issue #22 settles that.
 
 ### CSG (cutting openings)
 
@@ -250,6 +263,7 @@ under test is non-React.
 | Placement rules | `utils/placementValidator.test.js` |
 | Cutting openings | `utils/wallOpenings.test.js` |
 | Walls and Placement routing | `utils/wallSides.test.js` |
+| Trim placement | `utils/trimGeometry.test.js` |
 | Store behaviour | `store/shedStore.test.js` |
 | HTTP API | `backend/main_test.go` |
 
@@ -266,6 +280,11 @@ Two rules that matter more than coverage:
 - Clone geometry before a CSG operation rather than mutating the original.
 - Dispose geometries and materials you create outside the JSX tree — shader factories return fresh
   `ShaderMaterial` configs and React Three Fiber will not clean them up (ADR-0002).
+- **A geometry that reaches a mesh through `<primitive>` belongs to whoever built it.** R3F
+  deliberately never disposes a primitive's object, so a `useMemo` that builds one needs
+  `useEffect(() => () => geometry.dispose(), [geometry])` beside it. Without that, every distinct
+  size the store passes through leaves its buffers on the GPU (issue #20). A `<boxGeometry>` or
+  `<shaderMaterial args={...}>` element is *not* a primitive and is cleaned up for you.
 - Wrap 3D subtrees in `<Suspense>`; use `<OrbitControls>` from `@react-three/drei`.
 - Prefer store state over component state for anything the 3D view reads.
 
@@ -341,6 +360,7 @@ frontend/src/
   utils/design.js                 overlay a fixed Design on the store's (ADR-0012)
   utils/wallOpenings.js           CSG: cut Openings out of a wall (Brush, local space)
   utils/wallSides.js              the four walls, and routing Placements onto them
+  utils/trimGeometry.js           where the trim boards sit; corner positions for both Models
   utils/pricingUtils.js           catalog and Option line items
   services/designApi.js           axios client
 
