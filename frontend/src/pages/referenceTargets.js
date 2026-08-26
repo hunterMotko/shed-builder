@@ -10,6 +10,8 @@
  * on every frame.
  */
 
+import { GAMBREL_LOWER_PITCH, GAMBREL_UPPER_PITCH } from '../utils/roofGeometry';
+
 const GREEN = '#2B5219';
 const WHITE = '#FFFFFF';
 const GALVANIZED = '#B8BCB4';
@@ -72,10 +74,9 @@ export const REFERENCE_TARGETS = [
 			trimColor: WHITE,
 			sidingTexture: 'T1-11',
 			roofMaterial: 'metal',
-			// Matched to this photo, and shallower than the store's 24:12 / 6:12
-			// defaults, which are too steep for any barn in reference/ (#29).
-			roofLowerPitch: 12,
-			roofUpperPitch: 4,
+			// The build spec, same as every other Barn.
+			roofLowerPitch: GAMBREL_LOWER_PITCH,
+			roofUpperPitch: GAMBREL_UPPER_PITCH,
 			placements: barnDoors,
 			porch: NO_PORCH,
 			options: NO_OPTIONS,

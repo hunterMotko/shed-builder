@@ -13,6 +13,7 @@ import {
 	roofMaterialSlots,
 	gableRoofRise,
 	gambrelKnuckleRatio,
+	GAMBREL_LOWER_PITCH,
 } from './roofGeometry';
 
 // Expected values here come from trigonometry, not from the implementation:
@@ -144,28 +145,38 @@ describe('gambrelKnuckleRatio', () => {
 	// not from re-running L / (L + U).
 	it('splits the rise evenly between the two slopes', () => {
 		const halfSpan = 6;
-		const r = gambrelKnuckleRatio(12, 4);
+		for (const [lower, upper] of [[20, 4], [12, 4], [24, 6]]) {
+			const r = gambrelKnuckleRatio(lower, upper);
+			const upperRise = r * halfSpan * (upper / 12);
+			const lowerRise = (1 - r) * halfSpan * (lower / 12);
 
-		// Upper slope: runs r x 6 ft at 4:12. Lower: the rest at 12:12.
-		const upperRise = r * halfSpan * (4 / 12);
-		const lowerRise = (1 - r) * halfSpan * (12 / 12);
-
-		expect(upperRise).toBeCloseTo(lowerRise, 10);
+			expect(upperRise).toBeCloseTo(lowerRise, 10);
+		}
 	});
 
-	it('puts the Knuckle three quarters out for the 12:12 / 4:12 spec', () => {
-		expect(gambrelKnuckleRatio(12, 4)).toBeCloseTo(0.75, 10);
+	it('puts the Knuckle five sixths out for the 20:12 / 4:12 spec', () => {
+		// 20 / (20 + 4) = 5/6
+		expect(gambrelKnuckleRatio(20, 4)).toBeCloseTo(5 / 6, 10);
 	});
 
-	// The Gable's 6:12 is quoted as a 25% pitch — rise over span. The barn spec
-	// works out to the same overall proportion, so the two Models read alike.
-	it('rises a quarter of its span, matching the Gable', () => {
-		const span = 12;
-		const halfSpan = span / 2;
-		const r = gambrelKnuckleRatio(12, 4);
-		const rise = r * halfSpan * (4 / 12) + (1 - r) * halfSpan * (12 / 12);
+	// The business asked for a longer top and a shorter, steeper side. Those are
+	// one change, not three: a steeper side needs less run to carry its half of
+	// the rise, so the Knuckle moves out and the top grows to meet it.
+	it('lengthens the top and shortens the side as the side steepens', () => {
+		const shallow = gambrelKnuckleRatio(12, 4);
+		const steep = gambrelKnuckleRatio(20, 4);
 
-		expect(rise / span).toBeCloseTo(0.25, 10);
+		expect(steep).toBeGreaterThan(shallow);        // top run is longer
+		expect(1 - steep).toBeLessThan(1 - shallow);   // side run is shorter
+	});
+
+	// The steep edges of reference/8-10-barn.jpg measure 59.6 and 59.9 degrees.
+	// tan(59.7 deg) x 12 = 20.5, so 20:12 is the pitch those edges describe.
+	it('matches the angle measured off the reference photograph', () => {
+		const deg = (Math.atan(GAMBREL_LOWER_PITCH / 12) * 180) / Math.PI;
+
+		expect(deg).toBeGreaterThan(58);
+		expect(deg).toBeLessThan(61);
 	});
 
 	// A gambrel bends. If the Knuckle reached the eave or the ridge there would

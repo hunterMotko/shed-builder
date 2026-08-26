@@ -277,14 +277,20 @@ export const STANDARD_FOUNDATION = {
 };
 
 /**
- * The Barn's gambrel pitches, as X:12.
+ * The Barn's gambrel pitches, as X:12. The lower slope is the steep one — a
+ * lower slope shallower than the upper is not a gambrel.
  *
- * Build spec: "the sides are a 12 pitch and the top is a 4 pitch". The lower
- * slope is the steep one — a lower slope shallower than the upper is not a
- * gambrel. The store shipped 24:12 and 6:12, which made every Barn roof far
- * taller than any building in `reference/` (issue #29).
+ * The top is the stated 4 pitch. The sides were stated as a 12 pitch, but 12:12
+ * is 45° and the built roof is visibly steeper: measuring the angle of both
+ * steep edges on `reference/8-10-barn.jpg` gives 59.6° and 59.9°, or 20.5:12
+ * and 20.7:12. 20 is what the photographs show, and it is what the business
+ * meant by wanting the sides "shorter and steeper".
+ *
+ * Measuring the *angle* is what makes this trustworthy — unlike a rise, it does
+ * not depend on knowing the scale, and two independent edges agreeing to within
+ * half a degree is not a coincidence.
  */
-export const GAMBREL_LOWER_PITCH = 12;
+export const GAMBREL_LOWER_PITCH = 20;
 export const GAMBREL_UPPER_PITCH = 4;
 
 /**

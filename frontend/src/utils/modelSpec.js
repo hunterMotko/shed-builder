@@ -1,4 +1,9 @@
-import { gableRoofRise, gambrelKnuckleRatio } from './roofGeometry';
+import {
+	gableRoofRise,
+	gambrelKnuckleRatio,
+	GAMBREL_LOWER_PITCH,
+	GAMBREL_UPPER_PITCH,
+} from './roofGeometry';
 
 /**
  * What a Model bundles.
@@ -74,7 +79,10 @@ export function wallHeightFt(model) {
 export function roofRiseFt(model, width, pitches = {}) {
 	if (model !== 'Barn') return gableRoofRise(width);
 
-	const { lowerPitch = 12, upperPitch = 4 } = pitches;
+	const {
+		lowerPitch = GAMBREL_LOWER_PITCH,
+		upperPitch = GAMBREL_UPPER_PITCH,
+	} = pitches;
 	const halfSpan = width / 2;
 	const r = gambrelKnuckleRatio(lowerPitch, upperPitch);
 	return r * halfSpan * (upperPitch / 12) + (1 - r) * halfSpan * (lowerPitch / 12);

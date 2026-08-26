@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { calculateTotalPrice, snapToValidCombo } from '../utils/pricingUtils';
+import { GAMBREL_LOWER_PITCH, GAMBREL_UPPER_PITCH } from '../utils/roofGeometry';
 
 /**
  * Placement represents a door or window on the shed
@@ -32,10 +33,11 @@ export const useShedStore = create((set) => ({
 	sidingTexture: 'T1-11', // 'T1-11', 'smooth'
 	roofMaterial: 'metal', // 'metal', 'shingle'
 	// Gambrel Roof Configuration (when model === 'Barn')
-	// The Barn's gambrel, to the build spec: the sides are a 12 pitch and the
-	// top is a 4 pitch. The Knuckle is not stored — it follows from these two.
-	roofLowerPitch: 12, // 12:12 (45°) — the steep side slope
-	roofUpperPitch: 4,  // 4:12 (~18.4°) — the shallow slope at the ridge
+	// The Barn's gambrel. The Knuckle is not stored — it follows from these two
+	// (see gambrelKnuckleRatio), so a steeper side also shortens the side and
+	// lengthens the top, which is how the roof was corrected against the photos.
+	roofLowerPitch: GAMBREL_LOWER_PITCH, // 20:12 (~59°) — the steep side slope
+	roofUpperPitch: GAMBREL_UPPER_PITCH, //  4:12 (~18°) — shallow, at the ridge
 	// Foundation Configuration
 	foundationHeight: 1.5, // feet
 	foundationColor: '#8B7355', // brown/tan concrete/timber appearance
@@ -144,8 +146,8 @@ export const useShedStore = create((set) => ({
 		trimAutoMode: 'matchRoof',
 		sidingTexture: 'T1-11',
 		roofMaterial: 'metal',
-		roofLowerPitch: 12,
-		roofUpperPitch: 4,
+		roofLowerPitch: GAMBREL_LOWER_PITCH,
+		roofUpperPitch: GAMBREL_UPPER_PITCH,
 		foundationHeight: 1.5,
 		foundationColor: '#8B7355',
 		porch: { enabled: false, wall: 'front', depth: 6 },

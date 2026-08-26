@@ -39,10 +39,18 @@ describe('roofRiseFt', () => {
 		expect(roofRiseFt('Gable', 16)).toBeCloseTo(4, 10);
 	});
 
-	// The 12:12 / 4:12 gambrel works out to the same 25% overall.
-	it('rises a quarter of the span on a Barn too', () => {
-		expect(roofRiseFt('Barn', 12)).toBeCloseTo(3, 10);
-		expect(roofRiseFt('Barn', 16)).toBeCloseTo(4, 10);
+	// A gambrel's two slopes each carry half the rise, so with the top at 4:12
+	// the whole roof rises twice what the top alone does: 2 x (5/6 x halfSpan x
+	// 4/12), which on a 12ft span is 3.33 ft.
+	it('rises to the Knuckle twice over on a Barn', () => {
+		expect(roofRiseFt('Barn', 12)).toBeCloseTo(2 * ((5 / 6) * 6 * (4 / 12)), 10);
+		expect(roofRiseFt('Barn', 12)).toBeCloseTo(3.333, 3);
+	});
+
+	// A gambrel gets its height from the steep side, so it out-rises a 6:12
+	// gable on the same span.
+	it('rises higher than a Gable of the same span', () => {
+		expect(roofRiseFt('Barn', 12)).toBeGreaterThan(roofRiseFt('Gable', 12));
 	});
 
 	it('grows with the span, because the pitch is what is fixed', () => {
@@ -68,9 +76,16 @@ describe('peakHeightFt', () => {
 			.toBeGreaterThan(peakHeightFt('Gable', 10, FOUNDATION));
 	});
 
-	// A Barn stands on shorter studs, so at the same width it peaks lower.
-	it('puts a Barn below a Gable of the same width', () => {
-		expect(peakHeightFt('Barn', 12, FOUNDATION))
-			.toBeLessThan(peakHeightFt('Gable', 12, FOUNDATION));
+	// A Barn stands on shorter studs but carries a taller roof, and the two very
+	// nearly cancel: at every width the catalog sells, the two Models come to
+	// within a couple of inches of each other. That is what lets one nominal
+	// height — 11 — sit on every SKU regardless of Model.
+	it('brings both Models to the same height at a given width', () => {
+		for (const width of [10, 12, 14, 16]) {
+			const barn = peakHeightFt('Barn', width, FOUNDATION);
+			const gable = peakHeightFt('Gable', width, FOUNDATION);
+
+			expect(Math.abs(barn - gable)).toBeLessThan(0.2); // under 2.5 inches
+		}
 	});
 });
