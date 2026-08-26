@@ -48,7 +48,7 @@ npm run dev        # http://localhost:5173
 npm test           # vitest, single run
 npm run test:watch
 npm run build
-npm run lint       # 11 pre-existing errors — don't add more
+npm run lint       # 7 pre-existing errors — don't add more
 ```
 
 ## Architecture
@@ -111,10 +111,6 @@ width.
 both, which only `Brush` has. Passing a Mesh throws, and for a long time that throw was caught and
 logged while every wall silently rendered solid (issue #25). `evaluator.useGroups = false`, since a
 wall draws with one material.
-
-> `frontend/src/utils/csgOperations.js` exports a `csgModifier` singleton with world-space
-> coordinate helpers. **Nothing imports it.** It is dead code that contradicts ADR-0001; do not
-> treat it as the coordinate reference and do not extend it. Issue #18 deletes it.
 
 **`openingTransform` is the only place opening coordinates are worked out.** The cut and every
 visible part of an opening — door slab, window, trim frame, shutters — derive from it, so the two
@@ -280,8 +276,8 @@ cd backend && go mod tidy
 
 - Geometry not updating → check the `useMemo` dependencies.
 - A Placement not appearing → check its normalized coordinates are within `[0, 1]`.
-- A hole misaligned with its door → the cut happens in `ShedWall.jsx` in local wall space, not in
-  `csgOperations.js`.
+- A hole misaligned with its door → the cut happens in `ShedWall.jsx` in local wall space
+  (ADR-0001), and the coordinates come from `openingTransform` (ADR-0011).
 - Stale geometry after a code change → clear the browser cache.
 
 ## API contract
