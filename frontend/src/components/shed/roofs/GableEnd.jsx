@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import * as THREE from 'three';
 import { makeSidingShader } from '../../../utils/shaders';
 import { OctagonWindow } from '../openings/OctagonWindow';
@@ -36,6 +36,12 @@ export const GableEnd = ({
     geo.computeVertexNormals();
     return geo;
   }, [halfWidth, roofHeight]);
+
+  // Same lifetime problem as ShedWall's slab: this reaches the mesh through a
+  // <primitive>, which R3F never disposes, so the memo owns it. Two triangles
+  // times three buffers leaked on every width the customer passed through
+  // (issue #20).
+  useEffect(() => () => geometry.dispose(), [geometry]);
 
   const sidingShader = useMemo(
     () => makeSidingShader(color, sidingTexture),

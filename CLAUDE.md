@@ -280,6 +280,11 @@ Two rules that matter more than coverage:
 - Clone geometry before a CSG operation rather than mutating the original.
 - Dispose geometries and materials you create outside the JSX tree — shader factories return fresh
   `ShaderMaterial` configs and React Three Fiber will not clean them up (ADR-0002).
+- **A geometry that reaches a mesh through `<primitive>` belongs to whoever built it.** R3F
+  deliberately never disposes a primitive's object, so a `useMemo` that builds one needs
+  `useEffect(() => () => geometry.dispose(), [geometry])` beside it. Without that, every distinct
+  size the store passes through leaves its buffers on the GPU (issue #20). A `<boxGeometry>` or
+  `<shaderMaterial args={...}>` element is *not* a primitive and is cleaned up for you.
 - Wrap 3D subtrees in `<Suspense>`; use `<OrbitControls>` from `@react-three/drei`.
 - Prefer store state over component state for anything the 3D view reads.
 
