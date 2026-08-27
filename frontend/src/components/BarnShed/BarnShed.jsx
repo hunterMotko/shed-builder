@@ -4,6 +4,8 @@ import { WALL_SIDES, routePlacements } from '../../utils/wallSides';
 import { overlayDesign } from '../../utils/design';
 import { ShedWall } from '../shed/walls/ShedWall';
 import { GambrelRoof } from '../shed/roofs/GambrelRoof';
+import { BarnEnd } from '../shed/roofs/BarnEnd';
+import { roofOverhangFt } from '../../utils/roofGeometry';
 import { Porch } from '../shed/extras/Porch';
 import { Ramp } from '../shed/extras/Ramp';
 import { Runners } from '../common/Runners';
@@ -14,10 +16,10 @@ import { BarnTrim } from '../shed/trim/BarnTrim';
  * Assembles: 4× ShedWall + GambrelRoof + Runners + optional Porch.
  *
  * The walls run floor to eave on all four sides, the same as GableShed. Above
- * the eave the barn's front and back faces are the GambrelRoof end-caps
- * (siding shader, groups 0 & 1), which sit at ±shedLength/2 — flush with the
- * outer face of the front/back walls and disjoint from them in Y, so there is
- * nothing to Z-fight (ADR-0010).
+ * the eave the barn's front and back faces are `BarnEnd` — real siding at
+ * ±shedLength/2, disjoint from the walls in Y and meeting them at the eave
+ * (ADR-0010). They used to be the roof prism's own end caps, borrowed and drawn
+ * with the siding shader; the roof is a slab now and has no caps to lend.
  */
 export const BarnShed = ({
 	width: widthProp = 10,
@@ -54,6 +56,8 @@ export const BarnShed = ({
 		roofLowerPitch, roofUpperPitch, porch, options,
 	} = d;
 	const garageDoorStyle = options.garageDoor.style ?? 'sectional';
+	// A barn has no soffit box: the panel runs 2 in past and finishes in J-channel.
+	const overhang = roofOverhangFt('Barn', width);
 
 	useEffect(() => {
 		// Barn has no discrete front wall mesh — placement raycasting not yet wired
@@ -95,7 +99,23 @@ export const BarnShed = ({
 				/>
 			)}
 
-			{/* Gambrel roof — end-caps use siding material as barn gable faces */}
+			{/* Gambrel end walls above the eave */}
+			{['front', 'back'].map((side) => (
+				<BarnEnd
+					key={side}
+					side={side}
+					shedWidth={width}
+					shedLength={length}
+					wallHeight={wallHeight}
+					roofLowerPitch={roofLowerPitch}
+					roofUpperPitch={roofUpperPitch}
+					color={color}
+					sidingTexture={sidingTexture}
+					showOctagonWindow={options.octagonWindow.enabled}
+					trimColor={trimColor}
+				/>
+			))}
+
 			<GambrelRoof
 				shedWidth={width}
 				shedLength={length}
@@ -104,10 +124,8 @@ export const BarnShed = ({
 				roofUpperPitch={roofUpperPitch}
 				roofColor={roofColor}
 				roofMaterial={roofMaterial}
-				color={color}
-				sidingTexture={sidingTexture}
 				skylight={options.skylight}
-				overhangEave={0.5}
+				overhang={overhang}
 			/>
 
 			<BarnTrim
@@ -116,7 +134,7 @@ export const BarnShed = ({
 				wallHeight={wallHeight}
 				roofLowerPitch={roofLowerPitch}
 				trimColor={trimColor}
-				overhangEave={0.5}
+				overhangEave={overhang}
 			/>
 
 			{/* Foundation: floor deck + 5 longitudinal runners */}

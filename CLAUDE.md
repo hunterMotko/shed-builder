@@ -91,9 +91,21 @@ All geometry is procedural. There are no model files (`.obj`, `.gltf`).
 trim, Runners and any Placements. Roofs come from `ExtrudeGeometry` over a 2D profile; walls are
 `BoxGeometry` with openings cut out.
 
+**The roof is a slab, not a solid** (ADR-0013): a plane with `ROOF_THICKNESS`, extruded
+`shedLength + 2 * overhang` so it runs past both gable ends. `y = 0` in the profile is the eave
+**at the wall**, so the ridge lands on the rise `roofRiseFt` quotes and the overhang tip hangs
+below the top plate. Measuring from the overhang tip instead put a 12ft Barn's ridge 10in above
+its own quoted Peak Height and rendered a Gable's 6:12 as 5.54:12; there is a test asserting the
+two agree at every catalog width. Outlines come from `gableRoofProfile` / `gambrelRoofProfile` —
+the components do not compute them.
+
+`roofOverhangFt(model, width)` is the shop spec: a gable gets a 6 5/8in soffit and fascia box,
+except at 16 wide where it is 4 7/8in; a barn gets 2in and finishes in J-channel.
+
 **Both Models render all four walls** (ADR-0010), from `WALL_SIDES` in `utils/wallSides.js`. The
-Models differ above the eave only: a Gable has two `GableEnd` triangles, a Barn has the gambrel
-end-caps. Placements are routed to walls by `routePlacements`, which hands back a `dropped` list so
+Models differ above the eave only: a Gable has two `GableEnd` triangles, a Barn has two `BarnEnd`
+gambrel faces. Both are siding — the Barn's used to be the roof prism's own end caps, borrowed and
+drawn with the siding shader, until the roof became a slab (ADR-0013). Placements are routed to walls by `routePlacements`, which hands back a `dropped` list so
 an opening assigned to a wall that isn't rendered is reported rather than lost — a Barn used to
 render two walls and discard every front and back Placement in silence.
 
@@ -293,7 +305,8 @@ under test is non-React.
 
 | Seam | File |
 |---|---|
-| Roof math | `utils/roofGeometry.test.js` |
+| Roof math and the roof slab | `utils/roofGeometry.test.js` |
+| Model bundle, and render vs quoted peak | `utils/modelSpec.test.js` |
 | Catalog and Option pricing | `utils/pricingUtils.test.js` |
 | Placement rules | `utils/placementValidator.test.js` |
 | Cutting openings | `utils/wallOpenings.test.js` |

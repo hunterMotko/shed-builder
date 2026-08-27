@@ -1,32 +1,31 @@
-import { useMemo, useEffect } from 'react';
+import { useMemo } from 'react';
 import * as THREE from 'three';
-import { makeSidingShader, makeRoofShader } from '../../../utils/shaders';
+import { makeRoofShader } from '../../../utils/shaders';
 import {
-  roofMaterialSlots,
-  gambrelKnuckleRatio,
+  gambrelRoofProfile,
+  roofSlabDepth,
+  ROOF_THICKNESS,
   GAMBREL_LOWER_PITCH,
   GAMBREL_UPPER_PITCH,
 } from '../../../utils/roofGeometry';
 import { Skylight } from '../extras/Skylight';
 
 /**
- * GambrelRoof — independently renderable gambrel (barn-style) roof.
+ * GambrelRoof — the barn roof, as a slab.
  *
- * Two ExtrudeGeometry meshes: lower trapezoid (steep) + upper triangle (gentle).
- * Each mesh uses THREE material groups. ExtrudeGeometry emits exactly TWO:
- *   Group 0 — both end-caps  → siding material (the barn's gable faces)
- *   Group 1 — extruded sides → roof material (metal or shingle)
+ * It used to be two *filled* prisms — a steep lower trapezoid and a shallow
+ * upper triangle — extruded exactly the length of the shed. That shape had no
+ * thickness, no fascia and no rake overhang, and it borrowed its own end caps
+ * to stand in for the barn's gable siding, drawing them with the siding shader.
  *
- * It is one group for the pair of caps, not one per cap. A three-entry array
- * put the roof material at an index nothing addresses and handed the slopes
- * the siding, so every Barn roof drew in the siding colour (issue #30).
+ * One slab replaces both prisms, so there are no caps to borrow: the barn's end
+ * faces are now `BarnEnd`, a real piece of siding (ADR-0010 unchanged — the
+ * walls below the eave were already real walls).
  *
- * The end-caps cover only the ROOF profile (Y=wallHeight upward). Below the
- * eave, BarnShed's front/back ShedWalls cover floor to eave — real walls that
- * take CSG openings, which the flat panels this component used to draw could
- * not (ADR-0010). The two are disjoint in Y and meet at the eave line.
+ * The eave datum is the wall, not the tip of the overhang. Measuring from the
+ * overhang put a 12 ft Barn's ridge 10 inches above the Peak Height quoted on
+ * screen, because `modelSpec.roofRiseFt` has always measured from the wall.
  */
-
 export const GambrelRoof = ({
   shedWidth,
   shedLength,
@@ -35,88 +34,58 @@ export const GambrelRoof = ({
   roofUpperPitch = GAMBREL_UPPER_PITCH,
   roofColor,
   roofMaterial,
-  color,         // siding color for gable end-caps
-  sidingTexture, // 'T1-11' | 'smooth' for gable end-caps
-  overhangEave = 0.5,
+  overhang = 2 / 12,
   skylight = null,
   castShadow = true,
   receiveShadow = true,
 }) => {
-  const halfWidth = shedWidth / 2;
-
-  // The Knuckle follows from the two pitches — each slope carries half the
-  // rise — rather than from a hand-set ratio (see gambrelKnuckleRatio).
-  const knuckleX = halfWidth * gambrelKnuckleRatio(roofLowerPitch, roofUpperPitch);
-  // Rise is calculated from the full eave-to-knuckle run (including overhang)
-  // so the visual slope angle matches the specified pitch ratio.
-  const knuckleY = (halfWidth + overhangEave - knuckleX) * (roofLowerPitch / 12);
-  const peakY    = knuckleY + knuckleX * (roofUpperPitch / 12);
-
-  const lowerShape = useMemo(() => {
+  const roofShape = useMemo(() => {
     const shape = new THREE.Shape();
-    shape.moveTo(-(halfWidth + overhangEave), 0);
-    shape.lineTo(halfWidth + overhangEave, 0);
-    shape.lineTo(knuckleX, knuckleY);
-    shape.lineTo(-knuckleX, knuckleY);
+    const points = gambrelRoofProfile(shedWidth, roofLowerPitch, roofUpperPitch, {
+      overhang,
+      thickness: ROOF_THICKNESS,
+    });
+    shape.moveTo(points[0][0], points[0][1]);
+    for (const [x, y] of points.slice(1)) shape.lineTo(x, y);
     shape.closePath();
     return shape;
-  }, [halfWidth, overhangEave, knuckleX, knuckleY]);
+  }, [shedWidth, roofLowerPitch, roofUpperPitch, overhang]);
 
-  const upperShape = useMemo(() => {
-    const shape = new THREE.Shape();
-    shape.moveTo(-knuckleX, knuckleY);
-    shape.lineTo(knuckleX, knuckleY);
-    shape.lineTo(0, peakY);
-    shape.closePath();
-    return shape;
-  }, [knuckleX, knuckleY, peakY]);
+  const depth = roofSlabDepth(shedLength, overhang);
 
   const extrudeSettings = useMemo(
-    () => ({ depth: shedLength, bevelEnabled: false }),
-    [shedLength]
+    () => ({ depth, bevelEnabled: false }),
+    [depth]
   );
 
-  // End-caps (group 0) use the siding shader so the barn's gable faces match
-  // the walls. The slopes (group 1) use the roof shader.
-  const sidingMat = useMemo(() => {
-    const mat = new THREE.ShaderMaterial(makeSidingShader(color, sidingTexture));
-    mat.side = THREE.DoubleSide;
-    return mat;
-  }, [color, sidingTexture]);
-
-  const roofMat = useMemo(() => {
-    const mat = new THREE.ShaderMaterial(makeRoofShader(roofColor, roofMaterial));
-    mat.side = THREE.DoubleSide;
-    return mat;
-  }, [roofColor, roofMaterial]);
-
-  useEffect(() => () => { sidingMat.dispose(); }, [sidingMat]);
-  useEffect(() => () => { roofMat.dispose(); }, [roofMat]);
-
-  const materials = useMemo(
-    () => roofMaterialSlots(sidingMat, roofMat),
-    [sidingMat, roofMat]
+  const roofShader = useMemo(
+    () => makeRoofShader(roofColor, roofMaterial),
+    [roofColor, roofMaterial]
   );
 
-  const pos = [0, wallHeight, -shedLength / 2];
-
-  // Peak in world space: wallHeight + peakY (peakY is relative to wallHeight base)
-  const worldPeakY = wallHeight + peakY;
+  // Highest point of the profile, for anything that sits on the ridge.
+  const peakY = useMemo(() => {
+    const points = gambrelRoofProfile(shedWidth, roofLowerPitch, roofUpperPitch, {
+      overhang,
+      thickness: ROOF_THICKNESS,
+    });
+    return points.reduce((hi, p) => Math.max(hi, p[1]), -Infinity);
+  }, [shedWidth, roofLowerPitch, roofUpperPitch, overhang]);
 
   return (
     <group name="gambrelRoof">
-      {/* Roof slope sections — end-caps cover gable profile above wallHeight */}
-      <mesh name="gambrelRoofLower" position={pos} castShadow={castShadow} receiveShadow={receiveShadow}>
-        <extrudeGeometry args={[lowerShape, extrudeSettings]} />
-        <primitive object={materials} attach="material" />
-      </mesh>
-      <mesh name="gambrelRoofUpper" position={pos} castShadow={castShadow} receiveShadow={receiveShadow}>
-        <extrudeGeometry args={[upperShape, extrudeSettings]} />
-        <primitive object={materials} attach="material" />
+      <mesh
+        name="gambrelRoofMesh"
+        position={[0, wallHeight, -depth / 2]}
+        castShadow={castShadow}
+        receiveShadow={receiveShadow}
+      >
+        <extrudeGeometry args={[roofShape, extrudeSettings]} />
+        <shaderMaterial args={[roofShader]} side={THREE.DoubleSide} />
       </mesh>
 
       {skylight?.enabled && (
-        <group position={[0, worldPeakY + 0.02, 0]}>
+        <group position={[0, wallHeight + peakY + 0.02, 0]}>
           <Skylight runningFt={skylight.runningFt ?? 8} />
         </group>
       )}
