@@ -11,15 +11,11 @@
  */
 
 import { GAMBREL_LOWER_PITCH, GAMBREL_UPPER_PITCH } from '../utils/roofGeometry';
+import { wallHeightFt } from '../utils/modelSpec';
+import { referencePhoto } from './referencePhotos';
 
-const GREEN = '#2B5219';
-const WHITE = '#FFFFFF';
-const GALVANIZED = '#B8BCB4';
-
-// Measured off the photograph, not taken from the catalog. The catalog would
-// call this building a 12x20x10 — 10ft to the peak — but nothing in the app
-// derives a wall from a peak yet (issue #29), so the wall is stated directly.
-const BARN_WALL_HEIGHT = 85 / 12; // 85in, floor to eave
+const BARN_WALL_HEIGHT = wallHeightFt('Barn');   // 85in, floor to eave
+const GABLE_WALL_HEIGHT = wallHeightFt('Gable'); // 88.5in — the Models differ
 
 // A reference target must not inherit whatever the customer has switched on in
 // the Configurator — the shed components fall back to the store for any field a
@@ -38,6 +34,12 @@ const NO_OPTIONS = {
 	octagonVent: { enabled: false },
 };
 
+// ── Barn: barn_barndoors.jpg ────────────────────────────────────────────────
+
+const GREEN = '#2B5219';
+const WHITE = '#FFFFFF';
+const GALVANIZED = '#B8BCB4';
+
 const BARN_DOOR_WIDTH = 6;
 const BARN_DOOR_HEIGHT = 6.5;
 
@@ -54,11 +56,59 @@ const barnDoors = [
 	},
 ];
 
+// ── Gable: 12-16-gable-front.jpg ────────────────────────────────────────────
+//
+// A square-on elevation, which is why this is the gable target rather than one
+// of the three-quarter views: the camera is close enough to square that the two
+// roof slopes measure within 0.2 of each other, so proportions can be judged
+// rather than guessed.
+//
+// Colours are averaged over well-lit patches of the photograph — three separate
+// samples of the trim agreed to within two values, so the burgundy really is
+// that dark and it is not one shadowed pixel.
+
+const ALMOND = '#EFD7BA';
+const BURGUNDY = '#400C0C';
+const ROOF_BROWN = '#593C2C';
+
+// Positions are measured off the photograph at 49.3 px/ft, the scale a known
+// 12 ft front gives. The door is rounded to the catalog's 36in.
+const gableOpenings = [
+	{
+		id: 'ref-gable-door',
+		type: 'door',
+		wall: 'front',
+		normalizedX: 0.5,
+		normalizedY: 6.5 / 2 / GABLE_WALL_HEIGHT,
+		width: 3,
+		height: 6.5,
+	},
+	{
+		id: 'ref-gable-window-left',
+		type: 'window',
+		wall: 'front',
+		normalizedX: 0.2,
+		normalizedY: 0.636,
+		width: 2,
+		height: 1.6,
+	},
+	{
+		id: 'ref-gable-window-right',
+		type: 'window',
+		wall: 'front',
+		normalizedX: 0.8,
+		normalizedY: 0.636,
+		width: 2,
+		height: 1.6,
+	},
+];
+
 export const REFERENCE_TARGETS = [
 	{
 		id: 'barn-barndoors',
 		model: 'Barn',
-		photo: '/ref_barn_barndoors.jpg',
+		photoFile: 'barn_barndoors.jpg',
+		photo: referencePhoto('barn_barndoors.jpg'),
 		photoAlt:
 			'Reference: dark green barn shed with white double barn doors and a galvanized metal roof',
 		photoCaption: 'barn_barndoors.jpg — dark green · white trim · galvanized metal roof',
@@ -78,6 +128,35 @@ export const REFERENCE_TARGETS = [
 			roofLowerPitch: GAMBREL_LOWER_PITCH,
 			roofUpperPitch: GAMBREL_UPPER_PITCH,
 			placements: barnDoors,
+			porch: NO_PORCH,
+			options: NO_OPTIONS,
+		},
+	},
+	{
+		id: 'gable-front',
+		model: 'Gable',
+		photoFile: '12-16-gable-front.jpg',
+		photo: referencePhoto('12-16-gable-front.jpg'),
+		photoAlt:
+			'Reference: almond gable shed photographed square on, with burgundy trim, a centre door and two windows',
+		photoCaption: '12-16-gable-front.jpg — almond · burgundy trim · brown roof',
+		designCaption: '12 × 16 ft · 88.5in walls · #EFD7BA · burgundy trim · 6:12',
+		// Near enough to an elevation to compare proportions against the photo.
+		// Distance is measured to the FRONT WALL, not to the origin: the wall
+		// stands at +length/2, so a camera at z=34 on a 16 ft shed is only 26 ft
+		// of actual throw and the shed overflows the frame.
+		camera: { position: [0, 5.5, 44], fov: 26 },
+		target: [0, 5, 0],
+		design: {
+			width: 12,
+			length: 16,
+			wallHeight: GABLE_WALL_HEIGHT,
+			color: ALMOND,
+			roofColor: ROOF_BROWN,
+			trimColor: BURGUNDY,
+			sidingTexture: 'T1-11',
+			roofMaterial: 'metal',
+			placements: gableOpenings,
 			porch: NO_PORCH,
 			options: NO_OPTIONS,
 		},
