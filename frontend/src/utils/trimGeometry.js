@@ -33,6 +33,13 @@ export const TRIM_WIDTH = 0.333;
 export const TRIM_THICKNESS = 0.0625;
 
 /**
+ * How much metal shows above a rake board or rake band, in feet, measured
+ * perpendicular to the slope — the sliver of panel edge and J-channel the
+ * photographs show as a line over the trim. Nothing painted may rise past it.
+ */
+export const RAKE_REVEAL = 0.05;
+
+/**
  * The corner boards, two per corner.
  *
  * A corner board is nailed **on** the siding, not let into it. Both boards
@@ -126,20 +133,30 @@ export function gableFasciaBoards(
 	const rakeRise = roofHeight + tipDrop;
 	const rakeLength = Math.hypot(rakeRun, rakeRise);
 	const rakeAngle = Math.atan2(rakeRise, rakeRun);
-	// Centre of the slab's edge: halfway along the rake, half a slab down.
-	const rakeY = wallHeight + (roofHeight - tipDrop) / 2 - roofThickness / 2;
 	const rakeZ = outerZ + trimThickness / 2;
 
+	// The board hangs PERPENDICULAR to the slope, its top edge RAKE_REVEAL
+	// below the top surface so the metal edge shows as a line above it. It
+	// used to sit half a slab down PLUMB, which is not the same thing on a
+	// rotated board: the plumb-cut slab is thinner perpendicular than the
+	// board is, and the board's top corner rose through the metal — a trim
+	// sliver visible on the roof plane along every rake.
+	const perp = [rakeRise / rakeLength, -rakeRun / rakeLength]; // below the slope
+	const drop = RAKE_REVEAL + roofThickness / 2;
+	const rakeMidY = wallHeight + (roofHeight - tipDrop) / 2;
+
 	const rakes = [
-		['front-left', -rakeRun / 2, +rakeZ, +rakeAngle],
-		['front-right', +rakeRun / 2, +rakeZ, -rakeAngle],
-		['back-left', -rakeRun / 2, -rakeZ, +rakeAngle],
-		['back-right', +rakeRun / 2, -rakeZ, -rakeAngle],
-	].map(([id, x, z, rotZ]) => ({
+		['front-left', -1, +rakeZ],
+		['front-right', +1, +rakeZ],
+		['back-left', -1, -rakeZ],
+		['back-right', +1, -rakeZ],
+	].map(([id, sx, z]) => ({
 		id: `rake-${id}`,
-		position: [x, rakeY, z],
+		// perp is worked out on the left slope; mirroring x mirrors it too, and
+		// the rotation flips with it — the left rake rises, the right one falls.
+		position: [sx * (rakeRun / 2 - perp[0] * drop), rakeMidY + perp[1] * drop, z],
 		size: [rakeLength, roofThickness, trimThickness],
-		rotation: [0, 0, rotZ],
+		rotation: [0, 0, -sx * rakeAngle],
 	}));
 
 	// Eave: level, the full length of the slab, so it meets both rake ends.
@@ -158,55 +175,49 @@ export function gableFasciaBoards(
  * The white band that follows a Barn's gambrel rake — the fly, not a board.
  *
  * A Barn gets no wood rake. The white run the photographs show is the fly
- * board nailed under the roof deck at the gable end, with the J-channel the
- * panel edge insets into — so it is UNDER the metal, and the panel's 2 in
- * overhang laps it. It used to be drawn centred on the roof line, outside the
- * slab's end face, which put half the band over the metal edge it should be
- * tucked beneath.
+ * board and the J-channel the panel edge insets into, so it hugs the very
+ * edge of the roof: laid against the slab's end cap, its top edge RAKE_REVEAL
+ * perpendicular below the top surface, so the metal reads as a thin line
+ * above the white and never the other way round.
  *
- * One band per straight run of the outline: four per end, eight in all. Each
- * hangs from the slab's underside, just proud of the end siding, so the roof
- * edge reads above it as a line of panel colour.
+ * It has been wrong both ways. Centred ON the top line it lapped white over
+ * the metal edge; hung from the slab's plumb underside it slid sideways off
+ * the steep lower slope — a plumb drop on a near-vertical surface is almost a
+ * horizontal one, and the band ended up floating inboard of the panel where
+ * it poked out of the roof's silhouette.
  *
- * @param outline gambrel points from `gambrelEndOutline`, eave to eave over the
- *   ridge, in wall-relative coordinates where y = 0 is the eave
- * @param opts.roofThickness the slab's own thickness, which is how far below
- *   the roof line the slab's underside sits (`slabFrom` drops it plumb)
+ * @param topLine slab top surface from `gambrelRoofTopLine`, eave tip to eave
+ *   tip over both Knuckles, in wall-relative coordinates
  */
-export function barnRakeFlashing(outline, shedLength, wallHeight, {
-	roofThickness = 0,
+export function barnRakeFlashing(topLine, shedLength, wallHeight, {
+	overhang,
+	reveal = RAKE_REVEAL,
 	faceWidth = TRIM_WIDTH,
 	thickness = TRIM_THICKNESS,
 } = {}) {
-	// The outline arrives eave, eave, knuckle, ridge, knuckle — the order a
-	// filled shape wants. Walk it as a rake instead: left eave up and over.
-	const [leftEave, rightEave, rightKnuckle, ridge, leftKnuckle] = outline;
-	const runs = [
-		['left-lower', leftEave, leftKnuckle],
-		['left-upper', leftKnuckle, ridge],
-		['right-upper', ridge, rightKnuckle],
-		['right-lower', rightKnuckle, rightEave],
-	];
+	const names = ['left-lower', 'left-upper', 'right-upper', 'right-lower'];
+	const runs = topLine.slice(0, -1).map((p, i) => [names[i], p, topLine[i + 1]]);
 
 	const halfL = shedLength / 2;
-	// Proud of the END SIDING, not of the slab: the slab runs `overhang`
-	// further and its edge overlaps the band, which is the whole point.
-	const z = halfL + thickness / 2;
+	// Against the slab's end cap face, which the slab carries `overhang` past
+	// the end siding.
+	const z = halfL + overhang + thickness / 2;
 
 	return ['front', 'back'].flatMap((side) =>
 		runs.map(([id, [x1, y1], [x2, y2]]) => {
 			const dx = x2 - x1;
 			const dy = y2 - y1;
 			const len = Math.hypot(dx, dy);
-			// Perpendicular below the run, so the band's top edge lands on the
-			// slab's underside (the roof line dropped plumb by its thickness).
+			// Perpendicular below the run — the top line is walked left to
+			// right, so this is always [+dy, -dx] normalised.
 			const px = dy / len;
 			const py = -dx / len;
+			const drop = reveal + faceWidth / 2;
 			return {
 				id: `rake-${side}-${id}`,
 				position: [
-					(x1 + x2) / 2 + px * (faceWidth / 2),
-					wallHeight + (y1 + y2) / 2 + py * (faceWidth / 2) - roofThickness,
+					(x1 + x2) / 2 + px * drop,
+					wallHeight + (y1 + y2) / 2 + py * drop,
 					side === 'front' ? z : -z,
 				],
 				size: [len, faceWidth, thickness],
@@ -308,4 +319,86 @@ export function gableCornerBoxes(shedWidth, shedLength, wallHeight, roofHeight, 
 		size: [overhang, roofThickness, overhang],
 		rotation: [0, 0, 0],
 	}));
+}
+
+/**
+ * The metal ridge cap — two bent legs meeting over the peak.
+ *
+ * Both Models get one: a length of roof metal folded over the ridge, capping
+ * the joint the two top slopes cannot lap themselves. It runs the slab's
+ * whole depth and renders in the roof colour, from the roof component.
+ *
+ * @param peakY the profile's peak, wall-relative (the ridge rise)
+ * @param slope rise/run of the slope EACH SIDE of the ridge — the main pitch
+ *   on a Gable, the upper pitch on a Barn
+ */
+export function roofRidgeCap(peakY, slope, shedLength, wallHeight, {
+	overhang,
+	legWidth = 0.35, // ~4 in of metal down each side
+	thickness = 0.025,
+} = {}) {
+	const depth = shedLength + 2 * overhang;
+	const lift = 0.01; // just off the panel, so the cap reads as its own piece
+	const norm = Math.hypot(1, slope);
+
+	return [-1, +1].map((sx) => {
+		// Down-slope from the ridge, and the surface normal off that slope.
+		const ux = sx / norm;
+		const uy = -slope / norm;
+		const nx = (sx * slope) / norm;
+		const ny = 1 / norm;
+		return {
+			id: sx < 0 ? 'ridge-cap-left' : 'ridge-cap-right',
+			position: [
+				ux * (legWidth / 2) + nx * (thickness / 2 + lift),
+				wallHeight + peakY + uy * (legWidth / 2) + ny * (thickness / 2 + lift),
+				0,
+			],
+			size: [legWidth, thickness, depth],
+			rotation: [0, 0, Math.atan2(uy, ux)],
+		};
+	});
+}
+
+/**
+ * The J-channel along the roof's front and back top edges.
+ *
+ * The gable-end edge of every panel slides into a channel; what shows on the
+ * building is its face — a thin metal line capping the rake, sitting just
+ * proud of the slab's end cut. Its top edge lies ON the top surface, so the
+ * roof's end silhouette stays metal, and the fascia board or rake band below
+ * it starts RAKE_REVEAL down, which is what leaves the channel visible as a
+ * line. Roof metal, not trim — render it in the roof colour.
+ *
+ * @param topLine slab top surface from `gableRoofTopLine` or
+ *   `gambrelRoofTopLine`, eave tip to eave tip, wall-relative
+ */
+export function rakeJChannel(topLine, shedLength, wallHeight, {
+	overhang,
+	faceWidth = 0.06,
+	thickness = 0.08,
+} = {}) {
+	const runs = topLine.slice(0, -1).map((p, i) => [i, p, topLine[i + 1]]);
+	const halfL = shedLength / 2;
+	const z = halfL + overhang + thickness / 2;
+
+	return ['front', 'back'].flatMap((side) =>
+		runs.map(([i, [x1, y1], [x2, y2]]) => {
+			const dx = x2 - x1;
+			const dy = y2 - y1;
+			const len = Math.hypot(dx, dy);
+			const px = dy / len;
+			const py = -dx / len;
+			return {
+				id: `j-channel-${side}-${i}`,
+				position: [
+					(x1 + x2) / 2 + px * (faceWidth / 2),
+					wallHeight + (y1 + y2) / 2 + py * (faceWidth / 2),
+					side === 'front' ? z : -z,
+				],
+				size: [len, faceWidth, thickness],
+				rotation: [0, 0, Math.atan2(dy, dx)],
+			};
+		})
+	);
 }

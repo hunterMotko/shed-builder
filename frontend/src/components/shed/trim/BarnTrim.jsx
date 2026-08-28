@@ -1,5 +1,5 @@
 import { cornerBoards, barnRakeFlashing } from '../../../utils/trimGeometry';
-import { gambrelEndOutline, ROOF_THICKNESS } from '../../../utils/roofGeometry';
+import { gambrelRoofTopLine } from '../../../utils/roofGeometry';
 
 /**
  * BarnTrim — what finishes a Barn's edges.
@@ -11,11 +11,12 @@ import { gambrelEndOutline, ROOF_THICKNESS } from '../../../utils/roofGeometry';
  * ADR-0006 says the Barn gets fascia and this component said it does not; the
  * Reference Photos settle it, and both were half right. There is no *wood*
  * fascia anywhere on a Barn — but the rake is not bare either, and what runs
- * along it is the panel's own colour-matched flashing over the J-channel. That
- * is what `barnRakeFlashing` draws, which is why it is a band and not a board,
- * and why it tucks UNDER the panel edge — the fly is beneath the metal, and
- * the 2 in overhang laps it.
- * Issue #22.
+ * along it is the fly and the J-channel the panel edge insets into. That is
+ * what `barnRakeFlashing` draws, which is why it is a band and not a board,
+ * and why it hugs the slab's end cap with its top edge a reveal below the top
+ * surface — the metal reads as a line above the white, never the other way
+ * round. The channel's own metal face is `rakeJChannel`, drawn by GambrelRoof
+ * in the roof colour. Issue #22.
  *
  * Corner positions come from `cornerBoards`, not from this file: they used to
  * be worked out here and in GableTrim separately, and both copies buried the
@@ -29,14 +30,15 @@ export const BarnTrim = ({
   roofUpperPitch,
   trimColor,
   trimWidth,
+  overhangEave = 2 / 12,
 }) => {
   const TRIM_MAT = { color: trimColor, roughness: 0.6, metalness: 0 };
   const corners = cornerBoards(shedWidth, shedLength, wallHeight, { trimWidth });
   const flashing = barnRakeFlashing(
-    gambrelEndOutline(shedWidth, roofLowerPitch, roofUpperPitch),
+    gambrelRoofTopLine(shedWidth, roofLowerPitch, roofUpperPitch, { overhang: overhangEave }),
     shedLength,
     wallHeight,
-    { roofThickness: ROOF_THICKNESS }
+    { overhang: overhangEave }
   );
 
   return (

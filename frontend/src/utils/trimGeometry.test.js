@@ -5,6 +5,9 @@ import {
 	barnRakeFlashing,
 	barnKnuckleFlashing,
 	gableCornerBoxes,
+	roofRidgeCap,
+	rakeJChannel,
+	RAKE_REVEAL,
 	TRIM_THICKNESS,
 	TRIM_WIDTH,
 } from './trimGeometry';
@@ -171,6 +174,21 @@ describe('gableFasciaBoards', () => {
 		expect(by('eave-left').size[2]).toBeCloseTo(LENGTH + 2 * OVERHANG, 10);
 	});
 
+	it('keeps the rake board below the metal', () => {
+		// The board is rotated with the slope, and the slab is cut plumb — so a
+		// board hung a plumb half-slab down is thicker perpendicular than the
+		// slab is and its top corner rises through the roof plane. The top edge
+		// must sit RAKE_REVEAL perpendicular below the top surface instead. The
+		// front-right slope runs (0, 3) at the ridge to (6.5, -0.25) at the tip.
+		const b = by('rake-front-right');
+		const len = Math.hypot(6.5, 3.25);
+		const below =
+			(6.5 * (WALL_HEIGHT + (3 - 0.25) / 2 - b.position[1]) -
+				-3.25 * (6.5 / 2 - b.position[0])) /
+			len;
+		expect(below).toBeCloseTo(RAKE_REVEAL + THICK / 2, 10);
+	});
+
 	it('covers the slab edge, whatever the slab is', () => {
 		const thicker = gableFasciaBoards(WIDTH, LENGTH, WALL_HEIGHT, ROOF_HEIGHT, {
 			overhang: OVERHANG,
@@ -181,23 +199,21 @@ describe('gableFasciaBoards', () => {
 });
 
 describe('barnRakeFlashing', () => {
-	// The outline `gambrelEndOutline` returns, for a 12 ft barn at 20:12 over
-	// 4:12 — eave, eave, knuckle, ridge, knuckle, worked out by hand: the
-	// knuckle sits 5 ft out and 1 x 20/12 = 1.667 up, the ridge 1.667 + 5 x 4/12
-	// = 3.333 up.
-	const OUTLINE = [
-		[-6, 0],
-		[6, 0],
-		[5, 5 / 3],
-		[0, 10 / 3],
+	// The slab top line for a 12 ft barn at 20:12 over 4:12 with a 2 in
+	// overhang, worked out by hand: the knuckle sits 5 ft out and
+	// 1 x 20/12 = 5/3 up, the ridge 5/3 + 5 x 4/12 = 10/3 up, and the eave tip
+	// runs 1/6 further out and 1/6 x 20/12 = 5/18 below the wall eave.
+	const TOPLINE = [
+		[-6 - 1 / 6, -5 / 18],
 		[-5, 5 / 3],
+		[0, 10 / 3],
+		[5, 5 / 3],
+		[6 + 1 / 6, -5 / 18],
 	];
 	const OVERHANG = 2 / 12;
 
-	const ROOF_THICK = 1 / 3;
-
-	const bands = barnRakeFlashing(OUTLINE, LENGTH, WALL_HEIGHT, {
-		roofThickness: ROOF_THICK,
+	const bands = barnRakeFlashing(TOPLINE, LENGTH, WALL_HEIGHT, {
+		overhang: OVERHANG,
 	});
 	const by = (id) => bands.find((b) => b.id === id);
 
@@ -206,12 +222,9 @@ describe('barnRakeFlashing', () => {
 		expect(bands.filter((b) => b.id.startsWith('rake-front-'))).toHaveLength(4);
 	});
 
-	it('walks the gambrel rather than closing the shape', () => {
-		// The outline arrives in fill order — eave, eave, knuckle, ridge, knuckle
-		// — so reading it as a path would draw a band straight across the eaves.
-		// Every run must be one real edge of the gambrel.
+	it('runs each real edge of the gambrel, eave tip to Knuckle to ridge', () => {
 		const lower = by('rake-front-left-lower');
-		expect(lower.size[0]).toBeCloseTo(Math.hypot(1, 5 / 3), 10);
+		expect(lower.size[0]).toBeCloseTo(Math.hypot(7 / 6, 5 / 3 + 5 / 18), 10);
 		const upper = by('rake-front-left-upper');
 		expect(upper.size[0]).toBeCloseTo(Math.hypot(5, 5 / 3), 10);
 	});
@@ -226,28 +239,29 @@ describe('barnRakeFlashing', () => {
 		expect(lower).toBeGreaterThan(upper);
 	});
 
-	it('tucks under the overhang, proud of the end siding and not of the slab', () => {
-		// The fly is UNDER the metal: the panel runs `overhang` past the end
-		// siding and its edge laps the band. A band outside the slab's end face
-		// would put the white over the metal instead.
-		const z = halfL + TRIM_THICKNESS / 2;
+	it('lies against the slab end cap, which runs the overhang past the siding', () => {
+		const z = halfL + OVERHANG + TRIM_THICKNESS / 2;
 		expect(by('rake-front-left-lower').position[2]).toBeCloseTo(z, 10);
 		expect(by('rake-back-left-lower').position[2]).toBeCloseTo(-z, 10);
-		expect(z + TRIM_THICKNESS / 2).toBeLessThan(halfL + OVERHANG);
 	});
 
-	it('hangs from the slab underside, so the metal edge shows above it', () => {
-		// The slab's underside is the roof line dropped plumb by its thickness.
-		// Half a face width perpendicular-up from the band's centre must land on
-		// that line at the run's midpoint — (-2.5, 2.5) for the left upper run.
-		const b = by('rake-front-left-upper');
-		const len = Math.hypot(5, 5 / 3);
-		const up = [-(5 / 3) / len, 5 / len]; // unit perpendicular, above the run
-		expect(b.position[0] + (up[0] * TRIM_WIDTH) / 2).toBeCloseTo(-2.5, 10);
-		expect(b.position[1] + (up[1] * TRIM_WIDTH) / 2).toBeCloseTo(
-			WALL_HEIGHT + 2.5 - ROOF_THICK,
-			10
-		);
+	it('keeps every scrap of white below the metal, on both slopes', () => {
+		// Point-line distance from the band's centre to its own run: the whole
+		// band lies RAKE_REVEAL + half a face below the top surface. Signed via
+		// the cross product, so a band lapped OVER the edge comes out negative.
+		for (const [, [x1, y1], [x2, y2]] of [
+			['lower', TOPLINE[0], TOPLINE[1]],
+			['upper', TOPLINE[1], TOPLINE[2]],
+		]) {
+			const id = y2 > y1 && x2 === 0 ? 'rake-front-left-upper' : 'rake-front-left-lower';
+			const b = by(id);
+			const len = Math.hypot(x2 - x1, y2 - y1);
+			const below =
+				((x2 - x1) * (WALL_HEIGHT + (y1 + y2) / 2 - b.position[1]) -
+					(y2 - y1) * ((x1 + x2) / 2 - b.position[0])) /
+				len;
+			expect(below).toBeCloseTo(RAKE_REVEAL + TRIM_WIDTH / 2, 10);
+		}
 	});
 
 	it('is TRIM_WIDTH on the face, like every other board', () => {
@@ -340,5 +354,72 @@ describe('gableCornerBoxes', () => {
 			WALL_HEIGHT - 0.25 - THICK / 2,
 			10
 		);
+	});
+});
+
+describe('roofRidgeCap', () => {
+	// A 6:12 gable peaking 3 ft over the wall, with a 6 in overhang.
+	const caps = roofRidgeCap(3, 0.5, LENGTH, WALL_HEIGHT, { overhang: 0.5 });
+	const by = (id) => caps.find((c) => c.id === id);
+
+	it('folds one leg down each slope', () => {
+		expect(caps.map((c) => c.id).sort()).toEqual(['ridge-cap-left', 'ridge-cap-right']);
+	});
+
+	it('runs the whole slab, overhang included, centred on the shed', () => {
+		for (const c of caps) {
+			expect(c.size[2]).toBeCloseTo(LENGTH + 1, 10);
+			expect(c.position[2]).toBeCloseTo(0, 10);
+		}
+	});
+
+	it('lies at the pitch of its slope, mirrored across the ridge', () => {
+		expect(Math.tan(by('ridge-cap-right').rotation[2])).toBeCloseTo(-0.5, 10);
+		expect(Math.tan(by('ridge-cap-left').rotation[2])).toBeCloseTo(0.5, 10);
+	});
+
+	it('sits on the weather side, just off the panel at the peak', () => {
+		// Each leg's centre must be above its own slope line y = 3 - 0.5|x|,
+		// but by no more than the metal's own thickness and lift.
+		for (const c of caps) {
+			const surface = WALL_HEIGHT + 3 - 0.5 * Math.abs(c.position[0]);
+			expect(c.position[1]).toBeGreaterThan(surface);
+			expect(c.position[1] - surface).toBeLessThan(0.1);
+		}
+	});
+});
+
+describe('rakeJChannel', () => {
+	// The same 6:12 gable's top line: tip (-6.5, -0.25), ridge (0, 3), tip.
+	const TOPLINE = [
+		[-6.5, -0.25],
+		[0, 3],
+		[6.5, -0.25],
+	];
+	const OVERHANG = 0.5;
+
+	const lips = rakeJChannel(TOPLINE, LENGTH, WALL_HEIGHT, { overhang: OVERHANG });
+
+	it('caps every run on both ends', () => {
+		expect(lips).toHaveLength(4);
+		expect(lips.filter((l) => l.id.startsWith('j-channel-front-'))).toHaveLength(2);
+	});
+
+	it('sits just proud of the slab end cap', () => {
+		const front = lips.find((l) => l.id === 'j-channel-front-0');
+		expect(front.position[2]).toBeGreaterThan(halfL + OVERHANG);
+	});
+
+	it('tops out AT the surface, so the silhouette stays metal', () => {
+		// Centre half a face perpendicular below the run: the top edge lies on
+		// the top line itself, unlike the fascia and the band, which both start
+		// RAKE_REVEAL further down.
+		const l = lips.find((x) => x.id === 'j-channel-front-1');
+		const len = Math.hypot(6.5, 3.25);
+		const below =
+			(6.5 * (WALL_HEIGHT + (3 - 0.25) / 2 - l.position[1]) -
+				-3.25 * (6.5 / 2 - l.position[0])) /
+			len;
+		expect(below).toBeCloseTo(l.size[1] / 2, 10);
 	});
 });

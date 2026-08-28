@@ -9,8 +9,8 @@ import {
   GAMBREL_UPPER_PITCH,
 } from '../../../utils/roofGeometry';
 import { Skylight } from '../extras/Skylight';
-import { barnKnuckleFlashing } from '../../../utils/trimGeometry';
-import { gambrelEndOutline } from '../../../utils/roofGeometry';
+import { barnKnuckleFlashing, roofRidgeCap, rakeJChannel } from '../../../utils/trimGeometry';
+import { gambrelEndOutline, gambrelRoofTopLine } from '../../../utils/roofGeometry';
 
 /**
  * GambrelRoof — the barn roof, as a slab.
@@ -65,19 +65,24 @@ export const GambrelRoof = ({
     [roofColor, roofMaterial]
   );
 
-  // Gambrel break flashing: the bent metal drip capping each Knuckle, run the
-  // slab's whole depth. It is part of the roof, so it renders here in the roof
-  // colour rather than with the trim.
-  const knuckleFlashing = useMemo(
-    () =>
-      barnKnuckleFlashing(
+  // The roof's own metalwork: break flashing over each Knuckle, the ridge
+  // cap, and the J-channel capping both gable-end top edges. All of it is
+  // roof metal, so it renders here in the roof colour rather than with the
+  // trim.
+  const metalwork = useMemo(() => {
+    const topLine = gambrelRoofTopLine(shedWidth, roofLowerPitch, roofUpperPitch, { overhang });
+    const peak = topLine.reduce((hi, p) => Math.max(hi, p[1]), -Infinity);
+    return [
+      ...barnKnuckleFlashing(
         gambrelEndOutline(shedWidth, roofLowerPitch, roofUpperPitch),
         shedLength,
         wallHeight,
         { overhang }
       ),
-    [shedWidth, shedLength, wallHeight, roofLowerPitch, roofUpperPitch, overhang]
-  );
+      ...roofRidgeCap(peak, roofUpperPitch / 12, shedLength, wallHeight, { overhang }),
+      ...rakeJChannel(topLine, shedLength, wallHeight, { overhang }),
+    ];
+  }, [shedWidth, shedLength, wallHeight, roofLowerPitch, roofUpperPitch, overhang]);
 
   // Highest point of the profile, for anything that sits on the ridge.
   const peakY = useMemo(() => {
@@ -100,7 +105,7 @@ export const GambrelRoof = ({
         <shaderMaterial args={[roofShader]} side={THREE.DoubleSide} />
       </mesh>
 
-      {knuckleFlashing.map(({ id, position, size, rotation }) => (
+      {metalwork.map(({ id, position, size, rotation }) => (
         <mesh key={id} position={position} rotation={rotation} castShadow>
           <boxGeometry args={size} />
           <meshStandardMaterial

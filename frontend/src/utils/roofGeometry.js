@@ -428,16 +428,24 @@ function slabFrom(top, thickness) {
  * @returns {number[][]} closed outline, top surface first
  */
 export function gableRoofProfile(shedWidth, pitchX, { overhang, thickness }) {
+	return slabFrom(gableRoofTopLine(shedWidth, pitchX, { overhang }), thickness);
+}
+
+/**
+ * The gable slab's top surface alone, eave tip to eave tip over the ridge —
+ * the line the rake fascia, the J-channel and the ridge cap all hang off.
+ * Walked left to right, so consumers can treat consecutive points as runs.
+ */
+export function gableRoofTopLine(shedWidth, pitchX, { overhang }) {
 	const halfWidth = shedWidth / 2;
 	const slope = pitchX / 12;
 	const outer = halfWidth + overhang;
 
-	const top = [
+	return [
 		[-outer, -overhang * slope],
 		[0, halfWidth * slope],
 		[outer, -overhang * slope],
 	];
-	return slabFrom(top, thickness);
 }
 
 /**
@@ -451,6 +459,15 @@ export function gableRoofProfile(shedWidth, pitchX, { overhang, thickness }) {
  * @returns {number[][]} closed outline, top surface first
  */
 export function gambrelRoofProfile(shedWidth, lowerPitch, upperPitch, { overhang, thickness }) {
+	return slabFrom(gambrelRoofTopLine(shedWidth, lowerPitch, upperPitch, { overhang }), thickness);
+}
+
+/**
+ * The gambrel slab's top surface alone, eave tip to eave tip over both
+ * Knuckles — what the Barn's rake band, J-channel and ridge cap follow.
+ * Walked left to right, so consumers can treat consecutive points as runs.
+ */
+export function gambrelRoofTopLine(shedWidth, lowerPitch, upperPitch, { overhang }) {
 	const halfWidth = shedWidth / 2;
 	const lower = lowerPitch / 12;
 	const upper = upperPitch / 12;
@@ -459,14 +476,13 @@ export function gambrelRoofProfile(shedWidth, lowerPitch, upperPitch, { overhang
 	const peakY = knuckleY + knuckleX * upper;
 	const outer = halfWidth + overhang;
 
-	const top = [
+	return [
 		[-outer, -overhang * lower],
 		[-knuckleX, knuckleY],
 		[0, peakY],
 		[knuckleX, knuckleY],
 		[outer, -overhang * lower],
 	];
-	return slabFrom(top, thickness);
 }
 
 /**

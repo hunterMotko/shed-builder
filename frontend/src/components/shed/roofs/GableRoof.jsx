@@ -1,7 +1,8 @@
 import { useMemo } from 'react';
 import * as THREE from 'three';
 import { makeRoofShader } from '../../../utils/shaders';
-import { gableRoofProfile, roofSlabDepth, ROOF_THICKNESS } from '../../../utils/roofGeometry';
+import { gableRoofProfile, gableRoofTopLine, roofSlabDepth, ROOF_THICKNESS } from '../../../utils/roofGeometry';
+import { roofRidgeCap, rakeJChannel } from '../../../utils/trimGeometry';
 import { Skylight } from '../extras/Skylight';
 
 /**
@@ -61,6 +62,19 @@ export const GableRoof = ({
 
   const peakY = wallHeight + roofHeight;
 
+  // The roof's own metalwork: the ridge cap folded over the peak, and the
+  // J-channel capping both gable-end top edges. Roof metal, so it renders
+  // here in the roof colour rather than with the trim.
+  const metalwork = useMemo(() => {
+    const slope = roofHeight / (shedWidth / 2);
+    return [
+      ...roofRidgeCap(roofHeight, slope, shedLength, wallHeight, { overhang }),
+      ...rakeJChannel(gableRoofTopLine(shedWidth, pitchX, { overhang }), shedLength, wallHeight, {
+        overhang,
+      }),
+    ];
+  }, [shedWidth, shedLength, wallHeight, roofHeight, pitchX, overhang]);
+
   return (
     <group name="gableRoof">
       <mesh
@@ -72,6 +86,17 @@ export const GableRoof = ({
         <extrudeGeometry args={[roofShape, extrudeSettings]} />
         <shaderMaterial args={[roofShader]} side={THREE.DoubleSide} />
       </mesh>
+
+      {metalwork.map(({ id, position, size, rotation }) => (
+        <mesh key={id} position={position} rotation={rotation} castShadow>
+          <boxGeometry args={size} />
+          <meshStandardMaterial
+            color={roofColor}
+            roughness={roofMaterial === 'metal' ? 0.35 : 0.7}
+            metalness={roofMaterial === 'metal' ? 0.4 : 0.05}
+          />
+        </mesh>
+      ))}
 
       {skylight?.enabled && (
         <group position={[0, peakY + 0.02, 0]}>

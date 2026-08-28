@@ -135,6 +135,7 @@ export const BarnShed = ({
 				roofLowerPitch={roofLowerPitch}
 				roofUpperPitch={roofUpperPitch}
 				trimColor={trimColor}
+				overhangEave={overhang}
 			/>
 
 			{/* Foundation: floor deck + 5 longitudinal runners */}
