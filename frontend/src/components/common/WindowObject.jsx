@@ -31,9 +31,11 @@ export const WindowObject = ({
 }) => {
 	const { width: w, height: h } = placement;
 
-	// Window sits 0.25 ft proud of the wall face.
+	// The unit sits IN the opening: the frame's front face lands on the siding
+	// plane (frame boxes run z 0.02 ± 0.03 in group space), the glass recessed
+	// behind it, and only the casing — WindowFrame — stands proud of the wall.
 	const { position, rotation } = useMemo(
-		() => openingTransform(placement, shedDimensions, 0.25),
+		() => openingTransform(placement, shedDimensions, -0.05),
 		[placement, shedDimensions]
 	);
 

@@ -1,5 +1,5 @@
 import { cornerBoards, barnRakeFlashing } from '../../../utils/trimGeometry';
-import { gambrelEndOutline } from '../../../utils/roofGeometry';
+import { gambrelEndOutline, ROOF_THICKNESS } from '../../../utils/roofGeometry';
 
 /**
  * BarnTrim — what finishes a Barn's edges.
@@ -12,7 +12,9 @@ import { gambrelEndOutline } from '../../../utils/roofGeometry';
  * Reference Photos settle it, and both were half right. There is no *wood*
  * fascia anywhere on a Barn — but the rake is not bare either, and what runs
  * along it is the panel's own colour-matched flashing over the J-channel. That
- * is what `barnRakeFlashing` draws, which is why it is a band and not a board.
+ * is what `barnRakeFlashing` draws, which is why it is a band and not a board,
+ * and why it tucks UNDER the panel edge — the fly is beneath the metal, and
+ * the 2 in overhang laps it.
  * Issue #22.
  *
  * Corner positions come from `cornerBoards`, not from this file: they used to
@@ -27,7 +29,6 @@ export const BarnTrim = ({
   roofUpperPitch,
   trimColor,
   trimWidth,
-  overhangEave = 2 / 12,
 }) => {
   const TRIM_MAT = { color: trimColor, roughness: 0.6, metalness: 0 };
   const corners = cornerBoards(shedWidth, shedLength, wallHeight, { trimWidth });
@@ -35,7 +36,7 @@ export const BarnTrim = ({
     gambrelEndOutline(shedWidth, roofLowerPitch, roofUpperPitch),
     shedLength,
     wallHeight,
-    { overhang: overhangEave }
+    { roofThickness: ROOF_THICKNESS }
   );
 
   return (

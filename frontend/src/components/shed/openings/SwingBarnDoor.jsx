@@ -1,6 +1,9 @@
 import { openingTransform } from '../../../utils/wallOpenings';
 
-const OFFSET = 0.1;
+// The leaves are built of the wall's own siding and hang IN the opening, their
+// faces flush with the wall plane — only the white stiles and rails stand
+// proud. Half the slab back from the face puts the slab's front on the siding.
+const OFFSET = -0.035; // -slab / 2
 
 // Module-level component — not re-created on each render
 function DoorLeaf({ leafW, leafH, isRight, woodColor, trimColor, metalColor }) {

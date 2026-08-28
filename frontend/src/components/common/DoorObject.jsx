@@ -9,15 +9,17 @@ export const DoorObject = ({
 }) => {
   const { width: elemWidth, height: elemHeight } = placement;
 
-  // Door slab sits 0.3 ft proud of the wall face.
+  const slab = 0.09; // door thickness
+
+  // The slab sits IN the opening, its face flush with the siding — only the
+  // rails, stiles and hardware stand proud of the wall plane.
   const { position, rotation } = useMemo(
-    () => openingTransform(placement, shedDimensions, 0.3),
+    () => openingTransform(placement, shedDimensions, -slab / 2),
     [placement, shedDimensions]
   );
 
   const W = elemWidth;
   const H = elemHeight;
-  const slab      = 0.09;   // door thickness
   const stileW    = 0.15;   // frame stile/rail width
   const botRailH  = 0.22;   // bottom rail (taller for kick plate look)
   const midRailH  = 0.12;   // middle rail that divides upper/lower panels

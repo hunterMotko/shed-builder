@@ -116,9 +116,11 @@ product question. Eave overhang comes from `roofOverhangFt`, not from a constant
 
 A corner board, though, is the same board on both, and **`utils/trimGeometry.js` is the only
 place a trim position is worked out** — the trim counterpart to `openingTransform` (ADR-0011).
-`cornerBoards` is shared; `gableFasciaBoards` (the Gable's boxed rake and eave) and
-`barnRakeFlashing` (the white band down a Barn's gambrel) are per Model. The components ask;
-neither computes.
+`cornerBoards` is shared; `gableFasciaBoards` (the Gable's boxed rake and eave),
+`gableCornerBoxes` (the boxed soffit return at each of its four corners), `barnRakeFlashing`
+(the white band down a Barn's gambrel — the fly UNDER the metal, so the panel edge laps it) and
+`barnKnuckleFlashing` (the gambrel break flashing capping each Knuckle, rendered by
+`GambrelRoof` in the roof colour) are per Model. The components ask; neither computes.
 
 The fascia has to be worked out from the **roof**, not the wall: once the roof became a slab
 running past the gable ends (ADR-0013), `GableTrim`'s rake boards — still nailed to the gable end

@@ -9,6 +9,8 @@ import {
   GAMBREL_UPPER_PITCH,
 } from '../../../utils/roofGeometry';
 import { Skylight } from '../extras/Skylight';
+import { barnKnuckleFlashing } from '../../../utils/trimGeometry';
+import { gambrelEndOutline } from '../../../utils/roofGeometry';
 
 /**
  * GambrelRoof — the barn roof, as a slab.
@@ -63,6 +65,20 @@ export const GambrelRoof = ({
     [roofColor, roofMaterial]
   );
 
+  // Gambrel break flashing: the bent metal drip capping each Knuckle, run the
+  // slab's whole depth. It is part of the roof, so it renders here in the roof
+  // colour rather than with the trim.
+  const knuckleFlashing = useMemo(
+    () =>
+      barnKnuckleFlashing(
+        gambrelEndOutline(shedWidth, roofLowerPitch, roofUpperPitch),
+        shedLength,
+        wallHeight,
+        { overhang }
+      ),
+    [shedWidth, shedLength, wallHeight, roofLowerPitch, roofUpperPitch, overhang]
+  );
+
   // Highest point of the profile, for anything that sits on the ridge.
   const peakY = useMemo(() => {
     const points = gambrelRoofProfile(shedWidth, roofLowerPitch, roofUpperPitch, {
@@ -83,6 +99,17 @@ export const GambrelRoof = ({
         <extrudeGeometry args={[roofShape, extrudeSettings]} />
         <shaderMaterial args={[roofShader]} side={THREE.DoubleSide} />
       </mesh>
+
+      {knuckleFlashing.map(({ id, position, size, rotation }) => (
+        <mesh key={id} position={position} rotation={rotation} castShadow>
+          <boxGeometry args={size} />
+          <meshStandardMaterial
+            color={roofColor}
+            roughness={roofMaterial === 'metal' ? 0.35 : 0.7}
+            metalness={roofMaterial === 'metal' ? 0.4 : 0.05}
+          />
+        </mesh>
+      ))}
 
       {skylight?.enabled && (
         <group position={[0, wallHeight + peakY + 0.02, 0]}>

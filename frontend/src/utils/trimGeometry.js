@@ -155,22 +155,26 @@ export function gableFasciaBoards(
 }
 
 /**
- * The white band that follows a Barn's gambrel rake.
+ * The white band that follows a Barn's gambrel rake — the fly, not a board.
  *
- * Not a trim board. A Barn gets no wood rake — the roof panel runs 2 in past
- * the gable end and finishes in J-channel, and what the photographs show along
- * that edge is the channel and the panel's own colour-matched rake flashing.
- * It reads as the widest white line on the building, so leaving it out left the
- * gambrel with no edge at all.
+ * A Barn gets no wood rake. The white run the photographs show is the fly
+ * board nailed under the roof deck at the gable end, with the J-channel the
+ * panel edge insets into — so it is UNDER the metal, and the panel's 2 in
+ * overhang laps it. It used to be drawn centred on the roof line, outside the
+ * slab's end face, which put half the band over the metal edge it should be
+ * tucked beneath.
  *
- * One band per straight run of the outline: four per end, eight in all. Each is
- * a box laid along its run, standing just outside the roof slab's rake face.
+ * One band per straight run of the outline: four per end, eight in all. Each
+ * hangs from the slab's underside, just proud of the end siding, so the roof
+ * edge reads above it as a line of panel colour.
  *
  * @param outline gambrel points from `gambrelEndOutline`, eave to eave over the
  *   ridge, in wall-relative coordinates where y = 0 is the eave
+ * @param opts.roofThickness the slab's own thickness, which is how far below
+ *   the roof line the slab's underside sits (`slabFrom` drops it plumb)
  */
 export function barnRakeFlashing(outline, shedLength, wallHeight, {
-	overhang,
+	roofThickness = 0,
 	faceWidth = TRIM_WIDTH,
 	thickness = TRIM_THICKNESS,
 } = {}) {
@@ -185,22 +189,123 @@ export function barnRakeFlashing(outline, shedLength, wallHeight, {
 	];
 
 	const halfL = shedLength / 2;
-	const z = halfL + overhang + thickness / 2;
+	// Proud of the END SIDING, not of the slab: the slab runs `overhang`
+	// further and its edge overlaps the band, which is the whole point.
+	const z = halfL + thickness / 2;
 
 	return ['front', 'back'].flatMap((side) =>
 		runs.map(([id, [x1, y1], [x2, y2]]) => {
 			const dx = x2 - x1;
 			const dy = y2 - y1;
+			const len = Math.hypot(dx, dy);
+			// Perpendicular below the run, so the band's top edge lands on the
+			// slab's underside (the roof line dropped plumb by its thickness).
+			const px = dy / len;
+			const py = -dx / len;
 			return {
 				id: `rake-${side}-${id}`,
 				position: [
-					(x1 + x2) / 2,
-					wallHeight + (y1 + y2) / 2,
+					(x1 + x2) / 2 + px * (faceWidth / 2),
+					wallHeight + (y1 + y2) / 2 + py * (faceWidth / 2) - roofThickness,
 					side === 'front' ? z : -z,
 				],
-				size: [Math.hypot(dx, dy), faceWidth, thickness],
+				size: [len, faceWidth, thickness],
 				rotation: [0, 0, Math.atan2(dy, dx)],
 			};
 		})
 	);
+}
+
+/**
+ * The gambrel break flashing — the metal drip capping each Knuckle.
+ *
+ * The steep lower panel and the shallow upper one meet at an outside break
+ * that neither panel can lap, so the shop runs a bent flashing the full length
+ * of the roof over the joint: one leg laid up the upper slope, one hanging
+ * down over the lower, meeting at the break. It is roof metal, not trim —
+ * render it in the roof colour, from the roof component.
+ *
+ * @param outline gambrel points from `gambrelEndOutline` (fill order)
+ * @returns boxes running the slab's whole depth along Z, centred on the shed
+ */
+export function barnKnuckleFlashing(outline, shedLength, wallHeight, {
+	overhang,
+	legWidth = 0.29, // ~3.5 in per bent leg
+	thickness = 0.02,
+} = {}) {
+	const [leftEave, rightEave, rightKnuckle, ridge, leftKnuckle] = outline;
+	const depth = shedLength + 2 * overhang;
+	// Just off the panel surface, so the drip edge reads without flickering.
+	const lift = 0.008;
+
+	const sides = [
+		['right', rightKnuckle, ridge, rightEave],
+		['left', leftKnuckle, ridge, leftEave],
+	];
+
+	return sides.flatMap(([side, knuckle, ridgePt, eavePt]) =>
+		[
+			['upper', ridgePt],
+			['lower', eavePt],
+		].map(([leg, toward]) => {
+			const dx = toward[0] - knuckle[0];
+			const dy = toward[1] - knuckle[1];
+			const len = Math.hypot(dx, dy);
+			const ux = dx / len;
+			const uy = dy / len;
+			// Perpendicular pointing off the roof surface, away from the shed.
+			let px = -uy;
+			let py = ux;
+			if (py < 0) {
+				px = -px;
+				py = -py;
+			}
+			return {
+				id: `knuckle-${side}-${leg}`,
+				position: [
+					knuckle[0] + ux * (legWidth / 2) + px * (thickness / 2 + lift),
+					wallHeight + knuckle[1] + uy * (legWidth / 2) + py * (thickness / 2 + lift),
+					0,
+				],
+				size: [legWidth, thickness, depth],
+				rotation: [0, 0, Math.atan2(dy, dx)],
+			};
+		})
+	);
+}
+
+/**
+ * The boxed soffit returns at a Gable's four corners.
+ *
+ * Where the eave fascia meets the rake, the shop closes the overhang with a
+ * box — the corner of the "soffit and fascia box" in the shop spec. Without it
+ * the two fascia runs meet around an open corner and the underside of the
+ * overhang shows through.
+ *
+ * The box fills the plan corner between the wall and the slab's edges; the
+ * fascia boards already provide the outer faces just past it, so it stops at
+ * the slab edge rather than pushing coplanar into them.
+ */
+export function gableCornerBoxes(shedWidth, shedLength, wallHeight, roofHeight, {
+	overhang,
+	roofThickness,
+} = {}) {
+	const halfW = shedWidth / 2;
+	const halfL = shedLength / 2;
+	const slope = roofHeight / halfW;
+	const tipDrop = overhang * slope;
+	// Same datum as the eave fascia: centred on the slab's edge at the tip.
+	const y = wallHeight - tipDrop - roofThickness / 2;
+
+	return [
+		['front-right', +1, +1],
+		['front-left', -1, +1],
+		['back-right', +1, -1],
+		['back-left', -1, -1],
+	].map(([id, sx, sz]) => ({
+		id: `corner-box-${id}`,
+		position: [sx * (halfW + overhang / 2), y, sz * (halfL + overhang / 2)],
+		size: [overhang, roofThickness, overhang],
+		rotation: [0, 0, 0],
+	}));
 }

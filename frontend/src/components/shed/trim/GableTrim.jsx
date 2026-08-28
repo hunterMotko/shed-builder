@@ -1,9 +1,9 @@
-import { cornerBoards, gableFasciaBoards, TRIM_WIDTH } from '../../../utils/trimGeometry';
+import { cornerBoards, gableFasciaBoards, gableCornerBoxes, TRIM_WIDTH } from '../../../utils/trimGeometry';
 import { ROOF_THICKNESS } from '../../../utils/roofGeometry';
 
 /**
  * GableTrim — the trim set that comes with the Gable Model.
- * Renders: 4 corner boards + 2 eave fascia + 4 rake boards.
+ * Renders: 4 corner boards + 2 eave fascia + 4 rake boards + 4 corner boxes.
  * Only imported by GableShed — never shared with BarnShed.
  *
  * Nothing here works out a position. Corner boards come from `cornerBoards`,
@@ -27,6 +27,10 @@ export const GableTrim = ({
     overhang: overhangEave,
     roofThickness: ROOF_THICKNESS,
   });
+  const cornerBoxes = gableCornerBoxes(shedWidth, shedLength, wallHeight, roofHeight, {
+    overhang: overhangEave,
+    roofThickness: ROOF_THICKNESS,
+  });
 
   return (
     <group name="gableTrim">
@@ -39,7 +43,7 @@ export const GableTrim = ({
       ))}
 
       {/* Rake and eave fascia, boxing in the roof slab's cut edge */}
-      {fascia.map(({ id, position, size, rotation }) => (
+      {[...fascia, ...cornerBoxes].map(({ id, position, size, rotation }) => (
         <mesh key={id} position={position} rotation={rotation} castShadow receiveShadow>
           <boxGeometry args={size} />
           <meshStandardMaterial {...TRIM_MAT} />
