@@ -8,6 +8,9 @@ import {
 	roofRidgeCap,
 	rakeJChannel,
 	RAKE_REVEAL,
+	EAVE_REVEAL,
+	FLY_FACE,
+	J_CHANNEL_LAP,
 	TRIM_THICKNESS,
 	TRIM_WIDTH,
 } from './trimGeometry';
@@ -148,11 +151,32 @@ describe('gableFasciaBoards', () => {
 		expect(by('rake-back-left').position[2]).toBeLessThan(-(halfL + OVERHANG));
 	});
 
-	it('runs the rake the full slope, ridge to overhang tip', () => {
+	it('runs the rake the full slope, tip to the mitre under the apex', () => {
 		// Rise from the tip to the ridge is the wall rise plus what the overhang
-		// drops below the eave: 3 + 0.5 x (3/6) = 3.25, over a run of 6.5.
+		// drops below the eave: 3 + 0.5 x (3/6) = 3.25, over a run of 6.5 — less
+		// the mitre: the peak is a convex corner, so centre lines offset toward
+		// its inside meet offset x slope SHORT of the apex foot, which is
+		// exactly why the boards no longer cross in an X there.
 		const rake = by('rake-front-right');
-		expect(rake.size[0]).toBeCloseTo(Math.hypot(6.5, 3.25), 10);
+		const offset = RAKE_REVEAL + THICK / 2;
+		expect(rake.size[0]).toBeCloseTo(Math.hypot(6.5, 3.25) - offset * 0.5, 10);
+	});
+
+	it('mitres the two rakes to a single point under the apex', () => {
+		// Cut square they crossed in an X at the peak, each poking past the
+		// opposing slope's silhouette. Both boards' apex ends must land on the
+		// same point: straight below the apex, offset / cos(pitch angle) down.
+		const endOf = (b, sign) => [
+			b.position[0] + sign * Math.cos(b.rotation[2]) * (b.size[0] / 2),
+			b.position[1] + sign * Math.sin(b.rotation[2]) * (b.size[0] / 2),
+		];
+		const left = endOf(by('rake-front-left'), +1);
+		const right = endOf(by('rake-front-right'), -1);
+		expect(left[0]).toBeCloseTo(right[0], 10);
+		expect(left[1]).toBeCloseTo(right[1], 10);
+		const offset = RAKE_REVEAL + THICK / 2;
+		expect(left[0]).toBeCloseTo(0, 10);
+		expect(left[1]).toBeCloseTo(WALL_HEIGHT + 3 - offset / (6.5 / Math.hypot(6.5, 3.25)), 10);
 	});
 
 	it('pitches the rake at the roof pitch', () => {
@@ -167,7 +191,7 @@ describe('gableFasciaBoards', () => {
 		// y = 0 in the roof profile is the eave AT THE WALL, so the tip is a
 		// half-pitch-run lower — 0.25 ft here — and the board covers the slab.
 		const eave = by('eave-right');
-		expect(eave.position[1]).toBeCloseTo(WALL_HEIGHT - 0.25 - THICK / 2, 10);
+		expect(eave.position[1]).toBeCloseTo(WALL_HEIGHT - 0.25 - EAVE_REVEAL - THICK / 2, 10);
 	});
 
 	it('runs the eave the whole length of the slab, so it meets both rakes', () => {
@@ -222,11 +246,25 @@ describe('barnRakeFlashing', () => {
 		expect(bands.filter((b) => b.id.startsWith('rake-front-'))).toHaveLength(4);
 	});
 
-	it('runs each real edge of the gambrel, eave tip to Knuckle to ridge', () => {
-		const lower = by('rake-front-left-lower');
-		expect(lower.size[0]).toBeCloseTo(Math.hypot(7 / 6, 5 / 3 + 5 / 18), 10);
-		const upper = by('rake-front-left-upper');
-		expect(upper.size[0]).toBeCloseTo(Math.hypot(5, 5 / 3), 10);
+	it('mitres consecutive runs to shared joints at the Knuckle and ridge', () => {
+		// Cut square, each run's end jutted past the roof's silhouette at every
+		// joint. Mitred, the lower run's upper end and the upper run's lower end
+		// are the same point.
+		const endOf = (b, sign) => [
+			b.position[0] + sign * Math.cos(b.rotation[2]) * (b.size[0] / 2),
+			b.position[1] + sign * Math.sin(b.rotation[2]) * (b.size[0] / 2),
+		];
+		const pairs = [
+			['rake-front-left-lower', 'rake-front-left-upper'],
+			['rake-front-left-upper', 'rake-front-right-upper'],
+			['rake-front-right-upper', 'rake-front-right-lower'],
+		];
+		for (const [a, b] of pairs) {
+			const tail = endOf(by(a), +1);
+			const head = endOf(by(b), -1);
+			expect(tail[0]).toBeCloseTo(head[0], 10);
+			expect(tail[1]).toBeCloseTo(head[1], 10);
+		}
 	});
 
 	it('lies at the pitch of the run it covers', () => {
@@ -260,12 +298,15 @@ describe('barnRakeFlashing', () => {
 				((x2 - x1) * (WALL_HEIGHT + (y1 + y2) / 2 - b.position[1]) -
 					(y2 - y1) * ((x1 + x2) / 2 - b.position[0])) /
 				len;
-			expect(below).toBeCloseTo(RAKE_REVEAL + TRIM_WIDTH / 2, 10);
+			expect(below).toBeCloseTo(RAKE_REVEAL + FLY_FACE / 2, 10);
 		}
 	});
 
-	it('is TRIM_WIDTH on the face, like every other board', () => {
-		for (const b of bands) expect(b.size[1]).toBeCloseTo(TRIM_WIDTH, 10);
+	it('shows a flat 2x4 on the face, not a 4 in board', () => {
+		// 1.5 in: on `barn_barndoors.jpg` the white under the metal is 5-6 px at
+		// 3.4 px/in. The 4 in it used to be was the whole white-plus-metal stack
+		// measured as one band.
+		for (const b of bands) expect(b.size[1]).toBeCloseTo(FLY_FACE, 10);
 	});
 });
 
@@ -351,7 +392,7 @@ describe('gableCornerBoxes', () => {
 	it('hangs level with the eave fascia at the overhang tip', () => {
 		// The tip is a half-pitch-run below the top plate: 0.5 x (3/6) = 0.25.
 		expect(by('corner-box-back-left').position[1]).toBeCloseTo(
-			WALL_HEIGHT - 0.25 - THICK / 2,
+			WALL_HEIGHT - 0.25 - EAVE_REVEAL - THICK / 2,
 			10
 		);
 	});
@@ -410,16 +451,16 @@ describe('rakeJChannel', () => {
 		expect(front.position[2]).toBeGreaterThan(halfL + OVERHANG);
 	});
 
-	it('tops out AT the surface, so the silhouette stays metal', () => {
-		// Centre half a face perpendicular below the run: the top edge lies on
-		// the top line itself, unlike the fascia and the band, which both start
-		// RAKE_REVEAL further down.
+	it('laps its own lap over the panel edge, so the silhouette stays metal', () => {
+		// The channel is bent over the panel: its centre sits half a face minus
+		// the lap below the run, leaving J_CHANNEL_LAP of metal above the
+		// surface and the rest covering the reveal down to the painted trim.
 		const l = lips.find((x) => x.id === 'j-channel-front-1');
 		const len = Math.hypot(6.5, 3.25);
 		const below =
 			(6.5 * (WALL_HEIGHT + (3 - 0.25) / 2 - l.position[1]) -
 				-3.25 * (6.5 / 2 - l.position[0])) /
 			len;
-		expect(below).toBeCloseTo(l.size[1] / 2, 10);
+		expect(below).toBeCloseTo(l.size[1] / 2 - J_CHANNEL_LAP, 10);
 	});
 });
