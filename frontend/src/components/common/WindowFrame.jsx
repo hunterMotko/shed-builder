@@ -24,25 +24,25 @@ export const WindowFrame = ({
 			{/* Top trim — sits above the opening center by elemHeight/2 */}
 			<mesh position={[0, elemHeight / 2 + trimWidth / 2, 0]} castShadow>
 				<boxGeometry args={[elemWidth + trimWidth * 2, trimWidth, trimWidth]} />
-				<meshStandardMaterial color={trimColor} roughness={0.4} metalness={0.25} />
+				<meshStandardMaterial color={trimColor} roughness={0.6} metalness={0} />
 			</mesh>
 
 			{/* Bottom trim — sits below the opening center by elemHeight/2 */}
 			<mesh position={[0, -(elemHeight / 2 + trimWidth / 2), 0]} castShadow>
 				<boxGeometry args={[elemWidth + trimWidth * 2, trimWidth, trimWidth]} />
-				<meshStandardMaterial color={trimColor} roughness={0.4} metalness={0.25} />
+				<meshStandardMaterial color={trimColor} roughness={0.6} metalness={0} />
 			</mesh>
 
 			{/* Left trim — centered vertically at group origin */}
 			<mesh position={[-(elemWidth / 2 + trimWidth / 2), 0, 0]} castShadow>
 				<boxGeometry args={[trimWidth, elemHeight + trimWidth * 2, trimWidth]} />
-				<meshStandardMaterial color={trimColor} roughness={0.4} metalness={0.25} />
+				<meshStandardMaterial color={trimColor} roughness={0.6} metalness={0} />
 			</mesh>
 
 			{/* Right trim — centered vertically at group origin */}
 			<mesh position={[elemWidth / 2 + trimWidth / 2, 0, 0]} castShadow>
 				<boxGeometry args={[trimWidth, elemHeight + trimWidth * 2, trimWidth]} />
-				<meshStandardMaterial color={trimColor} roughness={0.4} metalness={0.25} />
+				<meshStandardMaterial color={trimColor} roughness={0.6} metalness={0} />
 			</mesh>
 		</group>
 	);

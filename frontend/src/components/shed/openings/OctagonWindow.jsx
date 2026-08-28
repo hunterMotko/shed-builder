@@ -71,7 +71,7 @@ export const OctagonWindow = ({ radius = 0.75, trimColor = '#654321' }) => {
       {/* Frame ring */}
       <mesh castShadow position={[0, 0, -depth / 2]}>
         <extrudeGeometry args={[frameShape, extrudeSettings]} />
-        <meshStandardMaterial color={trimColor} roughness={0.4} metalness={0.1} />
+        <meshStandardMaterial color={trimColor} roughness={0.6} metalness={0} />
       </mesh>
 
       {/* Glass pane */}

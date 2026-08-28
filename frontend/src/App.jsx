@@ -3,6 +3,7 @@ import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import { BarnShed } from './components/BarnShed/BarnShed';
 import { GableShed } from './components/GableShed/GableShed';
+import { ShedLights } from './components/common/ShedLights';
 import { ControlPanel } from './components/ControlPanel';
 import { ComponentPreview } from './pages/ComponentPreview';
 import { ReferenceMatch } from './pages/ReferenceMatch';
@@ -147,11 +148,13 @@ export default function App() {
               role="img"
               aria-label={designSummary}
               camera={{ position: [25, 20, 25], fov: 50 }}
+              /* No tone mapping: a paint colour should render as the colour
+                 that was picked, and ACES is a filmic curve that pulls it
+                 somewhere else. */
+              flat
               style={{ width: '100%', height: '100%' }}
             >
-              <ambientLight intensity={0.6} />
-              <pointLight position={[15, 20, 10]} intensity={1} />
-              <pointLight position={[-15, 20, -10]} intensity={0.5} />
+              <ShedLights />
               <Suspense fallback={null}>
                 {model === 'Barn' ? (
                   <BarnShed width={width} length={length} wallHeight={wallHeight} color={color} roofColor={roofColor} />

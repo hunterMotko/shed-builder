@@ -166,13 +166,15 @@ export const ShedWall = forwardRef(function ShedWall(
           );
         }
         if (p.type === 'window') {
+          // No colour props: the sash is a stock white vinyl unit on every
+          // shed. The trim colour belongs to the casing around it, which is
+          // `WindowFrame` above — passing `trimColor` here painted the vinyl
+          // burgundy and lost the white that every photograph shows.
           return (
             <WindowObject
               key={p.id}
               placement={p}
               shedDimensions={shedDimensions}
-              trimColor={trimColor}
-              frameColor={trimColor}
             />
           );
         }

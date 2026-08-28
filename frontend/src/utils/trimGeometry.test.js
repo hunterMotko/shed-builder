@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { cornerBoards, TRIM_THICKNESS, TRIM_WIDTH } from './trimGeometry';
+import {
+	cornerBoards,
+	gableFasciaBoards,
+	barnRakeFlashing,
+	TRIM_THICKNESS,
+	TRIM_WIDTH,
+} from './trimGeometry';
 
 // A 12x20 shed. The wall outer faces land on round numbers, which is what
 // makes the expected values below checkable by hand: ShedWall puts the front
@@ -102,5 +108,133 @@ describe('cornerBoards', () => {
 			expect(minY).toBeCloseTo(0, 10);
 			expect(maxY).toBeCloseTo(WALL_HEIGHT, 10);
 		}
+	});
+});
+
+// ── The fascia that boxes the roof slab's cut edge ───────────────────────────
+//
+// Expected values are trigonometry against the roof, never a second copy of
+// what the function does. `gableFasciaBoards` exists because these have to be
+// worked out from the ROOF and `GableTrim` was working them out from the wall:
+// its rake boards sat on the gable end plane, and once the roof became a slab
+// that runs past that plane (ADR-0013) they were buried under the overhang.
+
+describe('gableFasciaBoards', () => {
+	const ROOF_HEIGHT = 3; // 6:12 over a 6 ft half width
+	const OVERHANG = 0.5;
+	const THICK = 0.333;
+
+	const boards = gableFasciaBoards(WIDTH, LENGTH, WALL_HEIGHT, ROOF_HEIGHT, {
+		overhang: OVERHANG,
+		roofThickness: THICK,
+	});
+	const by = (id) => boards.find((b) => b.id === id);
+
+	it('gives four rakes and two eaves', () => {
+		expect(boards).toHaveLength(6);
+		expect(boards.filter((b) => b.id.startsWith('rake-'))).toHaveLength(4);
+		expect(boards.filter((b) => b.id.startsWith('eave-'))).toHaveLength(2);
+	});
+
+	it('stands the rake outside the roof, not on the wall it used to sit on', () => {
+		// The slab runs to halfL + overhang. A board on the gable end plane at
+		// halfL is behind that and cannot be seen.
+		expect(by('rake-front-left').position[2]).toBeGreaterThan(halfL + OVERHANG);
+		expect(by('rake-back-left').position[2]).toBeLessThan(-(halfL + OVERHANG));
+	});
+
+	it('runs the rake the full slope, ridge to overhang tip', () => {
+		// Rise from the tip to the ridge is the wall rise plus what the overhang
+		// drops below the eave: 3 + 0.5 x (3/6) = 3.25, over a run of 6.5.
+		const rake = by('rake-front-right');
+		expect(rake.size[0]).toBeCloseTo(Math.hypot(6.5, 3.25), 10);
+	});
+
+	it('pitches the rake at the roof pitch', () => {
+		// Not the wall-to-ridge angle: the board follows the slab, which carries
+		// on past the wall at the same pitch.
+		const rake = by('rake-front-right');
+		expect(rake.rotation[2]).toBeCloseTo(-Math.atan2(3.25, 6.5), 10);
+		expect(by('rake-front-left').rotation[2]).toBeCloseTo(Math.atan2(3.25, 6.5), 10);
+	});
+
+	it('hangs the eave below the top plate, where the rafter tail is', () => {
+		// y = 0 in the roof profile is the eave AT THE WALL, so the tip is a
+		// half-pitch-run lower — 0.25 ft here — and the board covers the slab.
+		const eave = by('eave-right');
+		expect(eave.position[1]).toBeCloseTo(WALL_HEIGHT - 0.25 - THICK / 2, 10);
+	});
+
+	it('runs the eave the whole length of the slab, so it meets both rakes', () => {
+		expect(by('eave-left').size[2]).toBeCloseTo(LENGTH + 2 * OVERHANG, 10);
+	});
+
+	it('covers the slab edge, whatever the slab is', () => {
+		const thicker = gableFasciaBoards(WIDTH, LENGTH, WALL_HEIGHT, ROOF_HEIGHT, {
+			overhang: OVERHANG,
+			roofThickness: 0.5,
+		});
+		for (const b of thicker) expect(b.size[1]).toBeCloseTo(0.5, 10);
+	});
+});
+
+describe('barnRakeFlashing', () => {
+	// The outline `gambrelEndOutline` returns, for a 12 ft barn at 20:12 over
+	// 4:12 — eave, eave, knuckle, ridge, knuckle, worked out by hand: the
+	// knuckle sits 5 ft out and 1 x 20/12 = 1.667 up, the ridge 1.667 + 5 x 4/12
+	// = 3.333 up.
+	const OUTLINE = [
+		[-6, 0],
+		[6, 0],
+		[5, 5 / 3],
+		[0, 10 / 3],
+		[-5, 5 / 3],
+	];
+	const OVERHANG = 2 / 12;
+
+	const bands = barnRakeFlashing(OUTLINE, LENGTH, WALL_HEIGHT, { overhang: OVERHANG });
+	const by = (id) => bands.find((b) => b.id === id);
+
+	it('gives four runs on each end', () => {
+		expect(bands).toHaveLength(8);
+		expect(bands.filter((b) => b.id.startsWith('rake-front-'))).toHaveLength(4);
+	});
+
+	it('walks the gambrel rather than closing the shape', () => {
+		// The outline arrives in fill order — eave, eave, knuckle, ridge, knuckle
+		// — so reading it as a path would draw a band straight across the eaves.
+		// Every run must be one real edge of the gambrel.
+		const lower = by('rake-front-left-lower');
+		expect(lower.size[0]).toBeCloseTo(Math.hypot(1, 5 / 3), 10);
+		const upper = by('rake-front-left-upper');
+		expect(upper.size[0]).toBeCloseTo(Math.hypot(5, 5 / 3), 10);
+	});
+
+	it('lies at the pitch of the run it covers', () => {
+		// 20:12 below the knuckle, 4:12 above it, and the lower one is steeper —
+		// a barn whose lower slope is the shallow one is not a barn.
+		const lower = by('rake-front-left-lower').rotation[2];
+		const upper = by('rake-front-left-upper').rotation[2];
+		expect(Math.tan(lower)).toBeCloseTo(20 / 12, 10);
+		expect(Math.tan(upper)).toBeCloseTo(4 / 12, 10);
+		expect(lower).toBeGreaterThan(upper);
+	});
+
+	it('sits just outside the slab on both ends', () => {
+		const z = halfL + OVERHANG + TRIM_THICKNESS / 2;
+		expect(by('rake-front-left-lower').position[2]).toBeCloseTo(z, 10);
+		expect(by('rake-back-left-lower').position[2]).toBeCloseTo(-z, 10);
+	});
+
+	it('measures its heights from the eave, not from the floor', () => {
+		// The outline is wall-relative: y = 0 is the eave.
+		expect(by('rake-front-left-upper').position[1]).toBeCloseTo(
+			WALL_HEIGHT + (5 / 3 + 10 / 3) / 2,
+			10
+		);
+	});
+
+	it('is TRIM_WIDTH on the face, like every other board', () => {
+		for (const b of bands) expect(b.size[1]).toBeCloseTo(TRIM_WIDTH, 10);
 	});
 });

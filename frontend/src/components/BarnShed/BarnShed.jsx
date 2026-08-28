@@ -133,6 +133,7 @@ export const BarnShed = ({
 				shedLength={length}
 				wallHeight={wallHeight}
 				roofLowerPitch={roofLowerPitch}
+				roofUpperPitch={roofUpperPitch}
 				trimColor={trimColor}
 				overhangEave={overhang}
 			/>

@@ -109,24 +109,33 @@ drawn with the siding shader, until the roof became a slab (ADR-0013). Placement
 an opening assigned to a wall that isn't rendered is reported rather than lost — a Barn used to
 render two walls and discard every front and back Placement in silence.
 
-Trim is per Model and deliberately not shared — `GableTrim` has corner boards, eave fascia and
-rake boards; `BarnTrim` has **corner boards only**. ADR-0006 says the Barn also has fascia; the
-code disagrees, and which one matches the product is settled against the Reference Photos in #5
-and #6, not by reading the component (issue #22). The Trim Set is part of the Model bundle, so
-treat it as a product question. Roof overhang at the eave is `0.5 ft`.
+Trim is per Model and deliberately not shared — `GableTrim` has corner boards plus a boxed rake
+and eave fascia; `BarnTrim` has corner boards and the white band down each gambrel rake, and no
+eave fascia at all. The Trim Set is part of the Model bundle, so treat any change to it as a
+product question. Eave overhang comes from `roofOverhangFt`, not from a constant.
 
-A corner board, though, is the same board on both, and **`cornerBoards` in
-`utils/trimGeometry.js` is the only place corner positions are worked out** — the trim
-counterpart to `openingTransform` (ADR-0011). Both components ask it; neither computes.
+A corner board, though, is the same board on both, and **`utils/trimGeometry.js` is the only
+place a trim position is worked out** — the trim counterpart to `openingTransform` (ADR-0011).
+`cornerBoards` is shared; `gableFasciaBoards` (the Gable's boxed rake and eave) and
+`barnRakeFlashing` (the white band down a Barn's gambrel) are per Model. The components ask;
+neither computes.
+
+The fascia has to be worked out from the **roof**, not the wall: once the roof became a slab
+running past the gable ends (ADR-0013), `GableTrim`'s rake boards — still nailed to the gable end
+plane — were buried under the overhang and invisible. The Barn's band is not a board at all: the
+panel runs 2in past and finishes in J-channel, and what the photographs show is the flashing over
+it. That is the half of issue #22 the photos settle — ADR-0006 says the Barn has fascia, the
+component said it has none, and both were half right.
 
 Trim stock has two numbers, and they are not the same number: `TRIM_WIDTH` is the face you see
-(`0.333 ft`, 4in) and `TRIM_THICKNESS` is how far the board stands off the siding (`0.0625 ft`,
-a dressed 1x). They used to be one value, which is what buried every corner board inside the
+(`0.333 ft`, 4in — now measured, at 15–18px on a photo that scales at 48.5 px/ft) and
+`TRIM_THICKNESS` is how far the board stands off the siding (`0.0625 ft`, a dressed 1x). They
+used to be one value, which is what buried every corner board inside the
 wall with its faces exactly coplanar — nothing decided which surface won and each board rendered
 as hatched noise (issue #31). A corner board is nailed **on** the siding; the two boards at a
 corner lap rather than butt, so the front or back one runs past to cover the side board's end
-grain. The 4in face is what both components have always defaulted to; the Reference Photos
-measure the real stock nearer 5.5in, and issue #22 settles that.
+grain. The 4in face is what both components have always defaulted to, and the Reference Photos
+agree with it.
 
 ### CSG (cutting openings)
 
@@ -263,11 +272,31 @@ Known gaps, all issue #10:
 - `validatePlacement` reports an Opening that hangs off its wall as a *warning*, leaving
   `valid: true`. A test marks this deliberately with `it.fails`.
 
-## Materials
+## Materials and light
 
 Siding is `T1-11` (ribbed) or `smooth`; roofing is `metal` (corrugated) or `shingle`. Both are
 procedural shaders built by factory functions in `utils/shaders.js` (ADR-0002) — one GLSL change
 propagates to every surface. Trim color is automatic (`matchRoof` or `contrast`) or manual.
+
+**A shed shader must end with `<tonemapping_fragment>` and `<colorspace_fragment>`** (ADR-0014).
+Three converts a colour to linear on the way in and back to sRGB on the way out through that
+chunk; a shader that writes `gl_FragColor` and stops keeps the linear value and it is displayed
+as though it were sRGB. Almond siding rendered `#6C5943` against the `#EFD7BA` it was given and
+`#400C0C` trim rendered black, and every fixture on the Reference Match page was suspected before
+the renderer was. There is a test.
+
+**`SHED_LIGHTING` is the only light rig.** The shaders bake their Lambert term against it and
+`components/common/ShedLights.jsx` builds the scene's real lights from the same constant, so a
+wall and the trim board nailed to it are lit from the same sky. Both pages mount `ShedLights`;
+they used to write their own and `ReferenceMatch` disagreed with the shaders. Adding a light to a
+scene still will not light the siding — the shaders bake, they do not join three's light loop.
+Both canvases are `flat` (no tone mapping), so a paint colour renders as the colour picked.
+
+Two spacings are measured off the Reference Photos, not chosen: T1-11 grooves are **8in** on
+centre and roof panel ribs are **10in**. The ribs run **down the slope**, so the corrugation
+repeats along the roof's extrusion axis (local Z) — repeating along X drew them parallel to the
+ridge. Painted trim is `metalness: 0`; it is a dielectric, and the metalness that was there ate a
+quarter of the diffuse albedo of the darkest colour on the building.
 
 Garage doors render `sectional` (panelled) or `rollup` (ribbed).
 
@@ -280,9 +309,17 @@ local state, not a router.
 a sticky footer (Save Design / Load / Reset). Tab ids match the CONTEXT.md terms (`dimensions`,
 `model`, `colors`, `options`) — if you rename a tab id, rename its `activeTab ===` branch too.
 
-**Reference Match** pairs a reference photo with a 3D reconstruction. Its scene under
-`pages/reference-match/barn/` is a **fork** of the real shed components, including a second
-`BarnTrim`. Fidelity work done there does not reach the product; issue #4 deletes the fork.
+**Reference Match** pairs a Reference Photo with the same building rendered by the real
+`BarnShed` / `GableShed`, so fidelity work done there lands in the product (ADR-0012). The
+fixtures in `pages/referenceTargets.js` are **measured, not guessed** — colours averaged over lit
+patches, sizes scaled off a known 12 ft front, and each camera solved so the front face comes out
+the shape and size it is in the photograph. Every number there carries the measurement that
+produced it; change one only with a new measurement. The photos are untracked (`reference/` is
+gitignored) and `referencePhotos.js` names each file it loads, so adding a target means adding
+its name there too.
+
+A stale fork of the shed components still sits under `pages/reference-match/barn/`; nothing
+imports it, and issue #4 deletes it.
 
 `components/Canvas3D.jsx` and `components/ShedConfigurator.jsx` are not mounted anywhere.
 
@@ -306,6 +343,7 @@ under test is non-React.
 | Seam | File |
 |---|---|
 | Roof math and the roof slab | `utils/roofGeometry.test.js` |
+| Shader output pipeline, rib direction and spacing | `utils/shaders.test.js` |
 | Model bundle, and render vs quoted peak | `utils/modelSpec.test.js` |
 | Catalog and Option pricing | `utils/pricingUtils.test.js` |
 | Placement rules | `utils/placementValidator.test.js` |
@@ -410,7 +448,10 @@ frontend/src/
   utils/design.js                 overlay a fixed Design on the store's (ADR-0012)
   utils/wallOpenings.js           CSG: cut Openings out of a wall (Brush, local space)
   utils/wallSides.js              the four walls, and routing Placements onto them
-  utils/trimGeometry.js           where the trim boards sit; corner positions for both Models
+  utils/trimGeometry.js           where every trim board sits: corners, gable fascia, barn rake
+  utils/shaders.js                siding and roof GLSL, and SHED_LIGHTING — the one light rig
+  components/common/ShedLights.jsx  the scene lights, built from SHED_LIGHTING
+  pages/referenceTargets.js       the Reference Match fixtures, every number measured
   utils/pricingUtils.js           catalog and Option line items
   services/designApi.js           axios client
 

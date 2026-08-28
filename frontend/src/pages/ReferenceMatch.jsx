@@ -3,6 +3,7 @@ import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import { BarnShed } from '../components/BarnShed/BarnShed';
 import { GableShed } from '../components/GableShed/GableShed';
+import { ShedLights } from '../components/common/ShedLights';
 import { REFERENCE_TARGETS } from './referenceTargets';
 
 const badge = {
@@ -111,17 +112,13 @@ export function ReferenceMatch() {
           key={target.id}
           camera={target.camera}
           shadows
-          style={{ width: '100%', height: '100%', background: '#d4d8d0' }}
+          /* No tone mapping. ACES is a filmic curve, and the whole point of
+             this page is that a paint colour renders as the colour that was
+             sampled off the photograph. */
+          flat
+          style={{ width: '100%', height: '100%', background: target.sky ?? '#d4d8d0' }}
         >
-          <ambientLight intensity={0.55} />
-          <directionalLight
-            position={[18, 28, 14]}
-            intensity={1.4}
-            castShadow
-            shadow-mapSize-width={2048}
-            shadow-mapSize-height={2048}
-          />
-          <pointLight position={[-12, 16, -12]} intensity={0.35} />
+          <ShedLights castShadow />
           <Suspense fallback={null}>
             <Shed design={target.design} />
           </Suspense>
