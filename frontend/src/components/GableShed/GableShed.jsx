@@ -5,6 +5,7 @@ import { overlayDesign } from '../../utils/design';
 import { gableRoofRise } from '../../utils/roofGeometry';
 import { ShedWall } from '../shed/walls/ShedWall';
 import { GableRoof } from '../shed/roofs/GableRoof';
+import { roofOverhangFt } from '../../utils/roofGeometry';
 import { GableEnd } from '../shed/roofs/GableEnd';
 import { Porch } from '../shed/extras/Porch';
 import { Ramp } from '../shed/extras/Ramp';
@@ -54,6 +55,8 @@ export const GableShed = ({
 	// The rafters are cut to one pitch, so the rise follows the span. This was
 	// a flat 4ft, which quietly changed the pitch with the width (issue #29).
 	const roofHeight = gableRoofRise(width);
+	// The soffit and fascia box the shop builds: 6 5/8 in, or 4 7/8 in at 16 wide.
+	const overhang = roofOverhangFt('Gable', width);
 
 	// Expose front-wall mesh for raycasting / placement interaction
 	useEffect(() => {
@@ -117,7 +120,7 @@ export const GableShed = ({
 				wallHeight={wallHeight}
 				roofHeight={roofHeight}
 				trimColor={trimColor}
-				overhangEave={0.5}
+				overhangEave={overhang}
 			/>
 
 			{/* Roof */}
@@ -129,7 +132,7 @@ export const GableShed = ({
 				roofColor={roofColor}
 				roofMaterial={roofMaterial}
 				skylight={options.skylight}
-				overhangEave={0.5}
+				overhang={overhang}
 			/>
 
 			{/* Foundation: floor deck + 5 longitudinal runners */}

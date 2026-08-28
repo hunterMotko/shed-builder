@@ -6,6 +6,16 @@ import {
 	peakHeightFt,
 	FOUNDATION_HEIGHT,
 } from './modelSpec';
+import {
+	gableRoofProfile,
+	gambrelRoofProfile,
+	roofOverhangFt,
+	ROOF_THICKNESS,
+	GABLE_PITCH,
+	GAMBREL_LOWER_PITCH,
+	GAMBREL_UPPER_PITCH,
+} from './roofGeometry';
+
 
 const FOUNDATION = FOUNDATION_HEIGHT;
 
@@ -87,5 +97,46 @@ describe('peakHeightFt', () => {
 
 			expect(Math.abs(barn - gable)).toBeLessThan(0.2); // under 2.5 inches
 		}
+	});
+});
+
+// The roof the customer is quoted and the roof on screen must be the same roof.
+//
+// They were not. Both roof components measured their rise from the tip of the
+// overhang rather than from the wall, so a 12 ft Barn drew its ridge 10 inches
+// above the Peak Height beside it, and a Gable spread a 6:12 rise over half a
+// width plus the overhang and rendered an effective 5.54:12.
+describe('the rendered roof and the quoted Peak Height', () => {
+	const peakOf = (points) => points.reduce((hi, p) => Math.max(hi, p[1]), -Infinity);
+
+	it('agree on a Gable at every width the catalog sells', () => {
+		for (const width of [10, 12, 14, 16]) {
+			const profile = gableRoofProfile(width, GABLE_PITCH, {
+				overhang: roofOverhangFt('Gable', width),
+				thickness: ROOF_THICKNESS,
+			});
+			// Independently: 6:12 over half the width, in feet.
+			expect(peakOf(profile)).toBeCloseTo((width / 2) * 0.5, 10);
+			expect(peakOf(profile)).toBeCloseTo(roofRiseFt('Gable', width), 10);
+		}
+	});
+
+	it('agree on a Barn at every width the catalog sells', () => {
+		for (const width of [10, 12, 14, 16]) {
+			const profile = gambrelRoofProfile(width, GAMBREL_LOWER_PITCH, GAMBREL_UPPER_PITCH, {
+				overhang: roofOverhangFt('Barn', width),
+				thickness: ROOF_THICKNESS,
+			});
+			expect(peakOf(profile)).toBeCloseTo(roofRiseFt('Barn', width), 10);
+		}
+	});
+
+	it('do not move the ridge when the overhang changes', () => {
+		// The overhang hangs below the eave; it must not lift the ridge. This is
+		// the exact shape of the bug: a wider soffit box used to make a taller
+		// building.
+		const narrow = gableRoofProfile(12, GABLE_PITCH, { overhang: 0.1, thickness: 0.25 });
+		const wide = gableRoofProfile(12, GABLE_PITCH, { overhang: 2, thickness: 0.25 });
+		expect(peakOf(narrow)).toBeCloseTo(peakOf(wide), 10);
 	});
 });

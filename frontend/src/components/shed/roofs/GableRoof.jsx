@@ -1,12 +1,23 @@
 import { useMemo } from 'react';
 import * as THREE from 'three';
 import { makeRoofShader } from '../../../utils/shaders';
+import { gableRoofProfile, gableRoofTopLine, roofSlabDepth, ROOF_THICKNESS } from '../../../utils/roofGeometry';
+import { roofRidgeCap, rakeJChannel } from '../../../utils/trimGeometry';
 import { Skylight } from '../extras/Skylight';
 
 /**
- * GableRoof — independently renderable gable (triangular-pitch) roof.
- * Accepts shed dimensions + appearance props; renders one ExtrudeGeometry mesh.
- * Optionally renders a ridge Skylight when skylight.enabled is true.
+ * GableRoof — the gable roof, as a slab.
+ *
+ * It used to be a *filled* triangle extruded exactly the length of the shed: a
+ * solid wedge with no thickness, no fascia and no rake overhang, whose end caps
+ * doubled the `GableEnd` siding they sat behind. It is now a plane with
+ * thickness, run past both gable ends by the overhang, so the end cap is the
+ * fascia and there is an edge for trim to hang on.
+ *
+ * `roofHeight` is the rise at the **wall**, which is what the Peak Height on
+ * screen quotes. The profile spreads it correctly: the old shape put the same
+ * rise over half a width *plus* the overhang and rendered an effective 5.54:12
+ * where the spec says 6:12.
  */
 export const GableRoof = ({
   shedWidth,
@@ -15,25 +26,33 @@ export const GableRoof = ({
   roofHeight = 4,
   roofColor,
   roofMaterial,
-  overhangEave = 0.5,
+  overhang = 0.5,
   skylight = null,
   castShadow = true,
   receiveShadow = true,
 }) => {
-  const halfWidth = shedWidth / 2;
+  // The profile is stated as a pitch, so recover it from the rise the shed
+  // passed down rather than reaching for the constant — a target Design may
+  // legitimately hand us a different roof.
+  const pitchX = (roofHeight / (shedWidth / 2)) * 12;
 
   const roofShape = useMemo(() => {
     const shape = new THREE.Shape();
-    shape.moveTo(-(halfWidth + overhangEave), 0);
-    shape.lineTo(halfWidth + overhangEave, 0);
-    shape.lineTo(0, roofHeight);
+    const points = gableRoofProfile(shedWidth, pitchX, {
+      overhang,
+      thickness: ROOF_THICKNESS,
+    });
+    shape.moveTo(points[0][0], points[0][1]);
+    for (const [x, y] of points.slice(1)) shape.lineTo(x, y);
     shape.closePath();
     return shape;
-  }, [halfWidth, overhangEave, roofHeight]);
+  }, [shedWidth, pitchX, overhang]);
+
+  const depth = roofSlabDepth(shedLength, overhang);
 
   const extrudeSettings = useMemo(
-    () => ({ depth: shedLength, bevelEnabled: false }),
-    [shedLength]
+    () => ({ depth, bevelEnabled: false }),
+    [depth]
   );
 
   const roofShader = useMemo(
@@ -41,20 +60,43 @@ export const GableRoof = ({
     [roofColor, roofMaterial]
   );
 
-  // Peak position in world space: [0, wallHeight + roofHeight, 0]
   const peakY = wallHeight + roofHeight;
+
+  // The roof's own metalwork: the ridge cap folded over the peak, and the
+  // J-channel capping both gable-end top edges. Roof metal, so it renders
+  // here in the roof colour rather than with the trim.
+  const metalwork = useMemo(() => {
+    const slope = roofHeight / (shedWidth / 2);
+    return [
+      ...roofRidgeCap(roofHeight, slope, shedLength, wallHeight, { overhang }),
+      ...rakeJChannel(gableRoofTopLine(shedWidth, pitchX, { overhang }), shedLength, wallHeight, {
+        overhang,
+      }),
+    ];
+  }, [shedWidth, shedLength, wallHeight, roofHeight, pitchX, overhang]);
 
   return (
     <group name="gableRoof">
       <mesh
         name="gableRoofMesh"
-        position={[0, wallHeight, -shedLength / 2]}
+        position={[0, wallHeight, -depth / 2]}
         castShadow={castShadow}
         receiveShadow={receiveShadow}
       >
         <extrudeGeometry args={[roofShape, extrudeSettings]} />
         <shaderMaterial args={[roofShader]} side={THREE.DoubleSide} />
       </mesh>
+
+      {metalwork.map(({ id, position, size, rotation }) => (
+        <mesh key={id} position={position} rotation={rotation} castShadow>
+          <boxGeometry args={size} />
+          <meshStandardMaterial
+            color={roofColor}
+            roughness={roofMaterial === 'metal' ? 0.35 : 0.7}
+            metalness={roofMaterial === 'metal' ? 0.4 : 0.05}
+          />
+        </mesh>
+      ))}
 
       {skylight?.enabled && (
         <group position={[0, peakY + 0.02, 0]}>

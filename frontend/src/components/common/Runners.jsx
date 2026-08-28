@@ -5,6 +5,11 @@ import { RUNNER_SIZE, FLOOR_THICKNESS } from '../../utils/modelSpec';
 // measured against what is actually drawn under the shed.
 const NUM_RUNNERS = 5;
 
+// The outer runners do not sit at the shed's edge: the shop sets each outboard
+// runner in so its outside face is 6 in from the edge wall, and the other
+// three spread evenly between them.
+const RUNNER_INSET = 0.5;
+
 /**
  * Runners + Floor Foundation Component
  *
@@ -24,9 +29,10 @@ export const Runners = ({
 	const floorY = -FLOOR_THICKNESS / 2;
 	// Runners run under the floor; their tops touch the floor bottom
 	const runnerY = -FLOOR_THICKNESS - RUNNER_SIZE / 2;
-	// 5 beams evenly spread across the full shed width
+	// 5 beams between the two inset outboard runners
+	const outerX = width / 2 - RUNNER_INSET - RUNNER_SIZE / 2;
 	const xPositions = Array.from({ length: NUM_RUNNERS }, (_, i) =>
-		-width / 2 + i * (width / (NUM_RUNNERS - 1))
+		-outerX + i * ((2 * outerX) / (NUM_RUNNERS - 1))
 	);
 	return (
 		<group name="foundationGroup">

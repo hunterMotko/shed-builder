@@ -14,6 +14,10 @@ import {
 	gableRoofRise,
 	gambrelKnuckleRatio,
 	GAMBREL_LOWER_PITCH,
+	roofOverhangFt,
+	gableRoofProfile,
+	gambrelRoofProfile,
+	roofSlabDepth,
 } from './roofGeometry';
 
 // Expected values here come from trigonometry, not from the implementation:
@@ -194,5 +198,117 @@ describe('gambrelKnuckleRatio', () => {
 		// A steeper side needs less run to gain its half of the rise, so the
 		// Knuckle sits further from the ridge.
 		expect(gambrelKnuckleRatio(24, 4)).toBeGreaterThan(gambrelKnuckleRatio(12, 4));
+	});
+});
+
+// ── The roof as a slab ───────────────────────────────────────────────────────
+//
+// The roof used to be a filled prism extruded exactly the length of the shed:
+// no thickness, no fascia face, and no rake overhang at all. It is now a plane
+// with thickness, extruded past both gable ends.
+//
+// Expected values below are worked out from the shop spec in inches and plain
+// trigonometry, never by running the profile builders a second time.
+
+describe('roofOverhangFt', () => {
+	it('gives a gable the soffit box the shop builds', () => {
+		// 6 5/8 in on every gable except 16 wide, which gets 4 7/8 in.
+		expect(roofOverhangFt('Gable', 10)).toBeCloseTo(6.625 / 12, 10);
+		expect(roofOverhangFt('Gable', 12)).toBeCloseTo(6.625 / 12, 10);
+		expect(roofOverhangFt('Gable', 14)).toBeCloseTo(6.625 / 12, 10);
+		expect(roofOverhangFt('Gable', 16)).toBeCloseTo(4.875 / 12, 10);
+	});
+
+	it('gives a barn two inches at every width', () => {
+		for (const width of [10, 12, 14, 16]) {
+			expect(roofOverhangFt('Barn', width)).toBeCloseTo(2 / 12, 10);
+		}
+	});
+});
+
+describe('gableRoofProfile', () => {
+	const WIDTH = 12;
+	const PITCH = 6;
+	const OVERHANG = 6.625 / 12;
+	const THICKNESS = 0.25;
+	const profile = () =>
+		gableRoofProfile(WIDTH, PITCH, { overhang: OVERHANG, thickness: THICKNESS });
+
+	it('puts the ridge a half-width of rise above the wall', () => {
+		// 6:12 over a 6 ft half-width is 3 ft of rise, measured at the WALL —
+		// which is what the quoted Peak Height assumes.
+		const peak = profile().reduce((hi, p) => Math.max(hi, p[1]), -Infinity);
+		expect(peak).toBeCloseTo(3, 10);
+	});
+
+	it('hangs the overhang below the wall top, not level with it', () => {
+		// A rafter tail runs downhill past the wall, so its tip is lower than
+		// the plate it crosses: 6.625 in of run at 6:12 drops 3.3125 in.
+		const tip = profile().find((p) => Math.abs(p[0] + (WIDTH / 2 + OVERHANG)) < 1e-9);
+		expect(tip[1]).toBeCloseTo(-(6.625 / 2) / 12, 10);
+	});
+
+	it('holds the specified pitch across the whole slope', () => {
+		const top = profile().slice(0, 3);
+		for (let i = 0; i < top.length - 1; i++) {
+			const run = Math.abs(top[i + 1][0] - top[i][0]);
+			const rise = Math.abs(top[i + 1][1] - top[i][1]);
+			expect((rise / run) * 12).toBeCloseTo(PITCH, 10);
+		}
+	});
+
+	it('carries a constant thickness under every point of the slope', () => {
+		const pts = profile();
+		const top = pts.slice(0, 3);
+		const bottom = pts.slice(3).reverse();
+		expect(bottom).toHaveLength(top.length);
+		top.forEach((t, i) => {
+			expect(bottom[i][0]).toBeCloseTo(t[0], 10);
+			expect(t[1] - bottom[i][1]).toBeCloseTo(THICKNESS, 10);
+		});
+	});
+});
+
+describe('gambrelRoofProfile', () => {
+	const WIDTH = 12;
+	const LOWER = 20;
+	const UPPER = 4;
+	const OVERHANG = 2 / 12;
+	const THICKNESS = 0.25;
+	const profile = () =>
+		gambrelRoofProfile(WIDTH, LOWER, UPPER, { overhang: OVERHANG, thickness: THICKNESS });
+
+	it('puts the ridge where the quoted Peak Height says it is', () => {
+		// Knuckle at 5/6 of a 6 ft half-width is x = 5. The lower slope climbs
+		// (6 - 5) ft at 20:12 = 1.6667 ft; the upper climbs 5 ft at 4:12 =
+		// 1.6667 ft. Half the rise each, which is what places the Knuckle.
+		const peak = profile().reduce((hi, p) => Math.max(hi, p[1]), -Infinity);
+		expect(peak).toBeCloseTo(1 * (20 / 12) + 5 * (4 / 12), 10);
+	});
+
+	it('breaks at the Knuckle, not at a hand-set ratio', () => {
+		const knuckle = profile().find((p) => p[0] > 0 && p[0] < WIDTH / 2);
+		expect(knuckle[0]).toBeCloseTo(5, 10);
+		expect(knuckle[1]).toBeCloseTo(1 * (20 / 12), 10);
+	});
+
+	it('hangs the overhang below the wall top', () => {
+		// 2 in of run at 20:12 drops 3.333 in.
+		const tip = profile().find((p) => Math.abs(p[0] + (WIDTH / 2 + OVERHANG)) < 1e-9);
+		expect(tip[1]).toBeCloseTo(-(2 / 12) * (20 / 12), 10);
+	});
+
+	it('is a barn: the lower slope is the steep one', () => {
+		const pts = profile().slice(0, 5);
+		const seg = (a, b) => Math.abs(pts[b][1] - pts[a][1]) / Math.abs(pts[b][0] - pts[a][0]);
+		expect(seg(0, 1) * 12).toBeCloseTo(LOWER, 10);
+		expect(seg(1, 2) * 12).toBeCloseTo(UPPER, 10);
+	});
+});
+
+describe('roofSlabDepth', () => {
+	it('runs the roof past both gable ends', () => {
+		expect(roofSlabDepth(16, 6.625 / 12)).toBeCloseTo(16 + 2 * (6.625 / 12), 10);
+		expect(roofSlabDepth(20, 2 / 12)).toBeCloseTo(20 + 2 * (2 / 12), 10);
 	});
 });

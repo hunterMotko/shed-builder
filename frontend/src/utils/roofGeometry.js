@@ -362,3 +362,151 @@ export function gableRoofRise(shedWidth, pitchX = GABLE_PITCH) {
 export function roofMaterialSlots(capMaterial, slopeMaterial) {
 	return [capMaterial, slopeMaterial];
 }
+
+// ── The roof as a slab ───────────────────────────────────────────────────────
+//
+// The roof used to be a *filled* profile — a solid prism — extruded exactly the
+// length of the shed. That shape has no thickness, no fascia face, no soffit,
+// and no rake overhang, and a boxed rake cannot be hung on it.
+//
+// It also placed the eave datum at the tip of the overhang rather than at the
+// wall, which quietly broke both Models: a Barn rendered its ridge 10 inches
+// above the Peak Height quoted on screen, and a Gable spread its 6:12 rise over
+// half a width *plus* the overhang, rendering an effective 5.54:12. Measuring
+// from the wall fixes both, because that is where the rafter meets the plate
+// and what `modelSpec.roofRiseFt` has always assumed.
+
+/**
+ * How thick the roof reads, in feet.
+ *
+ * A 2x4 rafter on edge plus sheathing and panel. It is what gives the eave a
+ * fascia face to show and the rake an edge to trim.
+ */
+export const ROOF_THICKNESS = 0.333;
+
+/**
+ * How far the roof projects past the wall, in feet — at the eave and the rake.
+ *
+ * The shop builds a gable with a 6 5/8 in soffit and fascia box, except at 16
+ * wide where it is 4 7/8 in. A barn has no box: the panel runs 2 in past and
+ * finishes in J-channel.
+ *
+ * @param {string} model - 'Gable' or 'Barn'
+ * @param {number} width - shed width in feet
+ */
+export function roofOverhangFt(model, width) {
+	if (model === 'Barn') return 2 / 12;
+	return (width >= 16 ? 4.875 : 6.625) / 12;
+}
+
+/** How long the roof runs: the shed, plus the rake overhang at each end. */
+export function roofSlabDepth(shedLength, overhang) {
+	return shedLength + 2 * overhang;
+}
+
+/**
+ * Close a top surface into a slab by dropping a copy of it straight down.
+ *
+ * Vertical offset rather than perpendicular: it keeps the fascia cut plumb,
+ * which is how the board is actually cut, and it keeps the seam at the Knuckle
+ * a single point instead of two offset lines that have to be intersected.
+ */
+function slabFrom(top, thickness) {
+	return [...top, ...[...top].reverse().map(([x, y]) => [x, y - thickness])];
+}
+
+/**
+ * The outline of a gable roof slab, in the plane it is extruded along.
+ *
+ * `y = 0` is the eave at the **wall**, so the ridge sits at the rise the Peak
+ * Height quotes and the overhang tip hangs below the top plate — which is where
+ * a rafter tail really is.
+ *
+ * @param {number} shedWidth - feet
+ * @param {number} pitchX - rise in inches per 12 inches of run
+ * @param {{overhang: number, thickness: number}} opts - both in feet
+ * @returns {number[][]} closed outline, top surface first
+ */
+export function gableRoofProfile(shedWidth, pitchX, { overhang, thickness }) {
+	return slabFrom(gableRoofTopLine(shedWidth, pitchX, { overhang }), thickness);
+}
+
+/**
+ * The gable slab's top surface alone, eave tip to eave tip over the ridge —
+ * the line the rake fascia, the J-channel and the ridge cap all hang off.
+ * Walked left to right, so consumers can treat consecutive points as runs.
+ */
+export function gableRoofTopLine(shedWidth, pitchX, { overhang }) {
+	const halfWidth = shedWidth / 2;
+	const slope = pitchX / 12;
+	const outer = halfWidth + overhang;
+
+	return [
+		[-outer, -overhang * slope],
+		[0, halfWidth * slope],
+		[outer, -overhang * slope],
+	];
+}
+
+/**
+ * The outline of a gambrel roof slab, in the plane it is extruded along.
+ *
+ * The Knuckle comes from the two pitches (see `gambrelKnuckleRatio`) and is
+ * measured across the wall, not across the wall plus the overhang — steepening
+ * the sides shortens them and lengthens the top, and that only holds if both
+ * slopes are measured from the same datum.
+ *
+ * @returns {number[][]} closed outline, top surface first
+ */
+export function gambrelRoofProfile(shedWidth, lowerPitch, upperPitch, { overhang, thickness }) {
+	return slabFrom(gambrelRoofTopLine(shedWidth, lowerPitch, upperPitch, { overhang }), thickness);
+}
+
+/**
+ * The gambrel slab's top surface alone, eave tip to eave tip over both
+ * Knuckles — what the Barn's rake band, J-channel and ridge cap follow.
+ * Walked left to right, so consumers can treat consecutive points as runs.
+ */
+export function gambrelRoofTopLine(shedWidth, lowerPitch, upperPitch, { overhang }) {
+	const halfWidth = shedWidth / 2;
+	const lower = lowerPitch / 12;
+	const upper = upperPitch / 12;
+	const knuckleX = halfWidth * gambrelKnuckleRatio(lowerPitch, upperPitch);
+	const knuckleY = (halfWidth - knuckleX) * lower;
+	const peakY = knuckleY + knuckleX * upper;
+	const outer = halfWidth + overhang;
+
+	return [
+		[-outer, -overhang * lower],
+		[-knuckleX, knuckleY],
+		[0, peakY],
+		[knuckleX, knuckleY],
+		[outer, -overhang * lower],
+	];
+}
+
+/**
+ * The filled gable-end face of a Barn, from the wall top to the ridge.
+ *
+ * A Barn's end wall above the eave used to be the roof prism's own end cap,
+ * drawn with the siding shader. Once the roof is a slab there is no cap to
+ * borrow, so the face is its own piece of siding — the gambrel counterpart of
+ * `GableEnd`. It stops at the wall, with no overhang: the roof covers its top
+ * edge.
+ *
+ * @returns {number[][]} outline, counter-clockwise from the left eave
+ */
+export function gambrelEndOutline(shedWidth, lowerPitch, upperPitch) {
+	const halfWidth = shedWidth / 2;
+	const knuckleX = halfWidth * gambrelKnuckleRatio(lowerPitch, upperPitch);
+	const knuckleY = (halfWidth - knuckleX) * (lowerPitch / 12);
+	const peakY = knuckleY + knuckleX * (upperPitch / 12);
+
+	return [
+		[-halfWidth, 0],
+		[halfWidth, 0],
+		[knuckleX, knuckleY],
+		[0, peakY],
+		[-knuckleX, knuckleY],
+	];
+}

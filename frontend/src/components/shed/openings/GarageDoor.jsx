@@ -1,7 +1,9 @@
 import { useMemo } from 'react';
-import { openingTransform } from '../../../utils/wallOpenings';
+import { openingTransform, WALL_THICKNESS } from '../../../utils/wallOpenings';
 
-const OFFSET = 0.3;
+// A sectional door runs in tracks INSIDE the opening, so the panels sit at
+// the centre of the cut rather than proud of the siding.
+const OFFSET = -WALL_THICKNESS / 2;
 
 /**
  * GarageDoor — sectional overhead garage door.

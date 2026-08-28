@@ -48,7 +48,7 @@ function DoorLeaf({ leafWidth, elemHeight, panelColor, trimColor, mirror = false
       ].map(([x, y, z, dims], i) => (
         <mesh key={i} position={[x, y, z]} castShadow>
           <boxGeometry args={dims} />
-          <meshStandardMaterial color={trimColor} roughness={0.6} metalness={0.05} />
+          <meshStandardMaterial color={trimColor} roughness={0.6} metalness={0} />
         </mesh>
       ))}
 
@@ -59,7 +59,7 @@ function DoorLeaf({ leafWidth, elemHeight, panelColor, trimColor, mirror = false
         castShadow
       >
         <boxGeometry args={[diagLen, 0.09, 0.03]} />
-        <meshStandardMaterial color={trimColor} roughness={0.6} metalness={0.05} />
+        <meshStandardMaterial color={trimColor} roughness={0.6} metalness={0} />
       </mesh>
 
       {/* Roller wheels (2 per leaf) */}

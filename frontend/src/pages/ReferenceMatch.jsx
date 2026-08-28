@@ -3,6 +3,7 @@ import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import { BarnShed } from '../components/BarnShed/BarnShed';
 import { GableShed } from '../components/GableShed/GableShed';
+import { ShedLights } from '../components/common/ShedLights';
 import { REFERENCE_TARGETS } from './referenceTargets';
 
 const badge = {
@@ -76,11 +77,25 @@ export function ReferenceMatch() {
           </div>
         )}
 
-        <img
-          src={target.photo}
-          alt={target.photoAlt}
-          style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
-        />
+        {target.photo ? (
+          <img
+            src={target.photo}
+            alt={target.photoAlt}
+            style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+          />
+        ) : (
+          /* The photos are untracked, so a fresh clone has none. Say where they
+             go rather than showing a broken image. */
+          <div style={{ color: '#64748b', fontSize: 13, textAlign: 'center', padding: 32, maxWidth: 420 }}>
+            <p style={{ margin: 0, color: '#94a3b8', fontWeight: 600 }}>No reference photo</p>
+            <p style={{ margin: '8px 0 0', lineHeight: 1.6 }}>
+              The Reference Photos are not in the repository. Put{' '}
+              <code style={{ color: '#93c5fd' }}>{target.photoFile}</code> in the{' '}
+              <code style={{ color: '#93c5fd' }}>reference/</code> folder at the repo root and
+              reload. The reconstruction beside this renders either way.
+            </p>
+          </div>
+        )}
         <div style={caption}>{target.photoCaption}</div>
       </div>
 
@@ -89,20 +104,21 @@ export function ReferenceMatch() {
         <span style={badge}>3D Reconstruction</span>
         <div style={caption}>{target.designCaption}</div>
 
+        {/* Keyed so switching target remounts the canvas. R3F reads `camera`
+            when it creates one and never again, so without this the second
+            target is framed from the first target's viewpoint — which is not
+            a comparison to a photograph at all. */}
         <Canvas
+          key={target.id}
           camera={target.camera}
           shadows
-          style={{ width: '100%', height: '100%', background: '#d4d8d0' }}
+          /* No tone mapping. ACES is a filmic curve, and the whole point of
+             this page is that a paint colour renders as the colour that was
+             sampled off the photograph. */
+          flat
+          style={{ width: '100%', height: '100%', background: target.sky ?? '#d4d8d0' }}
         >
-          <ambientLight intensity={0.55} />
-          <directionalLight
-            position={[18, 28, 14]}
-            intensity={1.4}
-            castShadow
-            shadow-mapSize-width={2048}
-            shadow-mapSize-height={2048}
-          />
-          <pointLight position={[-12, 16, -12]} intensity={0.35} />
+          <ShedLights castShadow />
           <Suspense fallback={null}>
             <Shed design={target.design} />
           </Suspense>

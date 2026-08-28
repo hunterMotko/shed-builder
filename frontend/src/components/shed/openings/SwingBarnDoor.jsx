@@ -1,91 +1,73 @@
 import { openingTransform } from '../../../utils/wallOpenings';
 
-const OFFSET = 0.1;
+// The leaves are built of the wall's own siding and hang IN the opening, their
+// faces flush with the wall plane — only the white stiles and rails stand
+// proud. Half the slab back from the face puts the slab's front on the siding.
+const OFFSET = -0.035; // -slab / 2
 
 // Module-level component — not re-created on each render
 function DoorLeaf({ leafW, leafH, isRight, woodColor, trimColor, metalColor }) {
-  const stileW   = 0.10;
-  const railH    = 0.14;
-  const slab     = 0.07;
-  const frameZ   = 0.028;
+  const stile = 0.28;   // 4in white stiles and rails, measured off the photo
+  const slab  = 0.07;
+  const frameZ = 0.028;
 
-  // Inner panel area (inside the frame)
-  const innerW   = leafW - stileW * 2;
-  const innerH   = leafH - railH * 2;
-  const diagLen  = Math.sqrt(innerW ** 2 + innerH ** 2);
-  const diagAngle = Math.atan2(innerH, innerW);
+  // The mid rail sits a little ABOVE centre, and only the section below it is
+  // divided. Measured on `barn_barndoors.jpg`: the rail lands 45% of the way
+  // down the leaf, and a vertical muntin splits the lower half into two panels
+  // — a three-panel door, not a Z-braced carriage door.
+  const midY = leafH * 0.04;
+  const lowerTop = midY - stile / 2;
+  const lowerBottom = -(leafH / 2 - stile);
+  const lowerH = Math.max(0.01, lowerTop - lowerBottom);
 
-  // Hinge edge: left edge for left leaf, right edge for right leaf
   const hingeEdgeX = isRight ? leafW / 2 : -leafW / 2;
-  // Strap extends inward from hinge edge
-  const strapDir   = isRight ? -1 : 1;
+  const strapDir = isRight ? -1 : 1;
+  const hingeYs = [leafH / 2 - 0.35, 0, -(leafH / 2 - 0.35)];
 
-  const hingeYs = [leafH / 2 - 0.3, 0, -(leafH / 2 - 0.3)];
+  const frameMat = { color: trimColor, roughness: 0.6, metalness: 0 };
+  const z = slab / 2 + frameZ / 2;
 
   return (
     <group>
-      {/* Wood slab */}
+      {/* Panel field, in the wall colour — the panels really are siding */}
       <mesh castShadow receiveShadow>
         <boxGeometry args={[leafW, leafH, slab]} />
-        <meshStandardMaterial color={woodColor} roughness={0.80} metalness={0.0} />
+        <meshStandardMaterial color={woodColor} roughness={0.8} metalness={0} />
       </mesh>
 
-      {/* Top rail */}
-      <mesh position={[0, leafH / 2 - railH / 2, slab / 2 + frameZ / 2]} castShadow>
-        <boxGeometry args={[leafW, railH, frameZ]} />
-        <meshStandardMaterial color={trimColor} roughness={0.55} />
-      </mesh>
+      {[
+        { key: 'top', pos: [0, leafH / 2 - stile / 2, z], size: [leafW, stile, frameZ] },
+        { key: 'bottom', pos: [0, -(leafH / 2 - stile / 2), z], size: [leafW, stile, frameZ] },
+        { key: 'hinge-stile', pos: [hingeEdgeX + (strapDir * stile) / 2, 0, z], size: [stile, leafH, frameZ] },
+        { key: 'meet-stile', pos: [-(hingeEdgeX + (strapDir * stile) / 2), 0, z], size: [stile, leafH, frameZ] },
+        { key: 'mid-rail', pos: [0, midY, z], size: [leafW, stile, frameZ] },
+        { key: 'muntin', pos: [0, (lowerTop + lowerBottom) / 2, z], size: [stile, lowerH, frameZ] },
+      ].map(({ key, pos, size }) => (
+        <mesh key={key} position={pos} castShadow>
+          <boxGeometry args={size} />
+          <meshStandardMaterial {...frameMat} />
+        </mesh>
+      ))}
 
-      {/* Bottom rail */}
-      <mesh position={[0, -(leafH / 2 - railH / 2), slab / 2 + frameZ / 2]} castShadow>
-        <boxGeometry args={[leafW, railH, frameZ]} />
-        <meshStandardMaterial color={trimColor} roughness={0.55} />
-      </mesh>
-
-      {/* Hinge stile */}
-      <mesh position={[hingeEdgeX + strapDir * stileW / 2, 0, slab / 2 + frameZ / 2]} castShadow>
-        <boxGeometry args={[stileW, leafH, frameZ]} />
-        <meshStandardMaterial color={trimColor} roughness={0.55} />
-      </mesh>
-
-      {/* Meeting stile (opposite of hinge side) */}
-      <mesh position={[-(hingeEdgeX + strapDir * stileW / 2), 0, slab / 2 + frameZ / 2]} castShadow>
-        <boxGeometry args={[stileW, leafH, frameZ]} />
-        <meshStandardMaterial color={trimColor} roughness={0.55} />
-      </mesh>
-
-      {/* Z-brace diagonal (single per leaf: top-hinge to bottom-inner) */}
-      <mesh
-        position={[0, 0, slab / 2 + frameZ + 0.008]}
-        rotation={[0, 0, isRight ? diagAngle : -diagAngle]}
-        castShadow
-      >
-        <boxGeometry args={[diagLen, 0.038, 0.018]} />
-        <meshStandardMaterial color={trimColor} roughness={0.55} />
-      </mesh>
-
-      {/* 3 strap hinges on hinge edge */}
+      {/* Hinges: short plates on the outer stile, not the long straps a
+          carriage door gets. Three per leaf, as in the photograph. */}
       {hingeYs.map((hy, i) => (
-        <group key={i} position={[hingeEdgeX, hy, slab / 2 + 0.018]}>
-          {/* Cylindrical knuckle pin */}
-          <mesh rotation={[Math.PI / 2, 0, 0]}>
-            <cylinderGeometry args={[0.022, 0.022, 0.055, 8]} />
-            <meshStandardMaterial color={metalColor} roughness={0.38} metalness={0.72} />
-          </mesh>
-          {/* Flat strap extending across door face */}
-          <mesh position={[strapDir * 0.15, 0, -0.005]}>
-            <boxGeometry args={[0.30, 0.044, 0.014]} />
-            <meshStandardMaterial color={metalColor} roughness={0.38} metalness={0.72} />
-          </mesh>
-        </group>
+        <mesh key={i} position={[hingeEdgeX + strapDir * 0.09, hy, slab / 2 + 0.02]}>
+          <boxGeometry args={[0.17, 0.09, 0.014]} />
+          <meshStandardMaterial color={metalColor} roughness={0.38} metalness={0.72} />
+        </mesh>
       ))}
     </group>
   );
 }
 
 /**
- * SwingBarnDoor — double-leaf carriage doors with X-brace and strap hinges.
- * Each leaf is hinged on its outer edge and meets at the center when closed.
+ * SwingBarnDoor — the double doors on the gable end of a Barn.
+ *
+ * Each leaf is hinged on its outer edge and they meet in the middle. The leaf
+ * is a three-panel door: one panel above the mid rail, two below it. It was a
+ * Z-braced carriage door, which is a different product and drew a large
+ * diagonal across each leaf that is in none of the Reference Photos.
  */
 export const SwingBarnDoor = ({
   placement,
