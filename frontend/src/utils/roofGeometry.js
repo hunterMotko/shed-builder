@@ -302,9 +302,12 @@ export const GAMBREL_UPPER_PITCH = 4;
  * read as a gambrel instead of a kinked gable. Solving
  * `r·U = (1 - r)·L` gives `r = L / (L + U)`.
  *
- * For the 12:12 / 4:12 spec that is 0.75, and the roof then rises a quarter of
- * its span — the same "25%" the Gable's 6:12 is quoted as, so the two Models
- * carry the same overall proportion.
+ * For the 20:12 / 4:12 spec that is 5/6, and the roof then rises 5/18 of its
+ * span at every catalog width — a little more than the quarter the Gable's
+ * 6:12 is quoted as. The two Models did carry the same overall proportion back
+ * when the sides were quoted as a 12 pitch, which is where the retired "0.75,
+ * and the same 25% as the Gable" came from; steepening them to the 20 the
+ * photographs measure took the Barn above it.
  *
  * The hand-set 0.82 it replaces has no recorded source. It happens to be close
  * to what this rule gives for the old 24:12 / 6:12 pair (0.8), which suggests
