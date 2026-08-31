@@ -8,6 +8,15 @@ frontend/package-lock.json
 frontend/dist/
 frontend/.env*.local
 
+# Playwright. The frozen reference renders are generated on the machine that
+# checks them and are deliberately not committed, so a clone's first `npm run
+# test:e2e` writes its own baselines and fails; the second run is the one that
+# means something. `test-results/` is where a failure leaves the actual, the
+# expected and the diff to look at.
+frontend/e2e/__screenshots__/
+frontend/test-results/
+frontend/playwright-report/
+
 # IDE
 .vscode/
 .idea/
