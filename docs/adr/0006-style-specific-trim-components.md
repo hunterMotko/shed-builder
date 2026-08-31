@@ -7,6 +7,7 @@
 |------|-------------|
 | 2026-04-19 | Document created |
 | 2026-08-30 | Corrected the per-Model trim set against the Reference Photos (#22). This ADR had the Barn exactly backwards: it prescribed corner boards plus eave fascia and told the implementer to "omit rake board geometry entirely", when a Barn in fact carries corner boards **and a rake**, and **no fascia**. The Tradeoffs section's claimed fascia duplication therefore never existed. Also replaced the flat `overhangEave` default, which was a Gable number applied to both Models. |
+| 2026-08-31 | Corrected implementation step 1 (the Gable's rake). It prescribed an angle and a length for two rake boards; the rake is one mitred outline per end, and the two boards it described could not close at the apex or reach the eave fascia however they were sized. |
 
 ## Context
 
@@ -42,7 +43,7 @@ We will implement trim as two separate style-specific components—`GableTrim` a
 
 ## Implementation
 
-1. Create `frontend/src/components/shed/trim/GableTrim.jsx` implementing corner boards, eave fascia boards, and rake/barge boards. Compute rake board angle via `Math.atan2(roofHeight, halfWidth)` and length via `Math.sqrt(halfWidth ** 2 + roofHeight ** 2)`.
+1. ~~Create `frontend/src/components/shed/trim/GableTrim.jsx` implementing corner boards, eave fascia boards, and rake/barge boards. Compute rake board angle via `Math.atan2(roofHeight, halfWidth)` and length via `Math.sqrt(halfWidth ** 2 + roofHeight ** 2)`.~~ **Corrected 2026-08-31:** `GableTrim` computes nothing — ADR-0011's rule was extended to trim and every fascia position comes from `gableFasciaBoards`. The rake has no single angle or length to compute either: it is one mitred outline per gable end, offset from the roof slab's top line rather than from the wall, and cut plumb at the apex and at both eaves. Two boards with the right angle and the right length still do not meet, because a box is cut square across its own axis.
 2. ~~Create `frontend/src/components/shed/trim/BarnTrim.jsx` implementing corner boards and eave fascia boards only. Omit rake board geometry entirely.~~ **Corrected 2026-08-30 (#22):** `BarnTrim` implements corner boards and the rake band, and omits eave fascia — the reverse of the original instruction. The rake is two runs per side, not one: it breaks at the Knuckle and follows both gambrel slopes. It is also not a board. The roof panel runs past the wall and finishes in J-channel, and what the photographs show along that edge is the fly *under* the metal, so the panel edge laps it.
 3. Define the shared prop interface for both components: `shedWidth`, `shedLength`, `wallHeight`, `trimColor`, `trimWidth` (default `0.333`), `overhangEave` (default `0.5`). Add `roofHeight` (default `4`) exclusively to `GableTrim`.
 4. Apply `meshStandardMaterial` directly in both components using `trimColor` as the `color` prop. Do not route trim boards through the shader factory from ADR-002, as trim is simple painted wood requiring no procedural surface pattern.

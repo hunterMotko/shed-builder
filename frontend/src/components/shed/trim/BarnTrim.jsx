@@ -1,5 +1,7 @@
-import { cornerBoards, barnRakeFlashing } from '../../../utils/trimGeometry';
-import { gambrelRoofTopLine } from '../../../utils/roofGeometry';
+import { useMemo } from 'react';
+import { cornerBoards, barnRakeFlashing, bandUnderside } from '../../../utils/trimGeometry';
+import { gambrelRoofTopLine, ROOF_THICKNESS } from '../../../utils/roofGeometry';
+import { ExtrudedBand } from '../../common/ExtrudedBand';
 
 /**
  * BarnTrim — what finishes a Barn's edges.
@@ -15,12 +17,16 @@ import { gambrelRoofTopLine } from '../../../utils/roofGeometry';
  * what `barnRakeFlashing` draws, which is why it is a band and not a board,
  * and why it hugs the slab's end cap with its top edge a reveal below the top
  * surface — the metal reads as a line above the white, never the other way
- * round. The channel's own metal face is `rakeJChannel`, drawn by GambrelRoof
- * in the roof colour. Issue #22.
+ * round. It arrives as one mitred outline per end rather than a run of boxes,
+ * so it turns both Knuckles and the ridge without poking past the roof's
+ * silhouette. The channel's own metal face is `rakeJChannel`, drawn by
+ * GambrelRoof in the roof colour. Issue #22.
  *
  * Corner positions come from `cornerBoards`, not from this file: they used to
  * be worked out here and in GableTrim separately, and both copies buried the
- * board inside the siding (issue #31).
+ * board inside the siding (issue #31). What this file supplies is where their
+ * tops land, because that is the one thing about a corner board a Barn does
+ * differently — it is cut to the gambrel, not to the eave.
  */
 export const BarnTrim = ({
   shedWidth,
@@ -33,28 +39,50 @@ export const BarnTrim = ({
   overhangEave = 2 / 12,
 }) => {
   const TRIM_MAT = { color: trimColor, roughness: 0.6, metalness: 0 };
-  const corners = cornerBoards(shedWidth, shedLength, wallHeight, { trimWidth });
-  const flashing = barnRakeFlashing(
-    gambrelRoofTopLine(shedWidth, roofLowerPitch, roofUpperPitch, { overhang: overhangEave }),
-    shedLength,
-    wallHeight,
-    { overhang: overhangEave }
-  );
+
+  // Memoised because every outline below becomes extruded geometry: a fresh
+  // array each render would rebuild every shape each render.
+  const { corners, flashing } = useMemo(() => {
+    const topLine = gambrelRoofTopLine(shedWidth, roofLowerPitch, roofUpperPitch, {
+      overhang: overhangEave,
+    });
+    // The corner boards are cut on the roof's underside: parallel to the fly,
+    // so they carry the gambrel's angle, and as high as a board can go before
+    // it enters the slab. Level, they buried their tops in the roof; cut on
+    // the fly's own lower edge, which hangs 2.4 in under the slab, that much
+    // siding showed between the board and the fly from anywhere but dead on.
+    // A zero-width band is the surface itself, and `slabFrom` drops the
+    // underside straight down from it.
+    const surface = bandUnderside(topLine, { reveal: 0, faceWidth: 0 });
+    return {
+      corners: cornerBoards(shedWidth, shedLength, wallHeight, {
+        trimWidth,
+        topAt: (x) => wallHeight + surface(x) - ROOF_THICKNESS,
+      }),
+      flashing: barnRakeFlashing(topLine, shedLength, wallHeight, {
+        overhang: overhangEave,
+        roofThickness: ROOF_THICKNESS,
+      }),
+    };
+  }, [shedWidth, shedLength, wallHeight, roofLowerPitch, roofUpperPitch, overhangEave, trimWidth]);
 
   return (
     <group name="barnTrim">
-      {corners.map(({ corner, face, position, size }) => (
-        <mesh key={`corner-${corner}-${face}`} position={position} castShadow receiveShadow>
-          <boxGeometry args={size} />
+      {corners.map(({ corner, face, outline, position, depth }) => (
+        <ExtrudedBand
+          key={`corner-${corner}-${face}`}
+          outline={outline}
+          position={position}
+          depth={depth}
+        >
           <meshStandardMaterial {...TRIM_MAT} />
-        </mesh>
+        </ExtrudedBand>
       ))}
 
-      {flashing.map(({ id, position, size, rotation }) => (
-        <mesh key={id} position={position} rotation={rotation} castShadow receiveShadow>
-          <boxGeometry args={size} />
+      {flashing.map(({ id, outline, position, depth }) => (
+        <ExtrudedBand key={id} outline={outline} position={position} depth={depth}>
           <meshStandardMaterial {...TRIM_MAT} />
-        </mesh>
+        </ExtrudedBand>
       ))}
     </group>
   );

@@ -129,6 +129,36 @@ panel runs 2in past and finishes in J-channel, and what the photographs show is 
 it. That is the half of issue #22 the photos settle — ADR-0006 says the Barn has fascia, the
 component said it has none, and both were half right.
 
+**A band that follows a roof edge is one mitred outline, never a run of boxes.** `mitredBand`
+builds it: both edges are offset copies of the slab's top line, consecutive runs are intersected
+rather than butted, and the two ends are cut plumb — the way `slabFrom` cuts the slab. A box is
+cut square across its own axis, so however carefully the centre lines were mitred the corners
+still overshot: the Gable's two rake boards left a wedge of daylight above the apex and crossed
+below it, and every Knuckle had the same defect in proportion to its angle. The outlines reach a
+mesh through `ExtrudedBand`. The rake, the Barn's fly and the J-channel over either are all
+bands; the ridge cap and the Knuckle flashing run along the shed instead and stay boxes.
+
+A plumb cut is the right end on a 6:12 and the wrong one on a Barn: the steeper the run, the
+longer the point it leaves below the band, and the fly hung 2.5in of paint below the roof it is
+tucked under. `mitredBand`'s `endFloor` cuts that end level, and `barnRakeFlashing` sets it to
+the slab's own underside — the fly stops where the metal stops, which is what the photographs
+show, with the corner board taking over below. Nothing else passes it.
+
+Rake and eave are one board turning a corner, so the numbers that place their faces are shared,
+not chosen twice. Both hang `eaveFasciaDrop` below the roof's edge — the rake's own perpendicular
+`RAKE_REVEAL`, converted to plumb — and both are `ROOF_THICKNESS` deep measured plumb, which is
+how much slab edge there is to cover. A flat eave reveal of its own put the eave fascia an inch
+and a half above the rake it meets. The eave then runs a board's thickness past the slab at each
+end to lap the rake's plumb cut, the way the two boards at a corner lap.
+
+A corner board is an outline too, for the same reason: its top is not always level. A Barn cuts
+it on the **roof's underside** — parallel to the fly, so it carries the gambrel's angle, and as
+high as a board can go before it enters the slab. Level at the eave, the tops were buried in the
+roof; on the fly's own lower edge, which hangs 2.4in under the slab, that much siding showed
+between the board and the fly from anywhere but dead on. `bandUnderside` gives the line, and a
+band of no width is the surface itself. A Gable leaves the default, level at the eave. The bottom
+is never cut: it is flat and on the floor, `y = 0`.
+
 Trim stock has two numbers, and they are not the same number: `TRIM_WIDTH` is the face you see
 (`0.333 ft`, 4in — now measured, at 15–18px on a photo that scales at 48.5 px/ft) and
 `TRIM_THICKNESS` is how far the board stands off the siding (`0.0625 ft`, a dressed 1x). They
