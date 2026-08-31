@@ -11,6 +11,7 @@ import {
 import { Skylight } from '../extras/Skylight';
 import { barnKnuckleFlashing, roofRidgeCap, rakeJChannel } from '../../../utils/trimGeometry';
 import { gambrelEndOutline, gambrelRoofTopLine } from '../../../utils/roofGeometry';
+import { ExtrudedBand } from '../../common/ExtrudedBand';
 
 /**
  * GambrelRoof — the barn roof, as a slab.
@@ -65,10 +66,10 @@ export const GambrelRoof = ({
     [roofColor, roofMaterial]
   );
 
-  // The roof's own metalwork: break flashing over each Knuckle, the ridge
-  // cap, and the J-channel capping both gable-end top edges. All of it is
-  // roof metal, so it renders here in the roof colour rather than with the
-  // trim.
+  // The roof's own metalwork, in the roof colour rather than with the trim.
+  // Break flashing over each Knuckle and the ridge cap both run the length of
+  // the shed and are boxes; the J-channel follows the gable-end edge, so it is
+  // a mitred outline like the fly under it and is extruded rather than boxed.
   const metalwork = useMemo(() => {
     const topLine = gambrelRoofTopLine(shedWidth, roofLowerPitch, roofUpperPitch, { overhang });
     const peak = topLine.reduce((hi, p) => Math.max(hi, p[1]), -Infinity);
@@ -80,9 +81,19 @@ export const GambrelRoof = ({
         { overhang }
       ),
       ...roofRidgeCap(peak, roofUpperPitch / 12, shedLength, wallHeight, { overhang }),
-      ...rakeJChannel(topLine, shedLength, wallHeight, { overhang }),
     ];
   }, [shedWidth, shedLength, wallHeight, roofLowerPitch, roofUpperPitch, overhang]);
+
+  const jChannel = useMemo(
+    () =>
+      rakeJChannel(
+        gambrelRoofTopLine(shedWidth, roofLowerPitch, roofUpperPitch, { overhang }),
+        shedLength,
+        wallHeight,
+        { overhang }
+      ),
+    [shedWidth, shedLength, wallHeight, roofLowerPitch, roofUpperPitch, overhang]
+  );
 
   // Highest point of the profile, for anything that sits on the ridge.
   const peakY = useMemo(() => {
@@ -92,6 +103,12 @@ export const GambrelRoof = ({
     });
     return points.reduce((hi, p) => Math.max(hi, p[1]), -Infinity);
   }, [shedWidth, roofLowerPitch, roofUpperPitch, overhang]);
+
+  const METAL_MAT = {
+    color: roofColor,
+    roughness: roofMaterial === 'metal' ? 0.35 : 0.7,
+    metalness: roofMaterial === 'metal' ? 0.4 : 0.05,
+  };
 
   return (
     <group name="gambrelRoof">
@@ -108,12 +125,15 @@ export const GambrelRoof = ({
       {metalwork.map(({ id, position, size, rotation }) => (
         <mesh key={id} position={position} rotation={rotation} castShadow>
           <boxGeometry args={size} />
-          <meshStandardMaterial
-            color={roofColor}
-            roughness={roofMaterial === 'metal' ? 0.35 : 0.7}
-            metalness={roofMaterial === 'metal' ? 0.4 : 0.05}
-          />
+          <meshStandardMaterial {...METAL_MAT} />
         </mesh>
+      ))}
+
+      {/* `depth` renamed: the slab's own `depth` is already in scope here */}
+      {jChannel.map(({ id, outline, position, depth: bandDepth }) => (
+        <ExtrudedBand key={id} outline={outline} position={position} depth={bandDepth}>
+          <meshStandardMaterial {...METAL_MAT} />
+        </ExtrudedBand>
       ))}
 
       {skylight?.enabled && (

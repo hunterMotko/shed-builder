@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { makeRoofShader } from '../../../utils/shaders';
 import { gableRoofProfile, gableRoofTopLine, roofSlabDepth, ROOF_THICKNESS } from '../../../utils/roofGeometry';
 import { roofRidgeCap, rakeJChannel } from '../../../utils/trimGeometry';
+import { ExtrudedBand } from '../../common/ExtrudedBand';
 import { Skylight } from '../extras/Skylight';
 
 /**
@@ -62,18 +63,28 @@ export const GableRoof = ({
 
   const peakY = wallHeight + roofHeight;
 
-  // The roof's own metalwork: the ridge cap folded over the peak, and the
-  // J-channel capping both gable-end top edges. Roof metal, so it renders
-  // here in the roof colour rather than with the trim.
-  const metalwork = useMemo(() => {
+  const METAL_MAT = {
+    color: roofColor,
+    roughness: roofMaterial === 'metal' ? 0.35 : 0.7,
+    metalness: roofMaterial === 'metal' ? 0.4 : 0.05,
+  };
+
+  // The roof's own metalwork, in the roof colour rather than with the trim.
+  // The ridge cap runs the length of the shed and is a box; the J-channel
+  // follows the gable-end edge, so it is a mitred outline like the fascia
+  // under it and is extruded rather than boxed.
+  const ridgeCap = useMemo(() => {
     const slope = roofHeight / (shedWidth / 2);
-    return [
-      ...roofRidgeCap(roofHeight, slope, shedLength, wallHeight, { overhang }),
-      ...rakeJChannel(gableRoofTopLine(shedWidth, pitchX, { overhang }), shedLength, wallHeight, {
+    return roofRidgeCap(roofHeight, slope, shedLength, wallHeight, { overhang });
+  }, [shedWidth, shedLength, wallHeight, roofHeight, overhang]);
+
+  const jChannel = useMemo(
+    () =>
+      rakeJChannel(gableRoofTopLine(shedWidth, pitchX, { overhang }), shedLength, wallHeight, {
         overhang,
       }),
-    ];
-  }, [shedWidth, shedLength, wallHeight, roofHeight, pitchX, overhang]);
+    [shedWidth, shedLength, wallHeight, pitchX, overhang]
+  );
 
   return (
     <group name="gableRoof">
@@ -87,15 +98,18 @@ export const GableRoof = ({
         <shaderMaterial args={[roofShader]} side={THREE.DoubleSide} />
       </mesh>
 
-      {metalwork.map(({ id, position, size, rotation }) => (
+      {ridgeCap.map(({ id, position, size, rotation }) => (
         <mesh key={id} position={position} rotation={rotation} castShadow>
           <boxGeometry args={size} />
-          <meshStandardMaterial
-            color={roofColor}
-            roughness={roofMaterial === 'metal' ? 0.35 : 0.7}
-            metalness={roofMaterial === 'metal' ? 0.4 : 0.05}
-          />
+          <meshStandardMaterial {...METAL_MAT} />
         </mesh>
+      ))}
+
+      {/* `depth` renamed: the slab's own `depth` is already in scope here */}
+      {jChannel.map(({ id, outline, position, depth: bandDepth }) => (
+        <ExtrudedBand key={id} outline={outline} position={position} depth={bandDepth}>
+          <meshStandardMaterial {...METAL_MAT} />
+        </ExtrudedBand>
       ))}
 
       {skylight?.enabled && (
