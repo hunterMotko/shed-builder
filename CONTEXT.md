@@ -130,7 +130,8 @@ slope.
 
 **Rake**:
 The sloped edge of a roof at a gable or barn end. Straight on a Gable; on a Barn it breaks
-at the Knuckle and runs as two boards per side.
+at the Knuckle and runs as two segments per side. What sits along it differs by Model: a
+Gable carries a boxed rake board, a Barn carries the **Fly** under the metal.
 
 **Eave**:
 The horizontal lower edge of a roof, along the long walls.
@@ -148,11 +149,15 @@ product, not a difference in the renderer.
 | | Corner Boards | Fascia | Rake | Eave overhang |
 |---|---|---|---|---|
 | Gable | yes | yes | yes, overhanging ~5in with a return at the eave | yes |
-| Barn | yes | **no** | yes, following the gambrel | ~none, roof stops at the wall |
+| Barn | yes | **no** | yes, following the gambrel | 2in, finishing in J-channel |
 
-Trim stock measures about 5.5in (1x6) against a known width in the Reference Photos, not
-the 4in the renderer assumes. Every roof also carries a **Ridge Cap** the renderer does
-not draw. Read off the Reference Photos; see issue #22.
+Trim stock is 4in (1x4), measured at 15-18px on a photograph scaling at 48.5 px/ft. An
+earlier reading of these photos put it at 5.5in (1x6); the closer measurement agrees with
+the 4in the renderer had always used. The face you see and the standoff off the siding are
+two different numbers — see **Trim Stock**.
+
+The eave overhang is a per-Model shop spec, not one number: a Gable gets a 6 5/8in soffit
+and fascia box, except at 16 wide where it is 4 7/8in; a Barn gets 2in.
 
 **Corner Board**:
 A vertical trim board at a corner of the shed, covering the siding joint. Four
@@ -165,7 +170,37 @@ _Avoid_: eave board, trim board (say which board)
 
 **Ridge Cap**:
 The folded metal closure over the ridge of a Gable or the peak of a gambrel. Present on
-every Reference Photo; not modelled.
+every Reference Photo, and on both Models in the renderer. It is roofing, not trim: it is
+drawn in the roof colour by the roof, never by the Trim Set.
+
+**Trim Stock**:
+A trim board has two numbers and they are not the same number. The **face** is what you
+see, 4in. The **standoff** is how far the board stands off the siding, a dressed 1x. They
+were one value once, which put every corner board inside the wall with its faces exactly
+coplanar — nothing decided which surface won and each board rendered as hatched noise.
+A corner board is nailed *on* the siding, and the two boards at a corner lap rather than
+butt: one runs past to cover the other's end grain.
+
+**Fly**:
+The flat board along a Barn's rake, under the roof panel. Not a fascia and not a rake
+board in the Gable sense — a flat 2x4, so 1.5in on the face. The panel runs past it and
+laps it, which is why it reads as a band in the photographs rather than as an edge.
+
+**J-Channel**:
+The formed metal channel the roof panel's edge slides into, along the rake on both
+Models. It is what holds the metal in at the front and back top edges. Roofing, not
+trim: the same galvanized stock as the panel, and it reads dark in a photograph only
+because it faces away from the sky.
+
+**Knuckle Flashing**:
+The bent metal cap over a Barn's Knuckle, closing the joint where the two gambrel slopes
+meet. Two legs, one down each slope. Roofing, in the roof colour.
+_Avoid_: gambrel break flashing (say Knuckle)
+
+**Corner Box**:
+The boxed soffit return where a Gable's rake overhang meets its eave, at each of the four
+corners. Part of the Gable's Trim Set; a Barn has none, its rake finishing in J-channel
+instead.
 
 Trim colour is one colour. Where a photo appears to show two, the second is the window's
 or door's own factory frame — a white vinyl window or a white steel entry door — sitting
