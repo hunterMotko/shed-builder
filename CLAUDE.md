@@ -52,6 +52,7 @@ cd frontend
 npm run dev        # http://localhost:5173
 npm test           # vitest, single run
 npm run test:watch
+npm run test:e2e   # playwright: freeze-frame the two reference renders
 npm run build
 npm run lint       # 7 pre-existing errors — don't add more
 ```
@@ -369,8 +370,10 @@ hearing it twice. Note R3F puts `role`/`aria-label` on its own wrapper `<div>`, 
 
 ## Testing
 
-Tests live beside their subject as `*.test.js` and run in node — no jsdom, because every seam
-under test is non-React.
+There are two suites, and they never meet. `npm test` is vitest: tests live beside their subject
+as `*.test.js` and run in node — no jsdom, because every seam under test is non-React. `npm run
+test:e2e` is Playwright, and it lives in `frontend/e2e/` where vitest's `include`
+(`src/**/*.test.js`) cannot see it.
 
 | Seam | File |
 |---|---|
@@ -386,13 +389,57 @@ under test is non-React.
 | The save gate | `services/designApi.test.js` |
 | The shared catalog file | `utils/catalog.test.js` |
 | HTTP API | `main_test.go` |
+| The rendered reference Designs | `e2e/reference-match.spec.js` |
 
 Two rules that matter more than coverage:
 
 1. **Expected values come from an independent source** — trigonometry, or a price in
    `shed-options.md`. Never recompute the expectation the way the code does.
-2. **Nothing in the suite mounts React.** Tests and a clean build can both pass while the app is
-   broken on screen; that has already happened once. Run the app before believing a UI change.
+2. **Nothing in the vitest suite mounts React.** Tests and a clean build can both pass while the
+   app is broken on screen; that has already happened once. Run the app before believing a UI
+   change.
+
+### The pixel suite
+
+`e2e/reference-match.spec.js` is the answer to rule 2 for the one thing rule 2 cannot cover: the
+3D canvas is the whole output of the product and no vitest seam touches it. It drives the
+Reference Match page through the browser — nav, then the target button — and freezes the canvas
+of each approved reference Design, so a geometry or shader change that breaks fidelity fails
+here (issue #7).
+
+**It imports no component and no geometry function.** The seam is the `<canvas>` and only the
+`<canvas>`; the Reference Photo beside it is out of frame, because `reference/` is gitignored and
+a baseline holding the "no reference photo" placeholder would fail on every machine but the one
+that made it.
+
+**The baselines are not committed.** They are frozen renders rather than source, so each machine
+makes its own under `e2e/__screenshots__/`. A clone's first run therefore writes them and
+*fails*, and the second run is the first that means anything — loud rather than a silent pass.
+`npm run test:e2e:approve` re-freezes them, and is a sign-off, not a way past a red test.
+
+**Not one pixel may differ.** The render is bit-exact run to run on one machine, so a tolerance
+costs sensitivity and buys nothing: at `maxDiffPixelRatio: 0.002` — 961 of these 639 × 752
+pixels — widening trim stock by two inches passed on the barn. At zero, a fifth of an inch fails
+the gable. The floor is the render's own resolution, not the tolerance: the barn is a 53 ft
+three-quarter view and does not move at all until about a third of an inch. If a browser upgrade
+ever reddens both targets at once with no change in the tree, that is the one case for
+re-approving rather than debugging.
+
+Two things cost an afternoon each and are worth knowing:
+
+- **Wait for the canvas to reach its pane, not merely to exist.** The `<Canvas>` is keyed by
+  target id so R3F picks up each target's camera, so switching target remounts it, and a fresh
+  canvas spends a moment at the HTML default 300 × 150. A guard of `width * height > 0` returns
+  inside that moment and freezes a grey box.
+- **The page paints over its own canvas** — a badge top left, a caption bottom centre. Any check
+  that compares two regions has to take both clear of them, or it differs whether or not anything
+  was ever drawn, which is a green test that cannot fail.
+
+Issue #7 warns that headless WebGL needs `--use-gl=angle --use-angle=swiftshader
+--enable-unsafe-swiftshader`. It did not here — Playwright's bundled Chromium Headless Shell
+151 gives a `webgl2` context unaided, and forcing SwiftShader would only change the pixels the
+baselines are made of. Reach for those flags if `getContext('webgl2')` returns null on some other
+machine, and re-approve that machine's baselines when you do.
 
 ## Working in this repo
 

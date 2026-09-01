@@ -69,7 +69,7 @@ export function wallHeightFt(model) {
  * How far the ridge stands above the eave, in feet.
  *
  * The rafters are cut to a fixed pitch, so this follows the span: a 6:12 Gable,
- * or a 12:12 / 4:12 gambrel whose Knuckle splits the rise evenly.
+ * or a 20:12 / 4:12 gambrel whose Knuckle splits the rise evenly.
  *
  * @param {'Barn'|'Gable'} model
  * @param {number} width - span in feet
