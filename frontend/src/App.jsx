@@ -4,6 +4,7 @@ import { OrbitControls } from '@react-three/drei';
 import { BarnShed } from './components/BarnShed/BarnShed';
 import { GableShed } from './components/GableShed/GableShed';
 import { ShedLights } from './components/common/ShedLights';
+import { GeometryErrorBoundary } from './components/common/GeometryErrorBoundary';
 import { ControlPanel } from './components/ControlPanel';
 import { ComponentPreview } from './pages/ComponentPreview';
 import { ReferenceMatch } from './pages/ReferenceMatch';
@@ -144,6 +145,9 @@ export default function App() {
             </p>
 
             {/* 3D Canvas */}
+            {/* Outside the Canvas, not inside it: the fallback is DOM, and
+                react-three-fiber's tree renders through its own reconciler. */}
+            <GeometryErrorBoundary>
             <Canvas
               role="img"
               aria-label={designSummary}
@@ -164,6 +168,7 @@ export default function App() {
               </Suspense>
               <OrbitControls />
             </Canvas>
+            </GeometryErrorBoundary>
 
             {/*
               Hidden from the accessibility tree: it repeats the size, Tier,

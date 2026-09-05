@@ -6,7 +6,13 @@
  */
 import { useState } from 'react';
 import { useShedStore } from '../store/shedStore';
-import { saveDesign, loadDesign, listDesigns, validateDesignConfig } from '../services/designApi';
+import {
+	saveDesign,
+	loadDesign,
+	listDesigns,
+	validateDesignConfig,
+	unrenderableReasons,
+} from '../services/designApi';
 
 /**
  * Hook for managing design persistence operations
@@ -81,6 +87,22 @@ export const useDesignPersistence = () => {
 		setError(null);
 		try {
 			const design = await loadDesign(id);
+
+			// Check before touching the store, not after. This app validates a
+			// design on the way out and never did on the way in, so a record
+			// written by an older client, a migration or a direct edit could
+			// name a Model or a wall that nothing here can draw. The geometry
+			// kernel refuses those rather than guessing — and it is load-bearing
+			// for first paint, so the refusal throws during render and leaves a
+			// blank canvas. Caught here it is a message instead, in the error
+			// channel this hook already has.
+			const cannot = unrenderableReasons(design);
+			if (cannot.length > 0) {
+				const err = new Error(`Cannot open this saved design: it ${cannot.join(', and ')}.`);
+				err.userMessage = err.message;
+				throw err;
+			}
+
 			// Restore all configuration fields from the saved design
 			setWidth(design.width);
 			setLength(design.length);

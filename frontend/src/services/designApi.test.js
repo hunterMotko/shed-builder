@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { validateDesignConfig } from './designApi';
+import { validateDesignConfig,
+	unrenderableReasons,
+} from './designApi';
 
 /**
  * The gate `useDesignPersistence.save()` runs before POSTing a Design.
@@ -140,5 +142,48 @@ describe('validateDesignConfig', () => {
 			placements: [opening({ normalizedX: NaN })],
 		}));
 		expect(errors.length).toBeGreaterThanOrEqual(3);
+	});
+});
+
+describe('What the kernel will refuse to draw', () => {
+	// This app validated a design on the way out and never on the way in. The
+	// kernel refuses names it will not guess at, and it is load-bearing for
+	// first paint, so an unchecked bad record blanks the canvas.
+	const design = (o = {}) => ({ model: 'Barn', width: 12, length: 16, tier: 'Deluxe', ...o });
+
+	it('passes a design it can draw', () => {
+		expect(unrenderableReasons(design())).toEqual([]);
+	});
+
+	it('refuses a Model this configurator does not build', () => {
+		expect(unrenderableReasons(design({ model: 'Lean-To' })).join(' '))
+			.toMatch(/Lean-To/);
+	});
+
+	it('refuses a Placement on a wall the shed does not have', () => {
+		const placements = [{ id: 'p1', wall: 'ceiling' }];
+		expect(unrenderableReasons(design({ placements })).join(' ')).toMatch(/ceiling/);
+	});
+
+	it('refuses an octagon fitted to an end that does not exist', () => {
+		const options = { octagonWindow: { enabled: true, ends: 'sideways' } };
+		expect(unrenderableReasons(design({ options })).join(' ')).toMatch(/sideways/);
+	});
+
+	it('accepts an octagon with no ends named — that is one on the front', () => {
+		const options = { octagonWindow: { enabled: true } };
+		expect(unrenderableReasons(design({ options }))).toEqual([]);
+	});
+
+	it('does not reject a design merely missing a tier, which load tolerates', () => {
+		// The save gate requires a tier. Running it on the way in would refuse
+		// records that open fine today, which is why this check is narrower.
+		const { tier, ...noTier } = design();
+		expect(unrenderableReasons(noTier)).toEqual([]);
+	});
+
+	it('reports every reason, not just the first', () => {
+		const bad = design({ model: 'Lean-To', placements: [{ id: 'p1', wall: 'ceiling' }] });
+		expect(unrenderableReasons(bad)).toHaveLength(2);
 	});
 });

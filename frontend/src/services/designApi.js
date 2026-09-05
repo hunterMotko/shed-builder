@@ -105,6 +105,57 @@ export const listDesigns = async () => {
  * @param {Object} config - Design configuration to validate
  * @returns {{isValid: boolean, errors: string[]}}
  */
+/**
+ * The subset of a design the geometry kernel will refuse outright.
+ *
+ * Narrower than [validateDesignConfig] on purpose. That one gates a design on
+ * the way **out** and may reject a record for things a saved design can survive
+ * without — an absent `tier`, say, which `load` explicitly tolerates. Running
+ * the save gate on the way in would reject designs that open fine today.
+ *
+ * This one names only what cannot be drawn. The kernel refuses three
+ * unrecognised names rather than guessing at them — an unknown Model, an
+ * unknown wall, an octagon fitted to an end nobody named — because upstream's
+ * guesses were all answers that look right: the Gable spec for any Model, an
+ * Opening through the middle of the shed for any wall, the front gable for any
+ * `ends`. A Barn priced as a Gable is worse than a refusal.
+ *
+ * The catch is *where* the refusal lands. The kernel is load-bearing for first
+ * paint, so a bad Model reaching the store throws during render and blanks the
+ * canvas. Checking here turns that into the load error the UI already shows.
+ *
+ * @param {Object} config
+ * @returns {string[]} reasons it cannot be drawn; empty when it can
+ */
+export const unrenderableReasons = (config) => {
+	const reasons = [];
+
+	if (!['Barn', 'Gable'].includes(config?.model)) {
+		reasons.push(`names a model this configurator does not build: ${config?.model}`);
+	}
+
+	if (Array.isArray(config?.placements)) {
+		for (const [i, placement] of config.placements.entries()) {
+			if (!WALL_SIDES.includes(placement?.wall)) {
+				const where = placement?.id ?? `index ${i}`;
+				reasons.push(`puts ${where} on a wall the shed does not have: ${placement?.wall}`);
+			}
+		}
+	}
+
+	// An octagon is bought per gable end. `undefined` is the one end on the
+	// front — what ticking a box once means, and the reading that cannot
+	// overcharge. Anything else is billed for and built on an end nobody named.
+	for (const name of ['octagonWindow', 'octagonVent']) {
+		const ends = config?.options?.[name]?.ends;
+		if (ends !== undefined && !['front', 'back', 'both'].includes(ends)) {
+			reasons.push(`fits the ${name} to an end that does not exist: ${ends}`);
+		}
+	}
+
+	return reasons;
+};
+
 export const validateDesignConfig = (config) => {
 	const errors = [];
 
