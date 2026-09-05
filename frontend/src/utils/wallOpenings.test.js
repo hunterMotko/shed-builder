@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
-import { computeMeshVolume } from 'three-bvh-csg';
 import { cutOpenings } from './wallOpenings';
 
 // A front wall on the default 12x16x10 Design: 12 ft wide, 10 ft tall,
@@ -33,7 +32,39 @@ const windowAt = (normalizedX, normalizedY) => ({
 	height: 3,
 });
 
-const volumeOf = (geometry) => computeMeshVolume(new THREE.Mesh(geometry));
+/**
+ * The volume enclosed by a closed triangle mesh.
+ *
+ * Each triangle makes a tetrahedron with the origin, and the signed volumes of
+ * those cancel everywhere except inside the surface: V = 1/6 Σ v0 · (v1 × v2).
+ * Exact for a closed manifold, and it needs no library.
+ *
+ * The sign is the winding, so a negative answer means the panel is inside-out.
+ * `three-bvh-csg`'s `computeMeshVolume` used to do this, and dropping it is the
+ * last thing holding that dependency — the CSG it was bought for is gone.
+ */
+const volumeOf = (geometry) => {
+	const pos = geometry.getAttribute('position');
+	const index = geometry.getIndex();
+	const at = (i) => {
+		const j = index ? index.getX(i) : i;
+		return [pos.getX(j), pos.getY(j), pos.getZ(j)];
+	};
+
+	let sum = 0;
+	const count = index ? index.count : pos.count;
+	for (let i = 0; i < count; i += 3) {
+		const [ax, ay, az] = at(i);
+		const [bx, by, bz] = at(i + 1);
+		const [cx, cy, cz] = at(i + 2);
+		// a · (b × c)
+		sum +=
+			ax * (by * cz - bz * cy) +
+			ay * (bz * cx - bx * cz) +
+			az * (bx * cy - by * cx);
+	}
+	return sum / 6;
+};
 
 describe('cutOpenings', () => {
 	it('returns the wall untouched when there is nothing to cut', () => {
@@ -42,10 +73,11 @@ describe('cutOpenings', () => {
 		expect(cutOpenings(base, [], opts)).toBeNull();
 	});
 
-	// The bug this test exists for: three-bvh-csg's Evaluator requires Brush
-	// instances and throws on a plain THREE.Mesh. ShedWall passed Meshes, the
-	// throw was swallowed by a catch, and every wall silently rendered solid.
-	// A wall with a window in it must weigh less than a solid one.
+	// The bug this test exists for is gone with the CSG that caused it —
+	// three-bvh-csg's Evaluator threw on a plain THREE.Mesh, the throw was
+	// swallowed by a catch, and every wall silently rendered solid. The
+	// assertion outlives it: a wall with a window in it must weigh less than a
+	// solid one, however the hole gets made.
 	it('removes material from the wall', () => {
 		const cut = cutOpenings(wallGeometry(), [windowAt(0.5, 0.5)], opts);
 

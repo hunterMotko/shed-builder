@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import {
 	wallSpan as kernelWallSpan,
 	openingTransform as kernelOpeningTransform,
@@ -24,9 +23,12 @@ import {
  * — and the kernel throws instead, naming the offender. Nothing in this app
  * passes a name off the list, so nothing should notice.
  *
- * `Evaluator.evaluate` requires `Brush` instances: it calls `prepareGeometry()`
- * on both operands, which `THREE.Mesh` does not have. Passing a Mesh throws,
- * which is exactly how every opening in this app silently failed to be cut.
+ * There is no CSG here any more. `cutOpenings` asks the kernel for the panel
+ * and wraps the buffers it returns; ADR-0001 in the kernel repo is why. The
+ * `three-bvh-csg` import, the shared `Evaluator` and the `Brush` operands went
+ * with it — along with the bug they were famous for, which was that
+ * `Evaluator.evaluate` throws on a plain `THREE.Mesh` and every opening in this
+ * app silently failed to be cut.
  */
 
 /** Wall thickness in feet (6 inches). */
@@ -69,12 +71,6 @@ export function wallSpan(wall, shedWidth, shedLength) {
 export function openingTransform(placement, shedDimensions, faceOffset = 0) {
 	return kernelOpeningTransform(placement, shedDimensions, faceOffset);
 }
-
-// One shared Evaluator — CSG is sequential so there is no concurrency issue.
-const evaluator = new Evaluator();
-// A wall is drawn with one material, so the result should be one un-grouped
-// geometry rather than a grouped one addressing a material array.
-evaluator.useGroups = false;
 
 /**
  * The wall panel: what is left of a wall once every Opening is removed.

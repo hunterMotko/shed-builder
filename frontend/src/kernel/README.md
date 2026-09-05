@@ -29,10 +29,11 @@ guarantees the module is initialised before any export is called.
 
 `cutOpenings` no longer runs a CSG boolean. It calls `wallPanelForSpan` and
 wraps the result in a `THREE.BufferGeometry`, keeping its old signature so its
-callers did not have to move. This is what ADR-0001 is about. `Brush`,
-`SUBTRACTION` and the module-level `Evaluator` are dead where they stand, and
-`three-bvh-csg` is now used only by `wallOpenings.test.js`, for
-`computeMeshVolume` as a test helper.
+callers did not have to move. This is what ADR-0001 is about, and
+**`three-bvh-csg` is gone** — the dependency, the shared `Evaluator`, the
+`Brush` operands and the `computeMeshVolume` test helper. The volume assertions
+that helper served are still there, over a signed-tetrahedron sum written out
+in the test file, which needs no library and reads the winding as its sign.
 
 Routing `placementValidator.js` **changed an answer on purpose**, and it is the
 only routing that did. The kernel measures a left or right wall against the
