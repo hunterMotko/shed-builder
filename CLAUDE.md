@@ -52,7 +52,7 @@ cd frontend
 npm run dev        # http://localhost:5173
 npm test           # vitest, single run
 npm run test:watch
-npm run test:e2e   # playwright: freeze-frame the two reference renders
+npm run test:e2e   # playwright: freeze-frame the reference renders
 npm run build
 npm run lint       # 7 pre-existing errors — don't add more
 ```
@@ -105,7 +105,19 @@ except at 16 wide where it is 4 7/8in; a barn gets 2in and finishes in J-channel
 
 **Both Models render all four walls** (ADR-0010), from `WALL_SIDES` in `utils/wallSides.js`. The
 Models differ above the eave only: a Gable has two `GableEnd` triangles, a Barn has two `BarnEnd`
-gambrel faces. Both are siding — the Barn's used to be the roof prism's own end caps, borrowed and
+gambrel faces.
+
+**The end above the eave is not a wall, and that is deliberate** (issue #43). It is not in
+`WALL_SIDES`, it takes no Placement, and `openingTransform` does not describe it — a triangle's
+`normalizedX` spans a different width at every height, and nobody positions an octagon, which is
+centred in the gable by definition. `utils/gableEndOpenings.js` is the named exception to
+ADR-0011: it owns where the octagon sits and which ends carry one. **These are outlines, not
+cuts** — both ends are flat panels with no thickness, and CSG subtracts solids, so `THREE.Shape`
+holes are the right tool and `cutOpenings` is not. An octagon is bought **per end**: ask
+`octagonForEnd`, never `options.octagonWindow.enabled`, which is what drew two windows on a Gable
+and charged for one. `octagonEnds` and its Go twin `octagonEndCount` must agree, because the
+server's number is the Quote. A window and a vent bought for the same end cannot both be fitted —
+there is one hole — so the window wins, and both are still charged. Both are siding — the Barn's used to be the roof prism's own end caps, borrowed and
 drawn with the siding shader, until the roof became a slab (ADR-0013). Placements are routed to walls by `routePlacements`, which hands back a `dropped` list so
 an opening assigned to a wall that isn't rendered is reported rather than lost — a Barn used to
 render two walls and discard every front and back Placement in silence.
@@ -138,6 +150,16 @@ still overshot: the Gable's two rake boards left a wedge of daylight above the a
 below it, and every Knuckle had the same defect in proportion to its angle. The outlines reach a
 mesh through `ExtrudedBand`. The rake, the Barn's fly and the J-channel over either are all
 bands; the ridge cap and the Knuckle flashing run along the shed instead and stay boxes.
+
+**A skylight is the ridge cap in glass, not a part laid over it** (issue #42). `roofRidgeCap`
+takes `skylightFt` and breaks each leg into cap, gap, cap — six runs instead of two — then fills
+the gap with a run tagged `kind: 'glass'` at the same width, plane and fold as the metal it
+replaced, so the two cannot drift apart. With no skylight it returns exactly the two runs it
+always did. Asking for more skylight than there is ridge clamps to the ridge and reports it as
+`clampedFrom`, the way `routePlacements` hands back `dropped`. `Skylight.jsx` used to draw four
+opaque boxes flat on top of an unbroken cap, at a width and angle of their own invention; it now
+owns nothing but the Component Preview, and `skylightMaterial.js` holds what the glass is made
+of.
 
 A plumb cut is the right end on a 6:12 and the wrong one on a Barn: the steeper the run, the
 longer the point it leaves below the band, and the fly hung 2.5in of paint below the roof it is
@@ -296,6 +318,21 @@ Ask `openingTransform` for the position — never rebuild it from the normalized
 
 `ShedWall` renders `door`, `window`, `garage_door`, `barn_door` and `swing_barn_door`.
 
+**Some Options hang off another Option's Placement** (issue #44). A pair of shutters flanks a
+window; a ramp meets a garage door — `ramp_small` is 7 ft wide and `ramp_large` 9 ft, which is a
+door apron, not a doorstep. `utils/dependentOptions.js` owns the rule: `OPTION_PARENTS` names the
+parent, `isOptionAvailable` greys the row until one exists, and the attachment is a **field on the
+parent Placement** (`shutters: true`, `ramp: 'small'`) rather than a Placement of its own, since
+it has no position the parent does not already give it. So a customer can shutter one window and
+leave the next bare, and the count is read off the Placements rather than kept beside them.
+`Ramp` takes the door's Placement and stands where `openingTransform` puts it; it used to hold a
+private copy of the same wall switch and sat centred wherever the door actually was.
+
+**`carriesAttachment` and `isOptionAvailable` both carry a bridge for issue #10.** Nothing can
+create a Placement yet, so an enabled parent Option stands in for one. Both fallbacks are marked
+and both come out when reconcile lands — until then, pricing still reads `shutters.pairs` rather
+than counting shuttered windows, because counting would price at zero.
+
 Known gaps, all issue #10:
 
 - `PlacementDialog.jsx` and `PlacementList.jsx` are imported nowhere, so a user cannot create a
@@ -351,6 +388,12 @@ produced it; change one only with a new measurement. The photos are untracked (`
 gitignored) and `referencePhotos.js` names each file it loads, so adding a target means adding
 its name there too.
 
+**Guard targets are the exception, and contribute no numbers.** A target whose id is a Model plus
+an Option — `gable-skylight`, `barn-skylight` — exists so the pixel suite has a frozen render of
+that Option's code path. There is no photograph of one, so each reuses a measured Design whole
+(`GABLE_FRONT_DESIGN`, `BARN_BARNDOORS_DESIGN`) and changes only the Option and the camera. The
+measured-not-guessed rule survives because these invent no dimension, colour or pitch.
+
 A stale fork of the shed components still sits under `pages/reference-match/barn/`; nothing
 imports it, and issue #4 deletes it.
 
@@ -385,6 +428,8 @@ test:e2e` is Playwright, and it lives in `frontend/e2e/` where vitest's `include
 | Cutting openings | `utils/wallOpenings.test.js` |
 | Walls and Placement routing | `utils/wallSides.test.js` |
 | Trim placement | `utils/trimGeometry.test.js` |
+| Gable-end openings | `utils/gableEndOpenings.test.js` |
+| Options that need a parent | `utils/dependentOptions.test.js` |
 | Store behaviour | `store/shedStore.test.js` |
 | The save gate | `services/designApi.test.js` |
 | The shared catalog file | `utils/catalog.test.js` |
@@ -406,6 +451,12 @@ Two rules that matter more than coverage:
 Reference Match page through the browser — nav, then the target button — and freezes the canvas
 of each approved reference Design, so a geometry or shader change that breaks fidelity fails
 here (issue #7).
+
+**`barn-barndoors` and `gable-front` have no Option enabled, and that is their job.** They are the
+base-render guards: an Option that leaks into the shed everyone else buys moves one of them, and
+zero tolerance means it fails. Every other target freezes one Option's code path. So adding an
+Option means adding its target, in the change that creates its geometry — a baseline frozen
+before the geometry exists is a frozen picture of nothing.
 
 **It imports no component and no geometry function.** The seam is the `<canvas>` and only the
 `<canvas>`; the Reference Photo beside it is out of frame, because `reference/` is gitignored and
@@ -527,6 +578,8 @@ frontend/src/
   utils/design.js                 overlay a fixed Design on the store's (ADR-0012)
   utils/wallOpenings.js           CSG: cut Openings out of a wall (Brush, local space)
   utils/wallSides.js              the four walls, and routing Placements onto them
+  utils/gableEndOpenings.js       the octagon in a gable end: where it sits, which ends carry one
+  utils/dependentOptions.js       Options that need a parent Placement: shutters, ramp
   utils/trimGeometry.js           where every trim board sits: corners, gable fascia, barn rake
   utils/shaders.js                siding and roof GLSL, and SHED_LIGHTING — the one light rig
   components/common/ShedLights.jsx  the scene lights, built from SHED_LIGHTING

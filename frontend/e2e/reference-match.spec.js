@@ -15,7 +15,17 @@ import { test, expect } from '@playwright/test';
  * the shed.
  */
 
-const TARGETS = ['barn-barndoors', 'gable-front'];
+// The two plain sheds are the base-render guards: no Option is enabled on
+// either, so neither may move a pixel when an Option is added to the product.
+// The rest freeze one Option's code path each (issue #42 and its siblings).
+const TARGETS = [
+	'barn-barndoors',
+	'gable-front',
+	'gable-roof',
+	'barn-roof',
+	'gable-openings',
+	'barn-openings',
+];
 
 /**
  * Open Reference Match at one target and hand back its canvas, once it is

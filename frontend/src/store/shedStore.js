@@ -53,11 +53,11 @@ export const useShedStore = create((set) => ({
 		additionalDoor: { enabled: false, size: '6x7' },
 		entryDoor:      { enabled: false, type: 'steel' }, // 'steel' | 'nine_light'
 		vinylWindows:   { enabled: false, count: 1, windowSize: '2x2' },
-		octagonWindow:  { enabled: false },
+		octagonWindow:  { enabled: false, ends: 'front' }, // 'front' | 'back' | 'both'
 		skylight:       { enabled: false, runningFt: 8 },
 		shutters:       { enabled: false, pairs: 1 },
 		ramp:           { enabled: false, size: 'small' }, // 'small' | 'large'
-		octagonVent:    { enabled: false },
+		octagonVent:    { enabled: false, ends: 'front' },
 	},
 	// Calculated state
 	price: 0,
@@ -156,11 +156,11 @@ export const useShedStore = create((set) => ({
 			additionalDoor: { enabled: false, size: '6x7' },
 			entryDoor:      { enabled: false, type: 'steel' },
 			vinylWindows:   { enabled: false, count: 1, windowSize: '2x2' },
-			octagonWindow:  { enabled: false },
+			octagonWindow:  { enabled: false, ends: 'front' }, // 'front' | 'back' | 'both'
 			skylight:       { enabled: false, runningFt: 8 },
 			shutters:       { enabled: false, pairs: 1 },
 			ramp:           { enabled: false, size: 'small' },
-			octagonVent:    { enabled: false },
+			octagonVent:    { enabled: false, ends: 'front' },
 		},
 		price: 0,
 		placements: [],

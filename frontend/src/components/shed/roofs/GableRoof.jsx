@@ -4,7 +4,7 @@ import { makeRoofShader } from '../../../utils/shaders';
 import { gableRoofProfile, gableRoofTopLine, roofSlabDepth, ROOF_THICKNESS } from '../../../utils/roofGeometry';
 import { roofRidgeCap, rakeJChannel } from '../../../utils/trimGeometry';
 import { ExtrudedBand } from '../../common/ExtrudedBand';
-import { Skylight } from '../extras/Skylight';
+import { ridgeMaterial } from '../extras/skylightMaterial';
 
 /**
  * GableRoof — the gable roof, as a slab.
@@ -61,8 +61,6 @@ export const GableRoof = ({
     [roofColor, roofMaterial]
   );
 
-  const peakY = wallHeight + roofHeight;
-
   const METAL_MAT = {
     color: roofColor,
     roughness: roofMaterial === 'metal' ? 0.35 : 0.7,
@@ -73,10 +71,16 @@ export const GableRoof = ({
   // The ridge cap runs the length of the shed and is a box; the J-channel
   // follows the gable-end edge, so it is a mitred outline like the fascia
   // under it and is extruded rather than boxed.
+  // The skylight is part of this call, not a part laid over it: the cap
+  // breaks either side of the glass and the glass fills exactly the run the
+  // metal gave up, so the two cannot drift (issue #42).
   const ridgeCap = useMemo(() => {
     const slope = roofHeight / (shedWidth / 2);
-    return roofRidgeCap(roofHeight, slope, shedLength, wallHeight, { overhang });
-  }, [shedWidth, shedLength, wallHeight, roofHeight, overhang]);
+    return roofRidgeCap(roofHeight, slope, shedLength, wallHeight, {
+      overhang,
+      skylightFt: skylight?.enabled ? (skylight.runningFt ?? 8) : 0,
+    });
+  }, [shedWidth, shedLength, wallHeight, roofHeight, overhang, skylight]);
 
   const jChannel = useMemo(
     () =>
@@ -98,10 +102,10 @@ export const GableRoof = ({
         <shaderMaterial args={[roofShader]} side={THREE.DoubleSide} />
       </mesh>
 
-      {ridgeCap.map(({ id, position, size, rotation }) => (
-        <mesh key={id} position={position} rotation={rotation} castShadow>
+      {ridgeCap.map(({ id, kind, position, size, rotation }) => (
+        <mesh key={id} position={position} rotation={rotation} castShadow={kind !== 'glass'}>
           <boxGeometry args={size} />
-          <meshStandardMaterial {...METAL_MAT} />
+          <meshStandardMaterial {...ridgeMaterial(kind, METAL_MAT)} />
         </mesh>
       ))}
 
@@ -111,12 +115,6 @@ export const GableRoof = ({
           <meshStandardMaterial {...METAL_MAT} />
         </ExtrudedBand>
       ))}
-
-      {skylight?.enabled && (
-        <group position={[0, peakY + 0.02, 0]}>
-          <Skylight runningFt={skylight.runningFt ?? 8} />
-        </group>
-      )}
     </group>
   );
 };

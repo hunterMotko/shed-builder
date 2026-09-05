@@ -7,6 +7,8 @@ import { ShedWall } from '../shed/walls/ShedWall';
 import { GableRoof } from '../shed/roofs/GableRoof';
 import { roofOverhangFt } from '../../utils/roofGeometry';
 import { GableEnd } from '../shed/roofs/GableEnd';
+import { octagonForEnd } from '../../utils/gableEndOpenings';
+import { carriesAttachment, attachmentValue } from '../../utils/dependentOptions';
 import { Porch } from '../shed/extras/Porch';
 import { Ramp } from '../shed/extras/Ramp';
 import { Runners } from '../common/Runners';
@@ -70,6 +72,19 @@ export const GableShed = ({
 	// re-cut every opening on every render.
 	const { byWall } = useMemo(() => routePlacements(placements), [placements]);
 
+	// A ramp meets a garage door, so it follows that door's Placement rather
+	// than sitting centred on a wall (issue #44).
+	const rampDoor = useMemo(
+		() => placements.find((p) => p.type === 'garage_door') ?? null,
+		[placements]
+	);
+
+	// An octagon is bought per gable end, so each end is resolved separately.
+	const octagons = useMemo(
+		() => ({ front: octagonForEnd('front', options), back: octagonForEnd('back', options) }),
+		[options]
+	);
+
 	return (
 		<group name="gableShed">
 			{/* Four individual walls */}
@@ -86,7 +101,7 @@ export const GableShed = ({
 					trimColor={trimColor}
 					placements={byWall[side]}
 					doorStyle={garageDoorStyle}
-					showShutters={options.shutters.enabled}
+					options={options}
 				/>
 			))}
 
@@ -99,7 +114,7 @@ export const GableShed = ({
 				roofHeight={roofHeight}
 				color={color}
 				sidingTexture={sidingTexture}
-				showOctagonWindow={options.octagonWindow.enabled}
+				octagon={octagons.front}
 				trimColor={trimColor}
 			/>
 			<GableEnd
@@ -110,7 +125,7 @@ export const GableShed = ({
 				roofHeight={roofHeight}
 				color={color}
 				sidingTexture={sidingTexture}
-				showOctagonWindow={options.octagonWindow.enabled}
+				octagon={octagons.back}
 				trimColor={trimColor}
 			/>
 
@@ -142,13 +157,14 @@ export const GableShed = ({
 			/>
 
 			{/* Optional ramp */}
-			{options.ramp.enabled && (
+			{carriesAttachment('ramp', rampDoor, options) && (
 				<Ramp
 					shedWidth={width}
 					shedLength={length}
 					wallHeight={wallHeight}
+					placement={rampDoor}
 					wall="front"
-					size={options.ramp.size}
+					size={attachmentValue('ramp', rampDoor, options)}
 				/>
 			)}
 

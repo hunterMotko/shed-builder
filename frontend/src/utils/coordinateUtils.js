@@ -1,7 +1,20 @@
-import { wallSpan } from './wallOpenings';
+import * as kernel from '../kernel';
 /**
  * Coordinate system utilities for door/window placement
  * Converts between world coordinates and normalized wall coordinates
+ *
+ * Both functions are the kernel's now. They are the inverse of
+ * `openingTransform`, and the kernel keeps the two beside each other so they
+ * cannot drift — see the kernel repo's `docs/adr/0002`, whose follow-up this
+ * closes.
+ *
+ * `getWallNormalizedCoordinates` still clamps to [0, 1] and is therefore a
+ * projection rather than a true inverse: a click past the end of a wall comes
+ * back on its edge. That is what makes every click on the shed yield a
+ * placeable Placement.
+ *
+ * One behaviour changed: an unrecognised wall name used to come back as
+ * (0, 0) — a real position, at the corner of the front wall — and now throws.
  */
 
 /**
@@ -12,24 +25,11 @@ import { wallSpan } from './wallOpenings';
  * @returns {'front' | 'back' | 'left' | 'right' | null} The wall name or null if no hit
  */
 export function getWallFromIntersection(point, width, length) {
-	const halfWidth = width / 2;
-	const halfLength = length / 2;
-	const threshold = 0.5; // tolerance for edge detection
-	// Check if we're on front or back wall (Z axis)
-	if (Math.abs(point.z - halfLength) < threshold) {
-		return 'front';
-	}
-	if (Math.abs(point.z + halfLength) < threshold) {
-		return 'back';
-	}
-	// Check if we're on left or right wall (X axis)
-	if (Math.abs(point.x + halfWidth) < threshold) {
-		return 'left';
-	}
-	if (Math.abs(point.x - halfWidth) < threshold) {
-		return 'right';
-	}
-	return null;
+	// `wallHeight` is not read when deciding which wall a point is nearest, so
+	// any value serves; the kernel takes the whole shed because the same call
+	// also locates the point, which `wallHit` is the one to use for.
+	const hit = kernel.wallHit(point, { width, length, wallHeight: 1 });
+	return hit ? hit.wall : null;
 }
 
 /**
@@ -43,29 +43,8 @@ export function getWallFromIntersection(point, width, length) {
  * @returns {{normalizedX: number, normalizedY: number}} Normalized coordinates 0-1
  */
 export function getWallNormalizedCoordinates(point, wall, width, length, wallHeight) {
-	let normalizedX, normalizedY;
-	// The inverse of openingTransform: Y is measured from the floor, and X runs
-	// across the wall's own span, not across the shed.
-	normalizedY = point.y / wallHeight;
-	const span = wallSpan(wall, width, length);
-	switch (wall) {
-		case 'front':
-		case 'back':
-			normalizedX = (point.x + span / 2) / span;
-			break;
-		case 'left':
-		case 'right':
-			// This wall runs along Z
-			normalizedX = (point.z + span / 2) / span;
-			break;
-		default:
-			normalizedX = 0;
-			normalizedY = 0;
-	}
-	// Clamp to [0, 1] range
-	normalizedX = Math.max(0, Math.min(1, normalizedX));
-	normalizedY = Math.max(0, Math.min(1, normalizedY));
-	return { normalizedX, normalizedY };
+	const n = kernel.normalizedOnWall(point, wall, { width, length, wallHeight });
+	return { normalizedX: n.normalizedX, normalizedY: n.normalizedY };
 }
 
 /**

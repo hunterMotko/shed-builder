@@ -594,6 +594,82 @@ describe('roofRidgeCap', () => {
 	});
 });
 
+describe('roofRidgeCap with a ridge skylight', () => {
+	// The same 6:12 gable, 20 ft long over a 6 in overhang, so the ridge line
+	// runs 21 ft end to end. An 8 ft skylight sits centred in it, which leaves
+	// 13 ft of cap: 6.5 ft each side of the glass, reaching from the eave tip
+	// at |z| = 10.5 in to the edge of the glass at |z| = 4, and so centred at
+	// |z| = 7.25.
+	const RUN = 8;
+	const runs = roofRidgeCap(3, 0.5, LENGTH, WALL_HEIGHT, {
+		overhang: 0.5,
+		skylightFt: RUN,
+	});
+	const caps = runs.filter((r) => r.kind === 'cap');
+
+	it('breaks each leg into a cap either side of the glass', () => {
+		expect(caps).toHaveLength(4);
+		for (const c of caps) {
+			expect(c.size[2]).toBeCloseTo(6.5, 10);
+			expect(Math.abs(c.position[2])).toBeCloseTo(7.25, 10);
+		}
+	});
+
+	it('fills the gap with the glass the metal would have covered', () => {
+		const glass = runs.filter((r) => r.kind === 'glass');
+		expect(glass.map((g) => g.id).sort()).toEqual([
+			'ridge-glass-left',
+			'ridge-glass-right',
+		]);
+
+		// A skylight is a length of the cap that happens to be glass: same
+		// plane, same fold down each slope, same width of the ridge covered.
+		// The cap this roof gets with no skylight is the independent statement
+		// of where that is, and it is pinned by hand above.
+		const metal = roofRidgeCap(3, 0.5, LENGTH, WALL_HEIGHT, { overhang: 0.5 });
+		for (const side of ['left', 'right']) {
+			const g = glass.find((r) => r.id === `ridge-glass-${side}`);
+			const m = metal.find((r) => r.id === `ridge-cap-${side}`);
+			expect(g.position[0]).toBeCloseTo(m.position[0], 10);
+			expect(g.position[1]).toBeCloseTo(m.position[1], 10);
+			expect(g.position[2]).toBeCloseTo(0, 10);
+			expect(g.rotation).toEqual(m.rotation);
+			expect(g.size[0]).toBeCloseTo(m.size[0], 10);
+			expect(g.size[1]).toBeCloseTo(m.size[1], 10);
+			expect(g.size[2]).toBeCloseTo(RUN, 10);
+		}
+	});
+});
+
+describe('roofRidgeCap with more skylight than ridge', () => {
+	// 30 ft of skylight asked for on the same 20 ft shed. Including the 6 in
+	// overhang at each end there are only 21 ft of ridge to give, so the glass
+	// takes all of it and there is no metal cap left to render.
+	const runs = roofRidgeCap(3, 0.5, LENGTH, WALL_HEIGHT, {
+		overhang: 0.5,
+		skylightFt: 30,
+	});
+
+	it('gives the whole ridge to the glass and says what it could not fit', () => {
+		expect(runs.filter((r) => r.kind === 'cap')).toHaveLength(0);
+
+		const glass = runs.filter((r) => r.kind === 'glass');
+		expect(glass).toHaveLength(2);
+		for (const g of glass) {
+			expect(g.size[2]).toBeCloseTo(LENGTH + 1, 10);
+			expect(g.clampedFrom).toBe(30);
+		}
+	});
+
+	it('says nothing when the run fits', () => {
+		const fits = roofRidgeCap(3, 0.5, LENGTH, WALL_HEIGHT, {
+			overhang: 0.5,
+			skylightFt: 8,
+		});
+		for (const r of fits) expect(r.clampedFrom).toBeUndefined();
+	});
+});
+
 describe('rakeJChannel', () => {
 	// The same 6:12 gable's top line: tip (-6.5, -0.25), ridge (0, 3), tip.
 	const TOPLINE = [

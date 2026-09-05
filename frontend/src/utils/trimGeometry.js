@@ -1,3 +1,5 @@
+import * as kernel from '../kernel';
+
 /**
  * Where the trim boards sit on a shed.
  *
@@ -227,6 +229,13 @@ export function mitredBand(topLine, {
  * @returns {Array<{corner: string, face: string, outline: number[][],
  *   position: number[], depth: number}>} outlines in the XZ-facing plane, to
  *   extrude along Z from `position`
+ *
+ * NOT yet the kernel's, unlike everything else in this file. `topAt` is a
+ * closure and a closure cannot cross the wasm boundary; the kernel replaced it
+ * with a named rule (level, or the roof's underside) because those are the only
+ * two the app uses. Moving this seam therefore means changing `BarnTrim` to
+ * pass the roof's top line instead of a function, which is a change to a caller
+ * and not to this body. Left for that step rather than shimmed around.
  */
 export function cornerBoards(shedWidth, shedLength, wallHeight, stock = {}) {
 	const {
@@ -316,59 +325,11 @@ export function gableFasciaBoards(
 	roofHeight,
 	{ overhang, roofThickness, trimThickness = TRIM_THICKNESS } = {}
 ) {
-	const halfW = shedWidth / 2;
-	const halfL = shedLength / 2;
-	const slope = roofHeight / halfW;
-	// Plumb feet per foot measured across the rake, and back again.
-	const perRun = Math.hypot(1, slope);
-
-	// Where the slab actually ends. `y = 0` in the roof profile is the eave at
-	// the wall, so the overhang tip hangs BELOW the top plate by its own run.
-	const outerX = halfW + overhang;
-	const outerZ = halfL + overhang;
-	const tipDrop = overhang * slope;
-
-	// Rake: eave tip to eave tip over the apex, on the outside of the gable end,
-	// hanging RAKE_REVEAL below the surface — the reveal the J-channel's metal
-	// face fills. The face is `roofThickness` measured STRAIGHT DOWN, because
-	// that is how much slab edge there is to cover: `slabFrom` drops the top line
-	// vertically. Measured across the board instead it hung a further 1/cos deep
-	// and finished below the eave fascia it has to meet.
-	const rakeOutline = mitredBand(
-		[
-			[-outerX, -tipDrop],
-			[0, roofHeight],
-			[outerX, -tipDrop],
-		],
-		{ reveal: RAKE_REVEAL, faceWidth: roofThickness / perRun }
+	return kernel.gableFascia(
+		{ width: shedWidth, length: shedLength, wallHeight },
+		roofHeight,
+		{ overhang, thickness: roofThickness }
 	);
-
-	const rakes = [
-		{
-			id: 'rake-front',
-			outline: rakeOutline,
-			position: [0, wallHeight, outerZ],
-			depth: trimThickness,
-		},
-		{
-			id: 'rake-back',
-			outline: rakeOutline,
-			position: [0, wallHeight, -outerZ - trimThickness],
-			depth: trimThickness,
-		},
-	];
-
-	// Eave: level, and a board's thickness past the slab at each end so it laps
-	// the rake's plumb cut instead of leaving the corner of the overhang open.
-	const eaveY = wallHeight - tipDrop - eaveFasciaDrop(slope) - roofThickness / 2;
-	const eaves = [-1, +1].map((sx) => ({
-		id: sx < 0 ? 'eave-left' : 'eave-right',
-		position: [sx * (outerX + trimThickness / 2), eaveY, 0],
-		size: [trimThickness, roofThickness, shedLength + 2 * (overhang + trimThickness)],
-		rotation: [0, 0, 0],
-	}));
-
-	return { rakes, eaves };
 }
 
 /**
@@ -400,20 +361,13 @@ export function barnRakeFlashing(topLine, shedLength, wallHeight, {
 	faceWidth = FLY_FACE,
 	thickness = TRIM_THICKNESS,
 } = {}) {
-	const outline = mitredBand(topLine, {
-		reveal,
-		faceWidth,
-		endFloor: topLine[0][1] - roofThickness,
-	});
-
-	// Against the slab's end cap face, which the slab carries `overhang` past
-	// the end siding. The J-channel sits just proud of this, lapping it.
-	const z = shedLength / 2 + overhang;
-
-	return [
-		{ id: 'rake-front', outline, position: [0, wallHeight, z], depth: thickness },
-		{ id: 'rake-back', outline, position: [0, wallHeight, -z - thickness], depth: thickness },
-	];
+	// The kernel calls these `fly-*`: upstream gives a Barn's fly and a Gable's
+	// rake the same `rake-*` string, and it separates them. Translated back here
+	// so the names this file has always returned are the names it still returns.
+	return kernel
+		.barnFly({ width: 0, length: shedLength, wallHeight }, topLine,
+			{ overhang, thickness: roofThickness })
+		.map((b) => ({ ...b, id: b.id.replace('fly-', 'rake-') }));
 }
 
 /**
@@ -433,45 +387,8 @@ export function barnKnuckleFlashing(outline, shedLength, wallHeight, {
 	legWidth = 0.29, // ~3.5 in per bent leg
 	thickness = 0.02,
 } = {}) {
-	const [leftEave, rightEave, rightKnuckle, ridge, leftKnuckle] = outline;
-	const depth = shedLength + 2 * overhang;
-	// Just off the panel surface, so the drip edge reads without flickering.
-	const lift = 0.008;
-
-	const sides = [
-		['right', rightKnuckle, ridge, rightEave],
-		['left', leftKnuckle, ridge, leftEave],
-	];
-
-	return sides.flatMap(([side, knuckle, ridgePt, eavePt]) =>
-		[
-			['upper', ridgePt],
-			['lower', eavePt],
-		].map(([leg, toward]) => {
-			const dx = toward[0] - knuckle[0];
-			const dy = toward[1] - knuckle[1];
-			const len = Math.hypot(dx, dy);
-			const ux = dx / len;
-			const uy = dy / len;
-			// Perpendicular pointing off the roof surface, away from the shed.
-			let px = -uy;
-			let py = ux;
-			if (py < 0) {
-				px = -px;
-				py = -py;
-			}
-			return {
-				id: `knuckle-${side}-${leg}`,
-				position: [
-					knuckle[0] + ux * (legWidth / 2) + px * (thickness / 2 + lift),
-					wallHeight + knuckle[1] + uy * (legWidth / 2) + py * (thickness / 2 + lift),
-					0,
-				],
-				size: [legWidth, thickness, depth],
-				rotation: [0, 0, Math.atan2(dy, dx)],
-			};
-		})
-	);
+	return kernel.barnKnuckleFlashing(
+		{ width: 0, length: shedLength, wallHeight }, outline, overhang);
 }
 
 /**
@@ -490,25 +407,11 @@ export function gableCornerBoxes(shedWidth, shedLength, wallHeight, roofHeight, 
 	overhang,
 	roofThickness,
 } = {}) {
-	const halfW = shedWidth / 2;
-	const halfL = shedLength / 2;
-	const slope = roofHeight / halfW;
-	const tipDrop = overhang * slope;
-	// Same datum as the eave fascia, which is the point: the box closes the
-	// corner between that board and the rake, so it hangs off the same line.
-	const y = wallHeight - tipDrop - eaveFasciaDrop(slope) - roofThickness / 2;
-
-	return [
-		['front-right', +1, +1],
-		['front-left', -1, +1],
-		['back-right', +1, -1],
-		['back-left', -1, -1],
-	].map(([id, sx, sz]) => ({
-		id: `corner-box-${id}`,
-		position: [sx * (halfW + overhang / 2), y, sz * (halfL + overhang / 2)],
-		size: [overhang, roofThickness, overhang],
-		rotation: [0, 0, 0],
-	}));
+	return kernel.gableCornerBoxes(
+		{ width: shedWidth, length: shedLength, wallHeight },
+		roofHeight,
+		{ overhang, thickness: roofThickness }
+	);
 }
 
 /**
@@ -526,26 +429,22 @@ export function roofRidgeCap(peakY, slope, shedLength, wallHeight, {
 	overhang,
 	legWidth = 0.35, // ~4 in of metal down each side
 	thickness = 0.025,
+	skylightFt = 0,
 } = {}) {
-	const depth = shedLength + 2 * overhang;
-	const lift = 0.01; // just off the panel, so the cap reads as its own piece
-	const norm = Math.hypot(1, slope);
-
-	return [-1, +1].map((sx) => {
-		// Down-slope from the ridge, and the surface normal off that slope.
-		const ux = sx / norm;
-		const uy = -slope / norm;
-		const nx = (sx * slope) / norm;
-		const ny = 1 / norm;
+	const cap = kernel.roofRidgeCap(
+		{ width: 0, length: shedLength, wallHeight }, peakY, slope, overhang, skylightFt);
+	// Upstream carried the over-long-skylight report as a field on whichever
+	// glass piece happened to be emitted. The kernel returns it beside the
+	// pieces; put it back where the callers look for it.
+	return cap.pieces.map((p) => {
+		const glass = p.id.startsWith('ridge-glass');
 		return {
-			id: sx < 0 ? 'ridge-cap-left' : 'ridge-cap-right',
-			position: [
-				ux * (legWidth / 2) + nx * (thickness / 2 + lift),
-				wallHeight + peakY + uy * (legWidth / 2) + ny * (thickness / 2 + lift),
-				0,
-			],
-			size: [legWidth, thickness, depth],
-			rotation: [0, 0, Math.atan2(uy, ux)],
+			...p,
+			// Upstream's callers switch on `kind`; the kernel puts it in the id.
+			kind: glass ? 'glass' : 'cap',
+			...(glass && cap.clampedFrom !== undefined
+				? { clampedFrom: cap.clampedFrom }
+				: {}),
 		};
 	});
 }
@@ -572,15 +471,6 @@ export function rakeJChannel(topLine, shedLength, wallHeight, {
 	lap = J_CHANNEL_LAP,
 	thickness = 0.03,
 } = {}) {
-	// A negative reveal is the lap: the channel starts above the panel surface
-	// and covers down past it, so the roof's end silhouette stays metal.
-	const outline = mitredBand(topLine, { reveal: -lap, faceWidth });
-
-	// Proud of the fly it laps: slab end, then the fly's stock, then this.
-	const z = shedLength / 2 + overhang + TRIM_THICKNESS;
-
-	return [
-		{ id: 'j-channel-front', outline, position: [0, wallHeight, z], depth: thickness },
-		{ id: 'j-channel-back', outline, position: [0, wallHeight, -z - thickness], depth: thickness },
-	];
+	return kernel.rakeJChannel(
+		{ width: 0, length: shedLength, wallHeight }, topLine, overhang);
 }

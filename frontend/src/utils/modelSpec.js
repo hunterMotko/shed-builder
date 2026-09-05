@@ -1,9 +1,19 @@
-import {
-	gableRoofRise,
-	gambrelKnuckleRatio,
-	GAMBREL_LOWER_PITCH,
-	GAMBREL_UPPER_PITCH,
-} from './roofGeometry';
+import { GAMBREL_LOWER_PITCH, GAMBREL_UPPER_PITCH } from './roofGeometry';
+import * as kernel from '../kernel';
+
+/**
+ * Upstream names a gambrel's two slopes `lowerPitch` and `upperPitch`; the
+ * kernel names them `lower` and `upper`. Kept here rather than in every caller,
+ * and `undefined` where nothing was asked for, so the kernel applies its own
+ * defaults instead of this file second-guessing them.
+ */
+function asKernelPitches({ lowerPitch, upperPitch } = {}) {
+	if (lowerPitch === undefined && upperPitch === undefined) return undefined;
+	return {
+		lower: lowerPitch ?? GAMBREL_LOWER_PITCH,
+		upper: upperPitch ?? GAMBREL_UPPER_PITCH,
+	};
+}
 
 /**
  * What a Model bundles.
@@ -61,8 +71,7 @@ export const MODELS = Object.keys(MODEL_SPEC);
  * @returns {number} wall height in feet
  */
 export function wallHeightFt(model) {
-	const spec = MODEL_SPEC[model] ?? MODEL_SPEC.Gable;
-	return (spec.studInches + PLATE_INCHES) / 12;
+	return kernel.modelSpec(model).wallHeightFt;
 }
 
 /**
@@ -77,15 +86,7 @@ export function wallHeightFt(model) {
  * @returns {number} rise in feet
  */
 export function roofRiseFt(model, width, pitches = {}) {
-	if (model !== 'Barn') return gableRoofRise(width);
-
-	const {
-		lowerPitch = GAMBREL_LOWER_PITCH,
-		upperPitch = GAMBREL_UPPER_PITCH,
-	} = pitches;
-	const halfSpan = width / 2;
-	const r = gambrelKnuckleRatio(lowerPitch, upperPitch);
-	return r * halfSpan * (upperPitch / 12) + (1 - r) * halfSpan * (lowerPitch / 12);
+	return kernel.roofRiseFt(model, width, asKernelPitches(pitches));
 }
 
 /**
@@ -102,5 +103,5 @@ export function roofRiseFt(model, width, pitches = {}) {
  * @returns {number} peak height in feet
  */
 export function peakHeightFt(model, width, foundationHeightFt, pitches = {}) {
-	return foundationHeightFt + wallHeightFt(model) + roofRiseFt(model, width, pitches);
+	return kernel.peakHeightFt(model, width, foundationHeightFt, asKernelPitches(pitches));
 }

@@ -2,7 +2,9 @@ import { useMemo, useEffect } from 'react';
 import * as THREE from 'three';
 import { makeSidingShader } from '../../../utils/shaders';
 import { gambrelEndOutline } from '../../../utils/roofGeometry';
+import { octagonOpening } from '../../../utils/gableEndOpenings';
 import { OctagonWindow } from '../openings/OctagonWindow';
+import { OctagonVent } from '../openings/OctagonVent';
 
 /**
  * BarnEnd — the gambrel-shaped end wall above the eave, in siding.
@@ -25,21 +27,38 @@ export const BarnEnd = ({
   roofUpperPitch,
   color,
   sidingTexture,
-  showOctagonWindow = false,
+  octagon = null,
   trimColor = '#654321',
   castShadow = true,
   receiveShadow = true,
 }) => {
   const halfLength = shedLength / 2;
 
+  const peakY = useMemo(
+    () => gambrelEndOutline(shedWidth, roofLowerPitch, roofUpperPitch)
+      .reduce((hi, p) => Math.max(hi, p[1]), -Infinity),
+    [shedWidth, roofLowerPitch, roofUpperPitch]
+  );
+
+  // The octagon is a hole in the siding, not a disc drawn on it (issue #43).
   const geometry = useMemo(() => {
     const outline = gambrelEndOutline(shedWidth, roofLowerPitch, roofUpperPitch);
     const shape = new THREE.Shape();
     shape.moveTo(outline[0][0], outline[0][1]);
     for (const [x, y] of outline.slice(1)) shape.lineTo(x, y);
     shape.closePath();
+
+    if (octagon) {
+      const hole = new THREE.Path();
+      const oct = octagonOpening(peakY).outline;
+      hole.moveTo(oct[0][0], oct[0][1]);
+      for (const [x, y] of oct.slice(1)) hole.lineTo(x, y);
+      hole.closePath();
+      shape.holes.push(hole);
+    }
+
     return new THREE.ShapeGeometry(shape);
-  }, [shedWidth, roofLowerPitch, roofUpperPitch]);
+  }, [shedWidth, roofLowerPitch, roofUpperPitch, octagon, peakY]);
 
   // Reaches the mesh through <primitive>, which R3F never disposes (issue #20).
   useEffect(() => () => geometry.dispose(), [geometry]);
@@ -54,11 +73,8 @@ export const BarnEnd = ({
   const EPSILON = 0.01;
   const posZ = side === 'front' ? halfLength + EPSILON : -(halfLength + EPSILON);
 
-  const peakY = useMemo(
-    () => gambrelEndOutline(shedWidth, roofLowerPitch, roofUpperPitch)
-      .reduce((hi, p) => Math.max(hi, p[1]), -Infinity),
-    [shedWidth, roofLowerPitch, roofUpperPitch]
-  );
+  const { center } = octagonOpening(peakY);
+  const PLUG = 0.03;
 
   return (
     <group name={`barnEnd-${side}`}>
@@ -72,15 +88,17 @@ export const BarnEnd = ({
         <shaderMaterial args={[sidingShader]} side={THREE.DoubleSide} />
       </mesh>
 
-      {showOctagonWindow && (
+      {octagon && (
         <group
           position={[
-            0,
-            wallHeight + peakY * 0.45,
-            posZ + (side === 'front' ? 0.08 : -0.08),
+            center[0],
+            wallHeight + center[1],
+            posZ + (side === 'front' ? PLUG : -PLUG),
           ]}
         >
-          <OctagonWindow trimColor={trimColor} />
+          {octagon === 'vent'
+            ? <OctagonVent trimColor={trimColor} />
+            : <OctagonWindow trimColor={trimColor} />}
         </group>
       )}
     </group>

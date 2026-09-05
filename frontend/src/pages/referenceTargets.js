@@ -134,6 +134,66 @@ const gableOpenings = [
 	},
 ];
 
+// Openings for the Attachment guards. Not measured off anything — see the
+// guard-target note below. One window carries shutters and the next explicitly
+// does not, which is the point: shutters are a field on the window they flank,
+// so a shed must be able to have one of each (issue #44). The garage door
+// carries the ramp for the same reason.
+const GUARD_DOOR_H = 7;
+
+const gableGuardOpenings = [
+	{ id: 'guard-gable-garage', type: 'garage_door', wall: 'front', normalizedX: 0.5,
+	  normalizedY: GUARD_DOOR_H / 2 / GABLE_WALL_HEIGHT, width: 8, height: GUARD_DOOR_H,
+	  ramp: 'small' },
+	{ id: 'guard-gable-window-a', type: 'window', wall: 'left', normalizedX: 0.3,
+	  normalizedY: 0.6, width: 2, height: 3, shutters: true },
+	{ id: 'guard-gable-window-b', type: 'window', wall: 'left', normalizedX: 0.7,
+	  normalizedY: 0.6, width: 2, height: 3, shutters: false },
+];
+
+const barnGuardOpenings = [
+	{ id: 'guard-barn-garage', type: 'garage_door', wall: 'front', normalizedX: 0.5,
+	  normalizedY: GUARD_DOOR_H / 2 / BARN_WALL_HEIGHT, width: 8, height: GUARD_DOOR_H,
+	  ramp: 'large' },
+	{ id: 'guard-barn-window-a', type: 'window', wall: 'left', normalizedX: 0.3,
+	  normalizedY: 0.6, width: 2, height: 3, shutters: true },
+	{ id: 'guard-barn-window-b', type: 'window', wall: 'left', normalizedX: 0.7,
+	  normalizedY: 0.6, width: 2, height: 3, shutters: false },
+];
+
+// The two measured Designs, named so the guard targets below can reuse them
+// whole rather than restating a single one of their numbers.
+const BARN_BARNDOORS_DESIGN = {
+	width: 12,
+	length: 20,
+	wallHeight: BARN_WALL_HEIGHT,
+	color: GREEN,
+	roofColor: GALVANIZED,
+	trimColor: WHITE,
+	sidingTexture: 'T1-11',
+	roofMaterial: 'metal',
+	// The build spec, same as every other Barn.
+	roofLowerPitch: GAMBREL_LOWER_PITCH,
+	roofUpperPitch: GAMBREL_UPPER_PITCH,
+	placements: barnDoors,
+	porch: NO_PORCH,
+	options: NO_OPTIONS,
+};
+
+const GABLE_FRONT_DESIGN = {
+	width: 12,
+	length: 16,
+	wallHeight: GABLE_WALL_HEIGHT,
+	color: ALMOND,
+	roofColor: ROOF_BROWN,
+	trimColor: BURGUNDY,
+	sidingTexture: 'T1-11',
+	roofMaterial: 'metal',
+	placements: gableOpenings,
+	porch: NO_PORCH,
+	options: NO_OPTIONS,
+};
+
 export const REFERENCE_TARGETS = [
 	{
 		id: 'barn-barndoors',
@@ -173,22 +233,7 @@ export const REFERENCE_TARGETS = [
 		camera: { position: [-21, 7, 48], fov: 46 },
 		target: [0, 4.6, 0],
 		sky: '#C6CCD1',
-		design: {
-			width: 12,
-			length: 20,
-			wallHeight: BARN_WALL_HEIGHT,
-			color: GREEN,
-			roofColor: GALVANIZED,
-			trimColor: WHITE,
-			sidingTexture: 'T1-11',
-			roofMaterial: 'metal',
-			// The build spec, same as every other Barn.
-			roofLowerPitch: GAMBREL_LOWER_PITCH,
-			roofUpperPitch: GAMBREL_UPPER_PITCH,
-			placements: barnDoors,
-			porch: NO_PORCH,
-			options: NO_OPTIONS,
-		},
+		design: BARN_BARNDOORS_DESIGN,
 	},
 	{
 		id: 'gable-front',
@@ -209,18 +254,98 @@ export const REFERENCE_TARGETS = [
 		camera: { position: [0, 5.5, 59], fov: 26 },
 		target: [0, 5, 0],
 		sky: '#CFD4CB',
+		design: GABLE_FRONT_DESIGN,
+	},
+
+	// ── Attachment guards ───────────────────────────────────────────────────
+	//
+	// These are not Reference Photos and never will be: no photograph we have
+	// shows a skylight, and none of the numbers below were measured off one.
+	// They exist so the pixel suite has a frozen render of each Option's code
+	// path, which is what makes "the Options did not disturb the base shed" a
+	// test rather than a hope (issue #42 and its siblings).
+	//
+	// So each reuses a *measured* Design whole and changes only the Option and
+	// the camera. Nothing here invents a dimension, a colour or a pitch — the
+	// rule that every number in this file carries the measurement that produced
+	// it still holds, because these targets contribute no new numbers.
+	{
+		id: 'gable-roof',
+		model: 'Gable',
+		photoFile: null,
+		photo: null,
+		photoAlt: '',
+		photoCaption: 'no photograph — this target guards the roof and gable-end Options',
+		designCaption: 'gable-front · 8 ft ridge skylight · octagon window both ends',
+		// Up and off the ridge, because a skylight is invisible from the
+		// near-elevation `gable-front` is framed at. Not a measurement: there is
+		// no photograph to match, only a view that shows the part under test.
+		// Far enough back to leave sky at the frame's edge: the suite's
+		// "draws a building" check samples two patches of sky at the top right
+		// and fails if the shed grows into them.
+		camera: { position: [20, 18, 32], fov: 34 },
+		target: [0, 5, 0],
+		sky: '#CFD4CB',
 		design: {
-			width: 12,
-			length: 16,
-			wallHeight: GABLE_WALL_HEIGHT,
-			color: ALMOND,
-			roofColor: ROOF_BROWN,
-			trimColor: BURGUNDY,
-			sidingTexture: 'T1-11',
-			roofMaterial: 'metal',
-			placements: gableOpenings,
-			porch: NO_PORCH,
-			options: NO_OPTIONS,
+			...GABLE_FRONT_DESIGN,
+			options: {
+				...NO_OPTIONS,
+				skylight: { enabled: true, runningFt: 8 },
+				octagonWindow: { enabled: true, ends: 'both' },
+			},
+		},
+	},
+	{
+		id: 'gable-openings',
+		model: 'Gable',
+		photoFile: null,
+		photo: null,
+		photoAlt: '',
+		photoCaption: 'no photograph — this target guards the wall and attachment Options',
+		designCaption: 'gable-front · garage door + ramp · one window shuttered, one not',
+		// Front-left three-quarter: the garage door and its ramp are on the
+		// front, the windows on the left, and both have to be in frame.
+		camera: { position: [-33, 13, 38], fov: 30 },
+		// Shifted toward the front wall so the ramp, which stands 4 ft out from
+		// it, is wholly in frame — a guard cannot freeze what it crops.
+		target: [0, 4, 3],
+		sky: '#CFD4CB',
+		design: { ...GABLE_FRONT_DESIGN, placements: gableGuardOpenings },
+	},
+	{
+		id: 'barn-openings',
+		model: 'Barn',
+		photoFile: null,
+		photo: null,
+		photoAlt: '',
+		photoCaption: 'no photograph — this target guards the wall and attachment Options',
+		designCaption: 'barn-barndoors · garage door + ramp · one window shuttered, one not',
+		camera: { position: [-38, 15, 43], fov: 30 },
+		target: [0, 4, 3],
+		sky: '#CFD4CB',
+		design: { ...BARN_BARNDOORS_DESIGN, placements: barnGuardOpenings },
+	},
+	{
+		id: 'barn-roof',
+		model: 'Barn',
+		photoFile: null,
+		photo: null,
+		photoAlt: '',
+		photoCaption: 'no photograph — this target guards the roof and gable-end Options',
+		designCaption: 'barn-barndoors · 8 ft ridge skylight · octagon vent both ends',
+		// The gambrel reaches the ridge cap by a different route to the gable —
+		// off its own top line rather than a slope worked from the width — so
+		// the two Models need freezing separately.
+		camera: { position: [22, 20, 36], fov: 34 },
+		target: [0, 5, 0],
+		sky: '#CFD4CB',
+		design: {
+			...BARN_BARNDOORS_DESIGN,
+			options: {
+				...NO_OPTIONS,
+				skylight: { enabled: true, runningFt: 8 },
+				octagonVent: { enabled: true, ends: 'both' },
+			},
 		},
 	},
 ];

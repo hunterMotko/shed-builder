@@ -117,10 +117,11 @@ const REGISTRY = [
     component: SkylightPreview,
     camera: [6, 6, 10],
     target: [0, 0, 0],
-    defaults: { runningFt: 8, numPanels: 4 },
+    defaults: { runningFt: 8, ridgeFt: 16, roofColor: '#8B4513' },
     controls: [
-      { key: 'runningFt', label: 'Length (ft)', type: 'range', min: 4, max: 16, step: 2 },
-      { key: 'numPanels', label: 'Panels',      type: 'range', min: 2, max: 8,  step: 1 },
+      { key: 'runningFt', label: 'Skylight (ft)', type: 'range', min: 4, max: 20, step: 2 },
+      { key: 'ridgeFt',   label: 'Ridge (ft)',    type: 'range', min: 8, max: 24, step: 2 },
+      { key: 'roofColor', label: 'Roof Color',    type: 'color' },
     ],
   },
   {

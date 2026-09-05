@@ -132,6 +132,26 @@ type OptionConfig struct {
 	RunningFt float64 `json:"runningFt,omitempty"`
 	Sheets    int     `json:"sheets,omitempty"`
 	Sqft      float64 `json:"sqft,omitempty"`
+	// Ends is which gable an octagon is fitted to: "front", "back" or "both".
+	// It mirrors `octagonEnds` in gableEndOpenings.js — an octagon is bought
+	// per end, and the two sides must count the same or the price shown and
+	// the price charged disagree (issue #43).
+	Ends string `json:"ends,omitempty"`
+}
+
+// octagonEndCount is how many octagons an Option buys.
+//
+// An Option with no Ends is one octagon on the front: the reading that cannot
+// overcharge, and what a customer ticking a box once means. Mirrors
+// `octagonEnds` in gableEndOpenings.js.
+func octagonEndCount(oc OptionConfig) float64 {
+	if !oc.Enabled {
+		return 0
+	}
+	if oc.Ends == "both" {
+		return 2
+	}
+	return 1
 }
 
 // Options holds all add-on states.
@@ -178,8 +198,8 @@ func calculateOptionTotal(ao Options) float64 {
 		}
 		total += optionPrices["window_vinyl_slide"] * float64(count)
 	}
-	if ao.OctagonWindow.Enabled {
-		total += optionPrices["window_octagon"]
+	if n := octagonEndCount(ao.OctagonWindow); n > 0 {
+		total += optionPrices["window_octagon"] * n
 	}
 	if ao.Skylight.Enabled {
 		ft := ao.Skylight.RunningFt
@@ -202,8 +222,8 @@ func calculateOptionTotal(ao Options) float64 {
 			total += optionPrices["ramp_small"]
 		}
 	}
-	if ao.OctagonVent.Enabled {
-		total += optionPrices["vent_octagon"]
+	if n := octagonEndCount(ao.OctagonVent); n > 0 {
+		total += optionPrices["vent_octagon"] * n
 	}
 	if ao.Workbench.Enabled {
 		total += optionPrices["workbench_per_ft"] * ao.Workbench.RunningFt

@@ -1,41 +1,27 @@
-import { useMemo } from 'react';
-
-const PANEL_WIDTH = 0.75;  // ft
-const PANEL_THICK = 0.04;  // ft
+import { roofRidgeCap } from '../../../utils/trimGeometry';
+import { ridgeMaterial } from './skylightMaterial';
 
 /**
- * Skylight — translucent ridge skylight panels centered on the roof peak.
+ * Skylight — a length of ridge with the skylight in it, for the Component
+ * Preview page. It shows the cap either side, because the cap breaking is
+ * the whole of what a skylight does.
  *
- * Renders N panels end-to-end along the ridge (Z axis in local space).
- * Place this component at the peak position of the roof:
- *   position={[0, wallHeight + roofHeight, 0]} for a gable roof.
- *
- * Props:
- *   runningFt — total ridge length to cover in feet (from options.skylight.runningFt)
- *   numPanels — how many panels to split the run into (default 4)
+ * The product does not mount this: `GableRoof` and `GambrelRoof` render the
+ * glass straight from their own `roofRidgeCap` call, so there is one ridge
+ * and the glass fills exactly the run the metal gave up (issue #42). This
+ * used to be four opaque boxes drawn flat on top of an unbroken cap, at a
+ * width and angle of their own invention — a decal over solid roofing.
  */
-export const Skylight = ({ runningFt = 8, numPanels = 4 }) => {
-  const segLen = runningFt / numPanels;
-
-  const panels = useMemo(() => {
-    return Array.from({ length: numPanels }, (_, i) => {
-      const zOffset = (i - (numPanels - 1) / 2) * segLen;
-      return zOffset;
-    });
-  }, [numPanels, segLen]);
+export const Skylight = ({ runningFt = 8, ridgeFt = 16, roofColor = '#8B4513' }) => {
+  const metal = { color: roofColor, roughness: 0.35, metalness: 0.4 };
+  const runs = roofRidgeCap(0, 0.5, ridgeFt, 0, { overhang: 0, skylightFt: runningFt });
 
   return (
     <group name="skylight">
-      {panels.map((zOffset, i) => (
-        <mesh key={i} position={[0, 0, zOffset]}>
-          <boxGeometry args={[PANEL_WIDTH, PANEL_THICK, segLen - 0.04]} />
-          <meshStandardMaterial
-            color="#DDEEFF"
-            transparent
-            opacity={0.55}
-            roughness={0.08}
-            metalness={0.15}
-          />
+      {runs.map(({ id, kind, position, size, rotation }) => (
+        <mesh key={id} position={position} rotation={rotation} castShadow={kind !== 'glass'}>
+          <boxGeometry args={size} />
+          <meshStandardMaterial {...ridgeMaterial(kind, metal)} />
         </mesh>
       ))}
     </group>

@@ -9,6 +9,7 @@ import { WindowObject } from '../../common/WindowObject';
 import { GarageDoor } from '../openings/GarageDoor';
 import { SwingBarnDoor } from '../openings/SwingBarnDoor';
 import { Shutters } from '../extras/Shutters';
+import { carriesAttachment } from '../../../utils/dependentOptions';
 
 /**
  * ShedWall — independently renderable individual wall section.
@@ -37,7 +38,7 @@ export const ShedWall = forwardRef(function ShedWall(
     trimColor,
     trimWidth = 0.25,
     doorStyle = 'sectional',
-    showShutters = false,
+    options = {},
     placements = [],
     castShadow = true,
     receiveShadow = true,
@@ -203,9 +204,12 @@ export const ShedWall = forwardRef(function ShedWall(
         return null;
       })}
 
-      {/* Vinyl shutters — render alongside every window when shutters add-on is enabled */}
-      {showShutters && placements
-        .filter((p) => p.type === 'window')
+      {/* Shutters belong to the window they flank, not to the wall: they are a
+          field on the parent Placement, so a customer can shutter one window
+          and leave the next bare (issue #44). `carriesAttachment` still falls
+          back to the Option while nothing can create a Placement (issue #10). */}
+      {placements
+        .filter((p) => p.type === 'window' && carriesAttachment('shutters', p, options))
         .map((p) => (
           <Shutters
             key={`shutters-${p.id}`}

@@ -1,12 +1,18 @@
 import { useMemo, useEffect } from 'react';
 import * as THREE from 'three';
 import { makeSidingShader } from '../../../utils/shaders';
+import { octagonOpening } from '../../../utils/gableEndOpenings';
 import { OctagonWindow } from '../openings/OctagonWindow';
+import { OctagonVent } from '../openings/OctagonVent';
 
 /**
- * GableEnd — independently renderable triangular gable end panel.
- * Rendered with siding shader to match the walls.
- * Placed at the front or back of the shed at the roofline.
+ * GableEnd — the triangular gable end panel above the eave.
+ * Rendered with the siding shader to match the walls.
+ *
+ * `octagon` is what this end carries: `'window'`, `'vent'` or nothing. It is
+ * per end because an octagon is bought per end — this used to be one boolean
+ * that `GableShed` handed to both of its ends, so a Gable drew two windows and
+ * charged for one (issue #43). Ask `octagonForEnd`; do not read the Option.
  */
 export const GableEnd = ({
   side,
@@ -16,7 +22,7 @@ export const GableEnd = ({
   roofHeight = 4,
   color,
   sidingTexture,
-  showOctagonWindow = false,
+  octagon = null,
   trimColor = '#654321',
   castShadow = true,
   receiveShadow = true,
@@ -24,18 +30,27 @@ export const GableEnd = ({
   const halfWidth  = shedWidth / 2;
   const halfLength = shedLength / 2;
 
+  // The octagon is a hole in the siding, not a disc drawn on it. A `Shape`
+  // takes holes and triangulates them; CSG is the wrong tool here because the
+  // panel has no thickness for a solid to be subtracted from (issue #43).
   const geometry = useMemo(() => {
-    const geo = new THREE.BufferGeometry();
-    const vertices = new Float32Array([
-      -halfWidth, 0, 0,   // bottom-left
-       halfWidth, 0, 0,   // bottom-right
-       0, roofHeight, 0,  // peak
-    ]);
-    geo.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
-    geo.setIndex(new THREE.BufferAttribute(new Uint32Array([0, 1, 2]), 1));
-    geo.computeVertexNormals();
-    return geo;
-  }, [halfWidth, roofHeight]);
+    const shape = new THREE.Shape();
+    shape.moveTo(-halfWidth, 0);
+    shape.lineTo(halfWidth, 0);
+    shape.lineTo(0, roofHeight);
+    shape.closePath();
+
+    if (octagon) {
+      const { outline } = octagonOpening(roofHeight);
+      const hole = new THREE.Path();
+      hole.moveTo(outline[0][0], outline[0][1]);
+      for (const [x, y] of outline.slice(1)) hole.lineTo(x, y);
+      hole.closePath();
+      shape.holes.push(hole);
+    }
+
+    return new THREE.ShapeGeometry(shape);
+  }, [halfWidth, roofHeight, octagon]);
 
   // Same lifetime problem as ShedWall's slab: this reaches the mesh through a
   // <primitive>, which R3F never disposes, so the memo owns it. Two triangles
@@ -54,9 +69,11 @@ export const GableEnd = ({
   const EPSILON = 0.01;
   const posZ = side === 'front' ? halfLength + EPSILON : -(halfLength + EPSILON);
 
-  // Octagon window sits at ~45% up the triangle height, centered horizontally
-  const octWindowY = roofHeight * 0.45;
-  const OCTAGON_Z_OFFSET = 0.08; // proud of triangle surface
+  // Straddling the panel rather than standing off it: the frame's outer edge
+  // is the hole's edge, so it plugs the opening instead of leaving a ring of
+  // daylight round itself when seen from an angle.
+  const { center } = octagonOpening(roofHeight);
+  const PLUG = 0.03;
 
   return (
     <group name={`gableEnd-${side}`}>
@@ -69,9 +86,17 @@ export const GableEnd = ({
         <shaderMaterial args={[sidingShader]} side={THREE.DoubleSide} />
       </mesh>
 
-      {showOctagonWindow && (
-        <group position={[0, wallHeight + octWindowY, posZ + (side === 'front' ? OCTAGON_Z_OFFSET : -OCTAGON_Z_OFFSET)]}>
-          <OctagonWindow trimColor={trimColor} />
+      {octagon && (
+        <group
+          position={[
+            center[0],
+            wallHeight + center[1],
+            posZ + (side === 'front' ? PLUG : -PLUG),
+          ]}
+        >
+          {octagon === 'vent'
+            ? <OctagonVent trimColor={trimColor} />
+            : <OctagonWindow trimColor={trimColor} />}
         </group>
       )}
     </group>

@@ -8,7 +8,7 @@ import {
   GAMBREL_LOWER_PITCH,
   GAMBREL_UPPER_PITCH,
 } from '../../../utils/roofGeometry';
-import { Skylight } from '../extras/Skylight';
+import { ridgeMaterial } from '../extras/skylightMaterial';
 import { barnKnuckleFlashing, roofRidgeCap, rakeJChannel } from '../../../utils/trimGeometry';
 import { gambrelEndOutline, gambrelRoofTopLine } from '../../../utils/roofGeometry';
 import { ExtrudedBand } from '../../common/ExtrudedBand';
@@ -80,9 +80,15 @@ export const GambrelRoof = ({
         wallHeight,
         { overhang }
       ),
-      ...roofRidgeCap(peak, roofUpperPitch / 12, shedLength, wallHeight, { overhang }),
+      // The skylight is part of this call, not a part laid over it: the cap
+      // breaks either side of the glass and the glass fills exactly the run
+      // the metal gave up, so the two cannot drift (issue #42).
+      ...roofRidgeCap(peak, roofUpperPitch / 12, shedLength, wallHeight, {
+        overhang,
+        skylightFt: skylight?.enabled ? (skylight.runningFt ?? 8) : 0,
+      }),
     ];
-  }, [shedWidth, shedLength, wallHeight, roofLowerPitch, roofUpperPitch, overhang]);
+  }, [shedWidth, shedLength, wallHeight, roofLowerPitch, roofUpperPitch, overhang, skylight]);
 
   const jChannel = useMemo(
     () =>
@@ -94,15 +100,6 @@ export const GambrelRoof = ({
       ),
     [shedWidth, shedLength, wallHeight, roofLowerPitch, roofUpperPitch, overhang]
   );
-
-  // Highest point of the profile, for anything that sits on the ridge.
-  const peakY = useMemo(() => {
-    const points = gambrelRoofProfile(shedWidth, roofLowerPitch, roofUpperPitch, {
-      overhang,
-      thickness: ROOF_THICKNESS,
-    });
-    return points.reduce((hi, p) => Math.max(hi, p[1]), -Infinity);
-  }, [shedWidth, roofLowerPitch, roofUpperPitch, overhang]);
 
   const METAL_MAT = {
     color: roofColor,
@@ -122,10 +119,10 @@ export const GambrelRoof = ({
         <shaderMaterial args={[roofShader]} side={THREE.DoubleSide} />
       </mesh>
 
-      {metalwork.map(({ id, position, size, rotation }) => (
-        <mesh key={id} position={position} rotation={rotation} castShadow>
+      {metalwork.map(({ id, kind, position, size, rotation }) => (
+        <mesh key={id} position={position} rotation={rotation} castShadow={kind !== 'glass'}>
           <boxGeometry args={size} />
-          <meshStandardMaterial {...METAL_MAT} />
+          <meshStandardMaterial {...ridgeMaterial(kind, METAL_MAT)} />
         </mesh>
       ))}
 
@@ -135,12 +132,6 @@ export const GambrelRoof = ({
           <meshStandardMaterial {...METAL_MAT} />
         </ExtrudedBand>
       ))}
-
-      {skylight?.enabled && (
-        <group position={[0, wallHeight + peakY + 0.02, 0]}>
-          <Skylight runningFt={skylight.runningFt ?? 8} />
-        </group>
-      )}
     </group>
   );
 };

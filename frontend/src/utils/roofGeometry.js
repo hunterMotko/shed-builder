@@ -1,3 +1,5 @@
+import * as kernel from '../kernel';
+
 /**
  * Gambrel Roof Geometry Calculations
  * Implements professional gambrel barn roof with:
@@ -321,7 +323,7 @@ export function gambrelKnuckleRatio(
 	lowerPitch = GAMBREL_LOWER_PITCH,
 	upperPitch = GAMBREL_UPPER_PITCH
 ) {
-	return lowerPitch / (lowerPitch + upperPitch);
+	return kernel.gambrelKnuckleRatio(lowerPitch, upperPitch);
 }
 
 /**
@@ -346,7 +348,7 @@ export const GABLE_PITCH = 6;
  * @returns {number} rise from the top of the wall to the ridge
  */
 export function gableRoofRise(shedWidth, pitchX = GABLE_PITCH) {
-	return calculateRise(shedWidth / 2, pitchX);
+	return kernel.gableRoofRise(shedWidth, pitchX);
 }
 
 /**
@@ -398,13 +400,12 @@ export const ROOF_THICKNESS = 0.333;
  * @param {number} width - shed width in feet
  */
 export function roofOverhangFt(model, width) {
-	if (model === 'Barn') return 2 / 12;
-	return (width >= 16 ? 4.875 : 6.625) / 12;
+	return kernel.roofOverhangFt(model, width);
 }
 
 /** How long the roof runs: the shed, plus the rake overhang at each end. */
 export function roofSlabDepth(shedLength, overhang) {
-	return shedLength + 2 * overhang;
+	return kernel.roofSlabDepth(shedLength, overhang);
 }
 
 /**
@@ -431,7 +432,7 @@ function slabFrom(top, thickness) {
  * @returns {number[][]} closed outline, top surface first
  */
 export function gableRoofProfile(shedWidth, pitchX, { overhang, thickness }) {
-	return slabFrom(gableRoofTopLine(shedWidth, pitchX, { overhang }), thickness);
+	return kernel.gableRoofProfile(shedWidth, pitchX, overhang, thickness);
 }
 
 /**
@@ -440,15 +441,7 @@ export function gableRoofProfile(shedWidth, pitchX, { overhang, thickness }) {
  * Walked left to right, so consumers can treat consecutive points as runs.
  */
 export function gableRoofTopLine(shedWidth, pitchX, { overhang }) {
-	const halfWidth = shedWidth / 2;
-	const slope = pitchX / 12;
-	const outer = halfWidth + overhang;
-
-	return [
-		[-outer, -overhang * slope],
-		[0, halfWidth * slope],
-		[outer, -overhang * slope],
-	];
+	return kernel.gableRoofTopLine(shedWidth, pitchX, overhang);
 }
 
 /**
@@ -462,7 +455,7 @@ export function gableRoofTopLine(shedWidth, pitchX, { overhang }) {
  * @returns {number[][]} closed outline, top surface first
  */
 export function gambrelRoofProfile(shedWidth, lowerPitch, upperPitch, { overhang, thickness }) {
-	return slabFrom(gambrelRoofTopLine(shedWidth, lowerPitch, upperPitch, { overhang }), thickness);
+	return kernel.gambrelRoofProfile(shedWidth, lowerPitch, upperPitch, overhang, thickness);
 }
 
 /**
@@ -471,21 +464,7 @@ export function gambrelRoofProfile(shedWidth, lowerPitch, upperPitch, { overhang
  * Walked left to right, so consumers can treat consecutive points as runs.
  */
 export function gambrelRoofTopLine(shedWidth, lowerPitch, upperPitch, { overhang }) {
-	const halfWidth = shedWidth / 2;
-	const lower = lowerPitch / 12;
-	const upper = upperPitch / 12;
-	const knuckleX = halfWidth * gambrelKnuckleRatio(lowerPitch, upperPitch);
-	const knuckleY = (halfWidth - knuckleX) * lower;
-	const peakY = knuckleY + knuckleX * upper;
-	const outer = halfWidth + overhang;
-
-	return [
-		[-outer, -overhang * lower],
-		[-knuckleX, knuckleY],
-		[0, peakY],
-		[knuckleX, knuckleY],
-		[outer, -overhang * lower],
-	];
+	return kernel.gambrelRoofTopLine(shedWidth, lowerPitch, upperPitch, overhang);
 }
 
 /**
@@ -500,16 +479,5 @@ export function gambrelRoofTopLine(shedWidth, lowerPitch, upperPitch, { overhang
  * @returns {number[][]} outline, counter-clockwise from the left eave
  */
 export function gambrelEndOutline(shedWidth, lowerPitch, upperPitch) {
-	const halfWidth = shedWidth / 2;
-	const knuckleX = halfWidth * gambrelKnuckleRatio(lowerPitch, upperPitch);
-	const knuckleY = (halfWidth - knuckleX) * (lowerPitch / 12);
-	const peakY = knuckleY + knuckleX * (upperPitch / 12);
-
-	return [
-		[-halfWidth, 0],
-		[halfWidth, 0],
-		[knuckleX, knuckleY],
-		[0, peakY],
-		[-knuckleX, knuckleY],
-	];
+	return kernel.gambrelEndOutline(shedWidth, lowerPitch, upperPitch);
 }

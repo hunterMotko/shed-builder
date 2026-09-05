@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import * as THREE from 'three';
-import { WALL_THICKNESS } from '../../../utils/wallOpenings';
+import { WALL_THICKNESS, openingTransform } from '../../../utils/wallOpenings';
 
 const FLOOR_THICKNESS = 0.125;
 const RUNNER_SIZE = 0.333;
@@ -12,10 +12,22 @@ const SIDE_THICK = 0.14; // ft — triangular side panel thickness
 /**
  * Ramp — slopes from ground up to shed floor.
  * Features a deck surface, grip cleats, and solid triangular side panels.
+ *
+ * A ramp meets a garage door: `ramp_small` is 7 ft wide and `ramp_large` 9 ft,
+ * which is a door apron and not a doorstep. So it takes the door's own
+ * Placement and stands where `openingTransform` puts it — it used to work out
+ * its own wall position from a private copy of the same switch and sat centred
+ * on the wall wherever the door actually was (issue #44, ADR-0011).
+ *
+ * `placement` may be absent while nothing can create one (issue #10); the ramp
+ * then falls back to the centre of the front wall, which is where it has
+ * always been.
  */
 export const Ramp = ({
   shedWidth,
   shedLength,
+  wallHeight,
+  placement = null,
   wall = 'front',
   size = 'small',
 }) => {
@@ -31,18 +43,19 @@ export const Ramp = ({
   const woodMat = { color: '#6B4C2A', roughness: 0.85, metalness: 0.0 };
   const cleatCount = Math.floor(rampLength);
 
-  const halfW = shedWidth / 2;
-  const halfL = shedLength / 2;
-
+  // The door's own transform, taken at the floor: the ramp shares the door's
+  // wall, its rotation and its position along that wall, and differs only in
+  // sitting on the ground rather than at the opening's centre height. With no
+  // door to follow it is centred, which is a Placement of normalizedX 0.5.
   const groupProps = useMemo(() => {
-    switch (wall) {
-      case 'front': return { position: [0, 0, halfL + WALL_THICKNESS / 2], rotation: [0, 0, 0] };
-      case 'back':  return { position: [0, 0, -(halfL + WALL_THICKNESS / 2)], rotation: [0, Math.PI, 0] };
-      case 'left':  return { position: [-(halfW + WALL_THICKNESS / 2), 0, 0], rotation: [0, -Math.PI / 2, 0] };
-      case 'right': return { position: [(halfW + WALL_THICKNESS / 2), 0, 0], rotation: [0, Math.PI / 2, 0] };
-      default:      return { position: [0, 0, 0], rotation: [0, 0, 0] };
-    }
-  }, [wall, halfW, halfL]);
+    const anchor = placement ?? { wall, normalizedX: 0.5, normalizedY: 0 };
+    const { position, rotation } = openingTransform(
+      anchor,
+      { width: shedWidth, length: shedLength, wallHeight },
+      WALL_THICKNESS / 2
+    );
+    return { position: [position[0], 0, position[2]], rotation };
+  }, [placement, wall, shedWidth, shedLength, wallHeight]);
 
   // Left side triangle shape: right triangle in the shape's XY plane
   // Shape X = ramp length direction (world Z after rotation)

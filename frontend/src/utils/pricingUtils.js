@@ -17,6 +17,7 @@
  */
 
 import catalog from '../../../catalog.json';
+import { octagonEnds } from './gableEndOpenings';
 
 // ─── Base price lookup table ─────────────────────────────────────────────────
 // Key format: `${width}x${length}x${tier}`
@@ -123,6 +124,10 @@ export function snapToValidCombo(width, length, tier) {
  * Returns the itemized add-on cost breakdown as an array of { label, amount } lines.
  * Only includes enabled Options.
  */
+/** Names the ends on a line item, so a doubled charge reads as one. */
+const endLabel = (name, ends) =>
+  ends.length > 1 ? `${name} (front and back)` : `${name} (${ends[0]})`;
+
 export function getOptionLineItems(options) {
   const lines = [];
 
@@ -145,8 +150,14 @@ export function getOptionLineItems(options) {
       amount: OPTION_PRICES.window_vinyl_slide * count,
     });
   }
-  if (options.octagonWindow?.enabled) {
-    lines.push({ label: 'Octagon Gable Window', amount: OPTION_PRICES.window_octagon });
+  // Priced per end, not per tick: a shed has two gables and a customer may
+  // buy an octagon in either or both (issue #43).
+  const octagonWindowEnds = octagonEnds(options.octagonWindow);
+  if (octagonWindowEnds.length) {
+    lines.push({
+      label: endLabel('Octagon Gable Window', octagonWindowEnds),
+      amount: OPTION_PRICES.window_octagon * octagonWindowEnds.length,
+    });
   }
   if (options.skylight?.enabled) {
     const ft = options.skylight.runningFt || 0;
@@ -179,8 +190,12 @@ export function getOptionLineItems(options) {
     const sqft = options.loft.sqft || 0;
     lines.push({ label: `Loft / Shelving (${sqft} sq ft)`, amount: OPTION_PRICES.loft_per_sqft * sqft });
   }
-  if (options.octagonVent?.enabled) {
-    lines.push({ label: 'Vinyl Octagon Gable Vent', amount: OPTION_PRICES.vent_octagon });
+  const octagonVentEnds = octagonEnds(options.octagonVent);
+  if (octagonVentEnds.length) {
+    lines.push({
+      label: endLabel('Vinyl Octagon Gable Vent', octagonVentEnds),
+      amount: OPTION_PRICES.vent_octagon * octagonVentEnds.length,
+    });
   }
 
   return lines;

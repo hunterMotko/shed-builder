@@ -50,6 +50,24 @@ describe('Option line items', () => {
 		expect(line.amount).toBe(3 * 275);
 	});
 
+	it('charges an octagon per end it is fitted to', () => {
+		// shed-options.md: octagon gable window, $85 — each. A Gable renders
+		// one end at each gable, and used to light up both for a single charge
+		// (issue #43), so two configurations differed by a window and by
+		// nothing at all on the invoice.
+		const [one] = getOptionLineItems({ octagonWindow: { enabled: true, ends: 'front' } });
+		expect(one.amount).toBe(85);
+
+		const [both] = getOptionLineItems({ octagonWindow: { enabled: true, ends: 'both' } });
+		expect(both.amount).toBe(2 * 85);
+	});
+
+	it('charges an octagon vent per end, the same way', () => {
+		// shed-options.md: vinyl octagon gable vent 16in, $85.
+		const [both] = getOptionLineItems({ octagonVent: { enabled: true, ends: 'both' } });
+		expect(both.amount).toBe(2 * 85);
+	});
+
 	it('leaves out Options that are not enabled', () => {
 		expect(getOptionLineItems({ ramp: { enabled: false, size: 'large' } })).toEqual([]);
 	});

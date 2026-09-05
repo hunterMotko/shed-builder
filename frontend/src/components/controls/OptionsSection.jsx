@@ -1,16 +1,27 @@
 import { useState } from 'react';
 import { useShedStore } from '../../store/shedStore';
 import { OPTION_PRICES } from '../../utils/pricingUtils';
+import { isOptionAvailable } from '../../utils/dependentOptions';
 
 // ── Primitives ────────────────────────────────────────────────────────────────
 
-const Checkbox = ({ checked, onChange, label, price, children }) => (
-  <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '7px 0', cursor: 'pointer' }}>
+// `requires` names what an Option needs before it can be bought — a pair of
+// shutters needs a window to flank, a ramp needs a garage door to meet. It
+// greys the row and says why, rather than letting a customer buy geometry that
+// cannot be built (issue #44).
+const Checkbox = ({ checked, onChange, label, price, children, requires = null }) => (
+  <label
+    style={{
+      display: 'flex', alignItems: 'flex-start', gap: 10, padding: '7px 0',
+      cursor: requires ? 'not-allowed' : 'pointer', opacity: requires ? 0.5 : 1,
+    }}
+  >
     <input
       type="checkbox"
       checked={checked}
+      disabled={Boolean(requires)}
       onChange={(e) => onChange(e.target.checked)}
-      style={{ marginTop: 2, width: 14, height: 14, accentColor: '#3b82f6', cursor: 'pointer', flexShrink: 0 }}
+      style={{ marginTop: 2, width: 14, height: 14, accentColor: '#3b82f6', cursor: requires ? 'not-allowed' : 'pointer', flexShrink: 0 }}
     />
     <div style={{ flex: 1, minWidth: 0 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -22,7 +33,10 @@ const Checkbox = ({ checked, onChange, label, price, children }) => (
           +${price.toLocaleString()}
         </span>
       </div>
-      {children && <div style={{ marginTop: 6 }}>{children}</div>}
+      {requires && (
+        <div style={{ marginTop: 4, fontSize: 11, color: '#94a3b8' }}>{requires}</div>
+      )}
+      {children && !requires && <div style={{ marginTop: 6 }}>{children}</div>}
     </div>
   </label>
 );
@@ -97,8 +111,41 @@ function AccordionGroup({ title, selectedCount, children }) {
 
 export const OptionsSection = () => {
   const options  = useShedStore((s) => s.options);
+  const placements = useShedStore((s) => s.placements);
   const setOption = useShedStore((s) => s.setOption);
   const set = (key, cfg) => setOption(key, cfg);
+
+  // An octagon is bought per gable end, so both the window and the vent need
+  // the same choice of ends (issue #43). The <select> names itself: `Checkbox`
+  // wraps its children in the <label> that names the checkbox, so a control
+  // nested inside inherits no name of its own (issue #21).
+  const endsSelect = (key, name) => (
+    <select
+      aria-label={`${name} — which gable ends`}
+      style={SUB_SELECT}
+      value={options[key].ends ?? 'front'}
+      onChange={(e) => set(key, { ends: e.target.value })}
+    >
+      <option value="front">Front gable</option>
+      <option value="back">Back gable</option>
+      <option value="both">Both gables</option>
+    </select>
+  );
+
+  /** What an octagon Option costs: one price per end fitted. */
+  const octagonPrice = (key, unit) =>
+    unit * (options[key].ends === 'both' ? 2 : 1);
+
+  // Some Options cannot stand on their own: a pair of shutters flanks a
+  // window and a ramp meets a garage door (issue #44). Until there is one to
+  // attach to, the row is greyed and says what is missing.
+  const design = { options, placements };
+  const shuttersRequires = isOptionAvailable('shutters', design)
+    ? null
+    : 'Add a window first — shutters flank one.';
+  const rampRequires = isOptionAvailable('ramp', design)
+    ? null
+    : 'Add a garage door first — a ramp meets one.';
 
   const doorsCount   = [options.garageDoor, options.additionalDoor, options.entryDoor].filter((o) => o.enabled).length;
   const windowsCount = [options.vinylWindows, options.octagonWindow, options.skylight, options.octagonVent].filter((o) => o.enabled).length;
@@ -172,8 +219,10 @@ export const OptionsSection = () => {
           checked={options.octagonWindow.enabled}
           onChange={(v) => set('octagonWindow', { enabled: v })}
           label="Octagon Gable Window"
-          price={OPTION_PRICES.window_octagon}
-        />
+          price={octagonPrice('octagonWindow', OPTION_PRICES.window_octagon)}
+        >
+          {options.octagonWindow.enabled && endsSelect('octagonWindow', 'Octagon gable window')}
+        </Checkbox>
 
         <Checkbox
           checked={options.skylight.enabled}
@@ -201,8 +250,10 @@ export const OptionsSection = () => {
           checked={options.octagonVent.enabled}
           onChange={(v) => set('octagonVent', { enabled: v })}
           label="Vinyl Octagon Gable Vent"
-          price={OPTION_PRICES.vent_octagon}
-        />
+          price={octagonPrice('octagonVent', OPTION_PRICES.vent_octagon)}
+        >
+          {options.octagonVent.enabled && endsSelect('octagonVent', 'Octagon gable vent')}
+        </Checkbox>
       </AccordionGroup>
 
       {/* Exterior */}
@@ -210,6 +261,7 @@ export const OptionsSection = () => {
         <Checkbox
           checked={options.shutters.enabled}
           onChange={(v) => set('shutters', { enabled: v })}
+          requires={shuttersRequires}
           label="15in Vinyl Shutters"
           price={OPTION_PRICES.shutters_per_pair * (options.shutters.pairs || 1)}
         >
@@ -225,6 +277,7 @@ export const OptionsSection = () => {
         <Checkbox
           checked={options.ramp.enabled}
           onChange={(v) => set('ramp', { enabled: v })}
+          requires={rampRequires}
           label="Heavy Duty Treated Ramp"
           price={options.ramp.size === 'large' ? OPTION_PRICES.ramp_large : OPTION_PRICES.ramp_small}
         >

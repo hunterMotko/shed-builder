@@ -87,6 +87,26 @@ func TestQuotePricesInteriorOptions(t *testing.T) {
 	}
 }
 
+// An octagon is bought per gable end, so the Quote has to count them. The
+// client charges per end too (`octagonEnds` in gableEndOpenings.js); the
+// server's number is the Quote, so if only one side learned this a customer
+// would be shown one price and billed another.
+func TestQuoteChargesAnOctagonPerEnd(t *testing.T) {
+	// shed-options.md: octagon gable window $85, octagon gable vent $85.
+	_, one := post(t, `{"width":12,"length":16,"tier":"Standard","model":"Gable","options":{
+		"octagonWindow":{"enabled":true,"ends":"front"}}}`)
+	if want := 6089.0 + 85; one.Price != want {
+		t.Errorf("one end: want Quote %v, got %v", want, one.Price)
+	}
+
+	_, both := post(t, `{"width":12,"length":16,"tier":"Standard","model":"Gable","options":{
+		"octagonWindow":{"enabled":true,"ends":"both"},
+		"octagonVent":{"enabled":true,"ends":"both"}}}`)
+	if want := 6089.0 + 2*85 + 2*85; both.Price != want {
+		t.Errorf("both ends: want Quote %v, got %v", want, both.Price)
+	}
+}
+
 // Every catalog size is 11ft to the peak, so the height cannot tell a Standard
 // from a Deluxe and the Tier is what selects the price. The same 12x16 costs
 // $6089 as a Standard and $6389 as a Deluxe; a key built from the height would

@@ -5,6 +5,8 @@ import { overlayDesign } from '../../utils/design';
 import { ShedWall } from '../shed/walls/ShedWall';
 import { GambrelRoof } from '../shed/roofs/GambrelRoof';
 import { BarnEnd } from '../shed/roofs/BarnEnd';
+import { octagonForEnd } from '../../utils/gableEndOpenings';
+import { carriesAttachment, attachmentValue } from '../../utils/dependentOptions';
 import { roofOverhangFt } from '../../utils/roofGeometry';
 import { Porch } from '../shed/extras/Porch';
 import { Ramp } from '../shed/extras/Ramp';
@@ -69,6 +71,19 @@ export const BarnShed = ({
 	// re-cut every opening on every render.
 	const { byWall } = useMemo(() => routePlacements(placements), [placements]);
 
+	// A ramp meets a garage door, so it follows that door's Placement rather
+	// than sitting centred on a wall (issue #44).
+	const rampDoor = useMemo(
+		() => placements.find((p) => p.type === 'garage_door') ?? null,
+		[placements]
+	);
+
+	// An octagon is bought per gable end, so each end is resolved separately.
+	const octagons = useMemo(
+		() => ({ front: octagonForEnd('front', options), back: octagonForEnd('back', options) }),
+		[options]
+	);
+
 	return (
 		<group name="barnShed">
 			{/* Four individual walls */}
@@ -84,18 +99,19 @@ export const BarnShed = ({
 					trimColor={trimColor}
 					placements={byWall[side]}
 					doorStyle={garageDoorStyle}
-					showShutters={options.shutters.enabled}
+					options={options}
 				/>
 			))}
 
 			{/* Optional ramp */}
-			{options.ramp.enabled && (
+			{carriesAttachment('ramp', rampDoor, options) && (
 				<Ramp
 					shedWidth={width}
 					shedLength={length}
 					wallHeight={wallHeight}
+					placement={rampDoor}
 					wall="front"
-					size={options.ramp.size}
+					size={attachmentValue('ramp', rampDoor, options)}
 				/>
 			)}
 
@@ -111,7 +127,7 @@ export const BarnShed = ({
 					roofUpperPitch={roofUpperPitch}
 					color={color}
 					sidingTexture={sidingTexture}
-					showOctagonWindow={options.octagonWindow.enabled}
+					octagon={octagons[side]}
 					trimColor={trimColor}
 				/>
 			))}
