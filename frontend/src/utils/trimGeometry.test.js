@@ -91,14 +91,43 @@ const volumeInsideWalls = (board) => {
 };
 
 describe('cornerBoards', () => {
+	// The kernel names every trim piece with an `id`; a corner board's is
+	// `corner-<corner>-<face>`, e.g. `corner-front-right-right`. The corner is
+	// two words and the face is the last, which is the only reason this needs
+	// unpacking at all — nothing in the app does, it uses the id as the key.
+	const partsOf = (board) => {
+		const [, ns, ew, face] = board.id.split('-');
+		return { corner: `${ns}-${ew}`, face };
+	};
+	const byId = (all, id) => {
+		const found = all.find((b) => b.id === id);
+		expect(found, `no board ${id} in ${all.map((b) => b.id).join(', ')}`).toBeDefined();
+		return found;
+	};
+
+	// A Barn's corner boards are cut on the roof's underside rather than level.
+	// A peak two feet up and seven each way spans the boards' own x range with
+	// room to spare, and slopes hard enough that a level cut could not be
+	// mistaken for it.
+	const TOP_LINE = [[-7, 0], [0, 2], [7, 0]];
+	const TOP_THICKNESS = 0.25;
+	const sloped = () =>
+		cornerBoards(WIDTH, LENGTH, WALL_HEIGHT, {
+			top: { kind: 'roof-underside', topLine: TOP_LINE, roofThickness: TOP_THICKNESS },
+		});
+	/** Where that line puts a board's top, worked out here and not read back. */
+	const slopedTopAt = (x) =>
+		WALL_HEIGHT + (x <= 0 ? (2 * (x + 7)) / 7 : (2 * (7 - x)) / 7) - TOP_THICKNESS;
+
 	it('trims all four corners on both of the faces that meet there', () => {
 		const all = boards();
 		expect(all).toHaveLength(8);
 
 		const byCorner = {};
 		for (const board of all) {
-			byCorner[board.corner] = byCorner[board.corner] ?? [];
-			byCorner[board.corner].push(board.face);
+			const { corner, face } = partsOf(board);
+			byCorner[corner] = byCorner[corner] ?? [];
+			byCorner[corner].push(face);
 		}
 
 		expect(Object.keys(byCorner).sort()).toEqual([
@@ -109,6 +138,12 @@ describe('cornerBoards', () => {
 		expect(byCorner['front-left'].sort()).toEqual(['front', 'left']);
 		expect(byCorner['back-right'].sort()).toEqual(['back', 'right']);
 		expect(byCorner['back-left'].sort()).toEqual(['back', 'left']);
+	});
+
+	it('gives every board an id of its own', () => {
+		// They are React keys now, so a collision would silently drop a board.
+		const ids = boards().map((b) => b.id);
+		expect(new Set(ids).size).toBe(ids.length);
 	});
 
 	it('keeps every board out of the wall volume', () => {
@@ -124,17 +159,18 @@ describe('cornerBoards', () => {
 		// Proud of the wall, but touching it — a gap would show daylight.
 		for (const board of boards()) {
 			const [[minX, maxX], , [minZ, maxZ]] = outlineBounds(board);
-			if (board.face === 'front') expect(minZ).toBeCloseTo(halfL, 10);
-			if (board.face === 'back') expect(maxZ).toBeCloseTo(-halfL, 10);
-			if (board.face === 'right') expect(minX).toBeCloseTo(halfW, 10);
-			if (board.face === 'left') expect(maxX).toBeCloseTo(-halfW, 10);
+			const { face } = partsOf(board);
+			if (face === 'front') expect(minZ).toBeCloseTo(halfL, 10);
+			if (face === 'back') expect(maxZ).toBeCloseTo(-halfL, 10);
+			if (face === 'right') expect(minX).toBeCloseTo(halfW, 10);
+			if (face === 'left') expect(maxX).toBeCloseTo(-halfW, 10);
 		}
 	});
 
 	it('laps the face board over the side board so the corner has no gap', () => {
 		const all = boards();
-		const front = all.find((b) => b.corner === 'front-right' && b.face === 'front');
-		const side = all.find((b) => b.corner === 'front-right' && b.face === 'right');
+		const front = byId(all, 'corner-front-right-front');
+		const side = byId(all, 'corner-front-right-right');
 
 		// Worked out from the shed rather than from the function: the right
 		// wall's siding is at x = 6.0, so a board on it stands proud to
@@ -153,7 +189,7 @@ describe('cornerBoards', () => {
 		expect(sideMinZ).toBeCloseTo(halfL - TRIM_WIDTH, 10);
 	});
 
-	it('runs the boards floor to eave', () => {
+	it('runs the boards floor to eave when nothing cuts the top', () => {
 		for (const board of boards()) {
 			const [, [minY, maxY]] = outlineBounds(board);
 			expect(minY).toBeCloseTo(0, 10);
@@ -164,35 +200,38 @@ describe('cornerBoards', () => {
 	it('keeps the bottom flat on the floor whatever the top does', () => {
 		// The top is cut to fit the roof and the bottom never is: it sits on
 		// the deck, which is what y = 0 means here.
-		for (const board of cornerBoards(WIDTH, LENGTH, WALL_HEIGHT, {
-			topAt: (x) => WALL_HEIGHT - Math.abs(x),
-		})) {
+		for (const board of sloped()) {
 			const bottom = board.outline.filter(([, y]) => y === 0);
 			expect(bottom).toHaveLength(2);
 			expect(bottom[0][1]).toBe(bottom[1][1]);
 		}
 	});
 
-	it('cuts the top to the line it is given, across the board', () => {
+	it('cuts the top to the roof line it is given, across the board', () => {
 		// A Barn's gambrel drops 20 in every 12 across a corner board, so there
 		// is no level cut that both meets the fly and stays out of the roof.
 		// The board takes its top from the line, at each of its own edges.
-		const topAt = (x) => WALL_HEIGHT - 0.5 * Math.abs(x);
-		const all = cornerBoards(WIDTH, LENGTH, WALL_HEIGHT, { topAt });
+		const all = sloped();
 
 		for (const board of all) {
 			for (const [x, y] of board.outline) {
-				if (y !== 0) expect(y).toBeCloseTo(topAt(x), 10);
+				if (y !== 0) expect(y).toBeCloseTo(slopedTopAt(x), 10);
 			}
 		}
 
 		// And that really is a slope, not a level cut at some average.
-		const front = all.find((b) => b.corner === 'front-right' && b.face === 'front');
+		const front = byId(all, 'corner-front-right-front');
 		const [, [minY, maxY]] = outlineBounds(front);
 		expect(maxY - minY).toBeGreaterThan(0);
-		expect(maxY).toBeCloseTo(topAt(halfW - TRIM_WIDTH), 10);
+		expect(maxY).toBeCloseTo(slopedTopAt(halfW - TRIM_WIDTH), 10);
 	});
 
+	it('cuts a level top when told to, and that is the default', () => {
+		// `{ kind: 'level' }` and passing nothing are the same board — a Gable
+		// passes nothing, so the two must not drift apart.
+		const named = cornerBoards(WIDTH, LENGTH, WALL_HEIGHT, { top: { kind: 'level' } });
+		expect(named).toEqual(boards());
+	});
 });
 
 // ── The fascia that boxes the roof slab's cut edge ───────────────────────────

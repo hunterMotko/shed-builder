@@ -55,9 +55,9 @@ export const GableTrim = ({
   return (
     <group name="gableTrim">
       {/* Corner boards, floor to eave: a Gable's roof does not cut them */}
-      {corners.map(({ corner, face, outline, position, depth }) => (
+      {corners.map(({ id, outline, position, depth }) => (
         <ExtrudedBand
-          key={`corner-${corner}-${face}`}
+          key={id}
           outline={outline}
           position={position}
           depth={depth}

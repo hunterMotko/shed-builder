@@ -198,96 +198,37 @@ export function mitredBand(topLine, {
 }
 
 /**
- * The corner boards, two per corner.
+ * The two boards that cover each corner, eight in all.
  *
- * A corner board is nailed **on** the siding, not let into it. Both boards
- * used to be centred on the wall plane, which buried them in the wall with
- * their outer faces exactly coplanar with the siding — nothing decided which
- * surface won, so each board rendered as a strip of hatched noise that changed
- * with the camera (issue #31).
+ * A corner board is the same board on both Models; what differs is how its top
+ * is cut, and that is `top` — the one thing this function needs to be told.
  *
- * The two boards at a corner lap rather than butt: the front or back board
- * runs past the corner to cover the end grain of the side board, which is how
- * the joint is actually built and leaves no notch at the corner.
+ * @param {number} shedWidth
+ * @param {number} shedLength
+ * @param {number} wallHeight
+ * @param {Object} [stock]
+ * @param {number} [stock.trimWidth] the face width, or the kernel's stock
+ * @param {Object} [stock.top] how the top is cut. `{ kind: 'level' }` for a
+ *   Gable, floor to eave. `{ kind: 'roof-underside', topLine, roofThickness }`
+ *   for a Barn, where the board is cut parallel to the fly on the slab's
+ *   underside — as high as it can go, leaving no siding showing between the
+ *   board and the fly.
+ * @returns {Array<{id: string, outline: number[][], position: number[],
+ *   depth: number}>} outlines to extrude along Z from `position`
  *
- * A board is an outline rather than a box because its top is not always level.
- * A Gable's runs floor to eave; a Barn's has to be cut to the gambrel, which
- * drops eight inches across the four inches of a corner board — see `topAt`.
- * The bottom is always flat and always on the floor.
+ * This used to take `topAt` as a callback, and a callback cannot cross the
+ * wasm boundary. The two cases are named instead, because those are the only
+ * two the app has — and naming them moved the Barn's three-term expression
+ * (`wallHeight + bandUnderside(topLine)(x) - ROOF_THICKNESS`) into the kernel,
+ * where the rest of that geometry already lives. See the kernel's ADR-0002.
  *
- * @param {number} shedWidth - feet, across the front
- * @param {number} shedLength - feet, front to back
- * @param {number} wallHeight - feet, floor to eave
- * @param {object} [stock]
- * @param {number} [stock.trimWidth] the face you see
- * @param {number} [stock.trimThickness] how far it stands off the siding
- * @param {(x: number) => number} [stock.topAt] the board's top edge at a given
- *   x, in shed space. Level at the eave unless the caller says otherwise; a
- *   Barn passes the underside of its roof, which is as high as a board can go
- *   and leaves nothing showing between it and the fly.
- * @param {number} [stock.floorY] the bottom edge. Flat, and on the floor.
- * @returns {Array<{corner: string, face: string, outline: number[][],
- *   position: number[], depth: number}>} outlines in the XZ-facing plane, to
- *   extrude along Z from `position`
- *
- * NOT yet the kernel's, unlike everything else in this file. `topAt` is a
- * closure and a closure cannot cross the wasm boundary; the kernel replaced it
- * with a named rule (level, or the roof's underside) because those are the only
- * two the app uses. Moving this seam therefore means changing `BarnTrim` to
- * pass the roof's top line instead of a function, which is a change to a caller
- * and not to this body. Left for that step rather than shimmed around.
+ * Boards are identified by `id` — `corner-front-right-right` — rather than by
+ * a `corner`/`face` pair. That is the kernel's naming for every trim piece,
+ * not a shape invented here.
  */
 export function cornerBoards(shedWidth, shedLength, wallHeight, stock = {}) {
-	const {
-		trimWidth = TRIM_WIDTH,
-		trimThickness = TRIM_THICKNESS,
-		topAt = () => wallHeight,
-		floorY = 0,
-	} = stock;
-
-	const halfW = shedWidth / 2;
-	const halfL = shedLength / 2;
-	const w = trimWidth;
-	const t = trimThickness;
-
-	// Bottom flat on the floor, top wherever the roof puts it. Walked as a
-	// quad from the inner bottom corner, so the two ends stay opposite edges
-	// however the top slopes.
-	const board = (inner, outer) => [
-		[inner, floorY],
-		[outer, floorY],
-		[outer, topAt(outer)],
-		[inner, topAt(inner)],
-	];
-
-	// sx picks the right (+1) or left (-1) wall, sz the front (+1) or back (-1).
-	const quadrants = [
-		{ corner: 'front-right', sx: +1, sz: +1, face: 'right', endFace: 'front' },
-		{ corner: 'front-left', sx: -1, sz: +1, face: 'left', endFace: 'front' },
-		{ corner: 'back-right', sx: +1, sz: -1, face: 'right', endFace: 'back' },
-		{ corner: 'back-left', sx: -1, sz: -1, face: 'left', endFace: 'back' },
-	];
-
-	return quadrants.flatMap(({ corner, sx, sz, face, endFace }) => [
-		// On the side wall: thickness out in X, face width running back in Z,
-		// stopping where the front or back siding takes over.
-		{
-			corner,
-			face,
-			outline: board(sx * halfW, sx * (halfW + t)),
-			position: [0, 0, sz > 0 ? halfL - w : -halfL],
-			depth: w,
-		},
-		// On the front or back wall: face width running across X, far enough
-		// past the corner to lap the side board's outer face at halfW + t.
-		{
-			corner,
-			face: endFace,
-			outline: board(sx * (halfW - w), sx * (halfW + t)),
-			position: [0, 0, sz > 0 ? halfL : -(halfL + t)],
-			depth: t,
-		},
-	]);
+	const { trimWidth, top = { kind: 'level' } } = stock;
+	return kernel.cornerBoards({ width: shedWidth, length: shedLength, wallHeight }, top, trimWidth);
 }
 
 /**

@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { cornerBoards, barnRakeFlashing, bandUnderside } from '../../../utils/trimGeometry';
+import { cornerBoards, barnRakeFlashing } from '../../../utils/trimGeometry';
 import { gambrelRoofTopLine, ROOF_THICKNESS } from '../../../utils/roofGeometry';
 import { ExtrudedBand } from '../../common/ExtrudedBand';
 
@@ -51,13 +51,15 @@ export const BarnTrim = ({
     // it enters the slab. Level, they buried their tops in the roof; cut on
     // the fly's own lower edge, which hangs 2.4 in under the slab, that much
     // siding showed between the board and the fly from anywhere but dead on.
-    // A zero-width band is the surface itself, and `slabFrom` drops the
-    // underside straight down from it.
-    const surface = bandUnderside(topLine, { reveal: 0, faceWidth: 0 });
+    //
+    // The rule is named rather than passed as a callback: this file used to
+    // compose it here out of `bandUnderside`, `ROOF_THICKNESS` and
+    // `wallHeight`, which put three terms of a geometry expression on the far
+    // side of the boundary from the geometry. The kernel owns it now.
     return {
       corners: cornerBoards(shedWidth, shedLength, wallHeight, {
         trimWidth,
-        topAt: (x) => wallHeight + surface(x) - ROOF_THICKNESS,
+        top: { kind: 'roof-underside', topLine, roofThickness: ROOF_THICKNESS },
       }),
       flashing: barnRakeFlashing(topLine, shedLength, wallHeight, {
         overhang: overhangEave,
@@ -68,9 +70,9 @@ export const BarnTrim = ({
 
   return (
     <group name="barnTrim">
-      {corners.map(({ corner, face, outline, position, depth }) => (
+      {corners.map(({ id, outline, position, depth }) => (
         <ExtrudedBand
-          key={`corner-${corner}-${face}`}
+          key={id}
           outline={outline}
           position={position}
           depth={depth}

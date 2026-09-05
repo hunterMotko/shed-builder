@@ -24,7 +24,7 @@ guarantees the module is initialised before any export is called.
 | `utils/gableEndOpenings.js` | `octagonOpening`, `octagonEnds` | `octagonForEnd`, which reads two Options out of a Design |
 | `utils/modelSpec.js` | `wallHeightFt`, `roofRiseFt`, `peakHeightFt` | the `MODEL_SPEC` table |
 | `utils/roofGeometry.js` | every live export | the prism-era half, which has no callers |
-| `utils/trimGeometry.js` | all but `cornerBoards` and `eaveFasciaDrop` | see below |
+| `utils/trimGeometry.js` | every export but `eaveFasciaDrop` | see below |
 | `utils/placementValidator.js` | `validatePlacement`, `checkOverlap`, `checkPlacementConflicts` | the id/type check, which is identity and not geometry |
 
 `cutOpenings` no longer runs a CSG boolean. It calls `wallPanelForSpan` and
@@ -43,19 +43,15 @@ dialog's wording moved with it (`width is off the wall: 1.4`, not `Invalid X
 coordinate: 1.4`). Front and back walls are unaffected: their span is the shed
 width. No frozen render moved; the validator only feeds a dialog.
 
-### Still two implementations
+### Nothing is two implementations any more
 
-Everything above is either routed or has no kernel counterpart. One thing is
-not, and it is the state ADR-0002 exists to avoid:
-
-- **`cornerBoards`** takes `topAt` as a closure, and a closure cannot cross the
-  wasm boundary. The kernel replaced it with a named rule — level, or the
-  roof's underside — because those are the only two this app uses. Moving it
-  means `BarnTrim` passing the roof's top line instead of a function, and its
-  `topAt` tests changing with it.
-
-It is not shimmed around. A wrapper that faked the old shape would be the
-parallel implementation the kernel exists to remove.
+`cornerBoards` was the last one, and it moved with its callers: `BarnTrim` now
+passes the roof's top line as `{ kind: 'roof-underside', topLine, roofThickness }`
+instead of a `topAt` closure, and `GableTrim` passes nothing, which is level.
+The three-term expression the Barn used to compose here — `wallHeight +
+bandUnderside(topLine)(x) - ROOF_THICKNESS` — is in the kernel now, beside the
+geometry it belongs to. Boards come back keyed by `id`, which is what both
+callers use for their React keys.
 
 **`eaveFasciaDrop` is a deliberate exception and is not going to move.** It is
 `RAKE_REVEAL * Math.hypot(1, slope)`, the one function here where routing would
