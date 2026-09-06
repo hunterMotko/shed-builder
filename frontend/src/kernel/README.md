@@ -24,7 +24,7 @@ guarantees the module is initialised before any export is called.
 | `utils/gableEndOpenings.js` | `octagonOpening`, `octagonEnds` | `octagonForEnd`, which reads two Options out of a Design |
 | `utils/modelSpec.js` | `wallHeightFt`, `roofRiseFt`, `peakHeightFt` | the `MODEL_SPEC` table |
 | `utils/roofGeometry.js` | every live export | the prism-era half, which has no callers |
-| `utils/trimGeometry.js` | every export but `eaveFasciaDrop` | see below |
+| `utils/trimGeometry.js` | `trimSet`, `roofMetal`, `roofRidgeCap` — all that is left | — |
 | `components/shed/trim/*`, `components/shed/roofs/{Gable,Gambrel}Roof.jsx` | which pieces a Model carries — `trimSet`, `roofMetal` | the material and the primitive |
 | `utils/placementValidator.js` | `validatePlacement`, `checkOverlap`, `checkPlacementConflicts` | the id/type check, which is identity and not geometry |
 
@@ -55,19 +55,22 @@ bandUnderside(topLine)(x) - ROOF_THICKNESS` — is in the kernel now, beside the
 geometry it belongs to. Boards come back keyed by `id`, which is what both
 callers use for their React keys.
 
-**`eaveFasciaDrop` is a deliberate exception and is not going to move.** It is
+**`eaveFasciaDrop` was the one exception, and it is now moot.** It is
 `RAKE_REVEAL * Math.hypot(1, slope)`, the one function here where routing would
-change a number: `Math.hypot` is implementation-approximated, V8's compensated
-sum is not correctly rounded and Rust's `f64::hypot` is, so the answers differ
-in the last bit. The kernel has it (`eave_fascia_drop`) and uses it internally;
-it is not exported, because exporting it would move a value for no gain. The
-difference is 1.8e-15 ft, measured against the frozen renders, and moves no
-pixel.
+have changed a number: `Math.hypot` is implementation-approximated, V8's
+compensated sum is not correctly rounded and Rust's `f64::hypot` is, so the
+answers differ in the last bit (1.8e-15 ft — measured, and it moves no pixel).
+It was kept in JavaScript rather than routed for that reason. Once the fascia
+was routed nothing called it, and it is deleted: there is one implementation
+now, `eave_fascia_drop` inside the kernel, so there are no two answers left to
+differ. The kernel still does not export it, and still should not.
 
 Where the kernel's vocabulary differs from this app's, the translation lives in
-the wrapper and not in the kernel: `barnRakeFlashing` renames the kernel's
-`fly-*` back to `rake-*`, and `roofRidgeCap` puts back the `kind` field its
-callers switch on. Both are noted where they happen.
+the wrapper and not in the kernel: `roofRidgeCap` puts back the `kind` field its
+callers switch on, and the over-long-skylight report the kernel hands back
+beside the pieces rather than on one of them. Both are noted where they happen.
+`barnRakeFlashing` used to do the same for `fly-*` / `rake-*` and is gone with
+the rest; the components read the kernel's own names now.
 
 ### The components ask what a shed carries instead of listing it
 
@@ -100,9 +103,21 @@ is a bug in this app:
   enforces it, and a caller passing its own roof would put the ridge cap off
   the slab.
 
-Routing left seven per-piece wrappers in `trimGeometry.js` with no component
-callers — `cornerBoards`, `gableFasciaBoards`, `gableCornerBoxes`,
-`barnRakeFlashing`, `barnKnuckleFlashing`, `rakeJChannel` and `bandUnderside`.
-They are not deleted: each still carries the property tests that say why its
-geometry is what it is, and `Skylight.jsx` still calls `roofRidgeCap` directly
-for the glass. Deleting them is a separate call, and it costs those tests.
+### What routing made dead, and where its tests went
+
+`trimGeometry.js` went from 500 lines to 110. Deleted: the seven per-piece
+wrappers routing left without callers (`cornerBoards`, `gableFasciaBoards`,
+`gableCornerBoxes`, `barnRakeFlashing`, `barnKnuckleFlashing`, `rakeJChannel`,
+`bandUnderside`), the two pieces of real band geometry only they used
+(`mitredBand` and `bandUnderside` — the last parallel implementation of
+anything on this side), their private helpers, `eaveFasciaDrop`, and the six
+trim-stock constants. `trimStock()` is the kernel's answer for those numbers.
+What remains is `trimSet`, `roofMetal`, and `roofRidgeCap` for `Skylight.jsx`.
+
+Thirty-nine property tests went with them, and they are **mapped rather than
+dropped**: the kernel's `docs/trim-geometry.md` lists every property they
+asserted against the `src/trim.rs` test that asserts it now. That audit found
+two the kernel was *not* checking — the J-channel straddling the ridge, and
+where the eave board lands term by term — and both were added to the kernel
+before anything was deleted here. Neither suite would have caught them: both
+were green before and after.
