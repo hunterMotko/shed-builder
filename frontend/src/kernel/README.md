@@ -15,6 +15,28 @@ the build script checks and tells you the command if it does not.
 Import from `../kernel`, never from `../kernel/pkg` — `index.js` is what
 guarantees the module is initialised before any export is called.
 
+## Which kernel
+
+`KERNEL.pin` names the commit this app is built and tested against, in the
+private repo `hunterMotko/shed-cad-rs`. CI reads it, checks that revision out
+and builds it; the command above is the same one, run by hand.
+
+**Moving the pin is a commit here**, which is what makes "the app adopted a new
+kernel" a change with a diff rather than a fact about whichever working tree
+happened to be next door. It also lets the kernel move ahead without breaking
+this repo's CI. The kernel's ADR-0003 has the reasoning, including why a
+vendored `pkg/` was rejected: with no kernel source in CI, nothing there can
+tell an artifact built from HEAD from one built six weeks ago, and the suite
+goes green either way.
+
+CI needs a credential to reach a private repo. `KERNEL_SSH_KEY` is a
+**read-only deploy key** on the kernel and nothing else — narrower than a
+personal access token, which would carry the whole account, and it does not
+expire. The public half is in the kernel repo under Settings > Deploy keys, the
+private half is this repo's Actions secret, and they are replaced together or
+not at all. **If the checkout step fails with a permission error, that key is
+why**, and the failure looks nothing like a kernel problem.
+
 ## What is routed through the kernel
 
 | File | Routed | Still JavaScript |

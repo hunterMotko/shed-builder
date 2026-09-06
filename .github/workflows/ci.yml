@@ -1,0 +1,169 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# The frontend cannot build, lint or test without a compiled kernel: every
+# geometry seam in it calls into wasm now. So most of this file is about
+# obtaining one, and the kernel's own suite is not repeated here — that runs in
+# hunterMotko/shed-cad-rs, against the same commit this pins.
+#
+# See the kernel's ADR-0003 for why the app builds it from a pinned commit
+# rather than vendoring a built `pkg/` or taking it off a registry.
+
+jobs:
+  # The Go server. It has no kernel in it and nothing to wait for.
+  server:
+    name: go test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go test ./...
+
+  frontend:
+    name: lint, unit tests, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read the kernel pin
+        id: pin
+        run: |
+          line=$(grep -v '^#' frontend/src/kernel/KERNEL.pin | grep -v '^$' | head -1)
+          echo "repo=${line%% *}" >> "$GITHUB_OUTPUT"
+          echo "sha=${line##* }" >> "$GITHUB_OUTPUT"
+          echo "kernel $line"
+
+      # The kernel repo is private, so the default GITHUB_TOKEN cannot reach it.
+      # KERNEL_SSH_KEY is a **read-only deploy key** on that repo and nothing
+      # else — narrower than a personal access token, which would carry the
+      # whole account, and it does not expire.
+      #
+      # **If this step fails with a permission error, the key is the reason**,
+      # and the failure looks nothing like a kernel problem. The public half
+      # lives in the kernel repo under Settings > Deploy keys; the private half
+      # is this repo's Actions secret. Replace both together or neither.
+      - name: Check out the kernel at the pinned commit
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ steps.pin.outputs.repo }}
+          ref: ${{ steps.pin.outputs.sha }}
+          ssh-key: ${{ secrets.KERNEL_SSH_KEY }}
+          path: kernel-src
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: kernel-src
+
+      # The CLI must match the wasm-bindgen crate exactly; it refuses to run
+      # otherwise, which is the failure to expect after a dependency bump. Read
+      # from the kernel's own lockfile so the two cannot drift.
+      - name: Install wasm-bindgen-cli at the locked version
+        working-directory: kernel-src
+        run: |
+          version=$(awk '/^name = "wasm-bindgen"$/{getline; print $3}' Cargo.lock | tr -d '"')
+          echo "wasm-bindgen $version"
+          cargo install wasm-bindgen-cli --version "$version" --locked
+
+      # The same script a contributor runs locally, so there is one build path
+      # rather than a CI-only one.
+      - name: Build the kernel into the app
+        working-directory: kernel-src
+        run: tools/build-wasm.sh --target web --out "$GITHUB_WORKSPACE/frontend/src/kernel/pkg"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+        working-directory: frontend
+
+      - run: npm run lint
+        working-directory: frontend
+
+      - run: npm test
+        working-directory: frontend
+
+      - run: npm run build
+        working-directory: frontend
+
+  # Half of the Playwright suite, and only half.
+  #
+  # The six "matches its frozen render" tests compare against baselines that are
+  # deliberately gitignored — `playwright.config.js` explains why: they are made
+  # on the machine that checks them, so there is one driver, which is what lets
+  # the comparison run at zero differing pixels instead of a tolerance. A fresh
+  # clone has none, `updateSnapshots: 'missing'` writes them, and all six pass
+  # having compared nothing at all. Running them here would report a green that
+  # means nothing, so they are excluded by name.
+  #
+  # The six left do not need a baseline: each takes three patches of one
+  # screenshot and asserts the two sky squares are byte-identical while the
+  # middle one is not. That catches a kernel that failed to load, a canvas that
+  # never got a WebGL context, and a render that threw — which is most of what
+  # can break in CI. The frozen renders stay a local gate before a push.
+  render:
+    name: the canvas draws something
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read the kernel pin
+        id: pin
+        run: |
+          line=$(grep -v '^#' frontend/src/kernel/KERNEL.pin | grep -v '^$' | head -1)
+          echo "repo=${line%% *}" >> "$GITHUB_OUTPUT"
+          echo "sha=${line##* }" >> "$GITHUB_OUTPUT"
+
+      # See the frontend job for what this key is and where it lives.
+      - name: Check out the kernel at the pinned commit
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ steps.pin.outputs.repo }}
+          ref: ${{ steps.pin.outputs.sha }}
+          ssh-key: ${{ secrets.KERNEL_SSH_KEY }}
+          path: kernel-src
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: kernel-src
+
+      - name: Install wasm-bindgen-cli at the locked version
+        working-directory: kernel-src
+        run: |
+          version=$(awk '/^name = "wasm-bindgen"$/{getline; print $3}' Cargo.lock | tr -d '"')
+          cargo install wasm-bindgen-cli --version "$version" --locked
+
+      - name: Build the kernel into the app
+        working-directory: kernel-src
+        run: tools/build-wasm.sh --target web --out "$GITHUB_WORKSPACE/frontend/src/kernel/pkg"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+        working-directory: frontend
+
+      - run: npx playwright install --with-deps chromium
+        working-directory: frontend
+
+      - run: npx playwright test --grep "draws a building"
+        working-directory: frontend

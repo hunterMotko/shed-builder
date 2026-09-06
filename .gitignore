@@ -4,9 +4,15 @@ shed-server
 
 # Frontend
 frontend/node_modules/
-frontend/package-lock.json
 frontend/dist/
 frontend/.env*.local
+
+# `frontend/package-lock.json` was listed here and is tracked anyway — an
+# ignore rule does not apply to a file already in the index, so it stayed
+# committed and nobody noticed the contradiction. CI resolves it: `npm ci`
+# needs the lockfile, and a run that silently resolved a different dependency
+# tree than the one tested here would be worth nothing. It is checked in on
+# purpose.
 
 # Playwright. The frozen reference renders are generated on the machine that
 # checks them and are deliberately not committed, so a clone's first `npm run

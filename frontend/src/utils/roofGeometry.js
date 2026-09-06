@@ -44,10 +44,9 @@ export function calculateRise(horizontalRun, pitchX) {
  * @param {number} halfWidth - Half width of shed in feet (wallWidth / 2)
  * @param {number} wallHeight - Height of walls in feet
  * @param {number} lowerPitch - Lower slope pitch (e.g., 5 for 5:12)
- * @param {number} roofHeight - Total roof height from wall to peak in feet
  * @returns {object} { knuckleY, knuckleX } - Knuckle point coordinates
  */
-export function calculateKnucklePoint(halfWidth, wallHeight, lowerPitch, roofHeight) {
+export function calculateKnucklePoint(halfWidth, wallHeight, lowerPitch) {
 	// Lower pitch ratio (e.g., 5/12 = 0.41667)
 	const lowerPitchRatio = lowerPitch / 12;
 	// Knuckle Y: height at which lower slope meets upper slope
@@ -77,8 +76,6 @@ export function calculateKnucklePoint(halfWidth, wallHeight, lowerPitch, roofHei
 export function calculateGambrelProfile(halfWidth, wallHeight, lowerPitch, upperPitch, roofHeight) {
 	// Lower pitch: 5:12 = 0.41667
 	const lowerPitchRatio = lowerPitch / 12;
-	// Upper pitch: 10:12 = 0.83333
-	const upperPitchRatio = upperPitch / 12;
 	// Knuckle point (where lower meets upper)
 	const knuckleY = wallHeight + (halfWidth * lowerPitchRatio);
 	// Peak point (center top)
@@ -415,10 +412,6 @@ export function roofSlabDepth(shedLength, overhang) {
  * which is how the board is actually cut, and it keeps the seam at the Knuckle
  * a single point instead of two offset lines that have to be intersected.
  */
-function slabFrom(top, thickness) {
-	return [...top, ...[...top].reverse().map(([x, y]) => [x, y - thickness])];
-}
-
 /**
  * The outline of a gable roof slab, in the plane it is extruded along.
  *

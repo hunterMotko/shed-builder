@@ -1,0 +1,14 @@
+# The kernel commit this app is built and tested against.
+#
+# One line, `<repo> <sha>`. `.github/workflows/ci.yml` reads it and checks that
+# revision out; `frontend/src/kernel/README.md` has the local build command.
+#
+# Moving this pin is a commit in THIS repo, deliberately. It makes "the app
+# adopted a new kernel" a reviewable change with a diff, instead of an ambient
+# fact about whichever working tree happened to be next door. See the kernel's
+# ADR-0003.
+#
+# A full SHA, not a branch: a branch would make CI's answer depend on when it
+# ran. Same reason `tools/gen-fixtures.mjs` over there pins a revision rather
+# than reading the working tree.
+hunterMotko/shed-cad-rs 7582498137bad2df795e4098e53a1931540f5212

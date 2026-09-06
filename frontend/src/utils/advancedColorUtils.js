@@ -212,7 +212,6 @@ export function getEffectiveTrimColor(
 export function suggestTrimColor(wallColor, roofColor) {
   const color = calculateOptimalTrimColor(wallColor, roofColor, 'contrast');
   const wallLum = getColorLuminance(wallColor);
-  const trimLum = getColorLuminance(color);
 
   let description = '';
   if (wallLum < 0.4) {
