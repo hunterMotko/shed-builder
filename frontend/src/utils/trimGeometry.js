@@ -198,6 +198,88 @@ export function mitredBand(topLine, {
 }
 
 /**
+ * What a Design is trimmed and flashed with, asked for once.
+ *
+ * `trimSet` is the wood, in the trim colour. `roofMetal` is the metalwork, in
+ * the roof colour. The split is the domain's and not a convenience: CONTEXT.md
+ * says the Ridge Cap "is roofing, not trim — drawn in the roof colour by the
+ * roof, never by the Trim Set", and the same goes for the J-channel and the
+ * Knuckle flashing. A Barn's fly and the channel that laps it sit on the same
+ * edge in two different colours, so one list would only have to be taken apart
+ * again to paint it.
+ *
+ * Which pieces a Model carries used to be spelled out in four components —
+ * `BarnTrim` and `GableTrim` each listing their own trim, `GambrelRoof` and
+ * `GableRoof` each their own metal. That is a fact about the *product*:
+ * CONTEXT.md puts the Trim Set in the Model bundle and says "a Barn and a Gable
+ * do not carry the same set — that is a difference in the product, not a
+ * difference in the renderer." Four listings of one product fact is three too
+ * many, and the bill of materials needed a fifth.
+ *
+ * Everything a Design does not state is derived: the eave overhang from the
+ * Model and the width, a Gable's rise from its pitch, a Barn's peak from its
+ * own gambrel line. `wallHeight` is the exception and is passed, because the
+ * configurator draws a flat 8 ft that nothing has reconciled with the Model's
+ * 7.375 — derive it here and a corner board would stand seven inches short of
+ * the wall it is nailed to.
+ */
+
+/**
+ * One Design, in the shape the kernel takes it.
+ *
+ * @param {string} model `'Barn'` or `'Gable'`
+ * @param {Object} [extra] `pitches` for a Barn, `skylightFt` for a ridge
+ *   skylight
+ */
+const designOf = (model, shedWidth, shedLength, wallHeight, extra = {}) => ({
+	model,
+	width: shedWidth,
+	length: shedLength,
+	wallHeight,
+	...extra,
+});
+
+/**
+ * Every piece of trim a Design carries: wood, in the trim colour.
+ *
+ * A Gable's set is eight corner boards cut level, a mitred rake on each end, an
+ * eave fascia down each side and a boxed return at each corner. A Barn's is
+ * eight corner boards cut to the gambrel's underside and the fly along each
+ * rake — and no fascia at all, its roof edge finishing in metal.
+ *
+ * @returns {{boards: object[], parts: object[]}} `boards` are outlines to
+ *   extrude (`<ExtrudedBand>`), `parts` are boxes (`<boxGeometry>`). Every
+ *   piece has an `id` distinct across the whole shed, ready to be a key.
+ */
+export function trimSet(model, shedWidth, shedLength, wallHeight, extra = {}) {
+	return kernel.trimSet(designOf(model, shedWidth, shedLength, wallHeight, extra));
+}
+
+/**
+ * Every piece of metalwork on a Design's roof, in the roof colour.
+ *
+ * Both Models get a ridge cap and a J-channel down each rake; a Barn also gets
+ * break flashing over each Knuckle. A skylight is part of this answer and not a
+ * part laid over it — the cap breaks either side of the glass and the glass
+ * fills exactly the run the metal gave up, so the two cannot drift (issue #42).
+ *
+ * @returns {{boards: object[], parts: object[], clampedFrom: number|undefined}}
+ *   each part carries `kind`, `'glass'` or `'cap'`, for `ridgeMaterial`.
+ *   `clampedFrom` is the skylight length asked for when the ridge was too short
+ *   to give it — a fact about the request, not about a piece of metal.
+ */
+export function roofMetal(model, shedWidth, shedLength, wallHeight, extra = {}) {
+	const metal = kernel.roofMetal(designOf(model, shedWidth, shedLength, wallHeight, extra));
+	return { ...metal, parts: metal.parts.map(withKind) };
+}
+
+/** `'glass'` or `'cap'`, which the kernel says in the id. */
+const withKind = (part) => ({
+	...part,
+	kind: part.id.startsWith('ridge-glass') ? 'glass' : 'cap',
+});
+
+/**
  * The two boards that cover each corner, eight in all.
  *
  * A corner board is the same board on both Models; what differs is how its top
@@ -377,16 +459,12 @@ export function roofRidgeCap(peakY, slope, shedLength, wallHeight, {
 	// Upstream carried the over-long-skylight report as a field on whichever
 	// glass piece happened to be emitted. The kernel returns it beside the
 	// pieces; put it back where the callers look for it.
+	// Upstream's callers switch on `kind`; the kernel puts it in the id.
 	return cap.pieces.map((p) => {
-		const glass = p.id.startsWith('ridge-glass');
-		return {
-			...p,
-			// Upstream's callers switch on `kind`; the kernel puts it in the id.
-			kind: glass ? 'glass' : 'cap',
-			...(glass && cap.clampedFrom !== undefined
-				? { clampedFrom: cap.clampedFrom }
-				: {}),
-		};
+		const piece = withKind(p);
+		return piece.kind === 'glass' && cap.clampedFrom !== undefined
+			? { ...piece, clampedFrom: cap.clampedFrom }
+			: piece;
 	});
 }
 

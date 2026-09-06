@@ -133,9 +133,7 @@ export const GableShed = ({
 				shedWidth={width}
 				shedLength={length}
 				wallHeight={wallHeight}
-				roofHeight={roofHeight}
 				trimColor={trimColor}
-				overhangEave={overhang}
 			/>
 
 			{/* Roof */}

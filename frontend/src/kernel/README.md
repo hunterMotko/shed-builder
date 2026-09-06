@@ -25,6 +25,7 @@ guarantees the module is initialised before any export is called.
 | `utils/modelSpec.js` | `wallHeightFt`, `roofRiseFt`, `peakHeightFt` | the `MODEL_SPEC` table |
 | `utils/roofGeometry.js` | every live export | the prism-era half, which has no callers |
 | `utils/trimGeometry.js` | every export but `eaveFasciaDrop` | see below |
+| `components/shed/trim/*`, `components/shed/roofs/{Gable,Gambrel}Roof.jsx` | which pieces a Model carries — `trimSet`, `roofMetal` | the material and the primitive |
 | `utils/placementValidator.js` | `validatePlacement`, `checkOverlap`, `checkPlacementConflicts` | the id/type check, which is identity and not geometry |
 
 `cutOpenings` no longer runs a CSG boolean. It calls `wallPanelForSpan` and
@@ -67,3 +68,41 @@ Where the kernel's vocabulary differs from this app's, the translation lives in
 the wrapper and not in the kernel: `barnRakeFlashing` renames the kernel's
 `fly-*` back to `rake-*`, and `roofRidgeCap` puts back the `kind` field its
 callers switch on. Both are noted where they happen.
+
+### The components ask what a shed carries instead of listing it
+
+`BarnTrim`, `GableTrim`, `GambrelRoof` and `GableRoof` each used to spell out
+their own half of one product fact. CONTEXT.md puts the Trim Set in the Model
+bundle and says "a Barn and a Gable do not carry the same set — that is a
+difference in the product, not a difference in the renderer", so four listings
+were three too many, and the kernel's bill of materials would have made five.
+They call `trimSet` and `roofMetal` now. What is left in each component is the
+material and the primitive: `boards` are outlines for `<ExtrudedBand>`, `parts`
+are boxes, and a `ridge-glass-*` part is drawn in glass.
+
+**Every frozen render is unchanged** — 12/12 at zero differing pixels, which is
+what the boundary smoke test's piece-for-piece equivalence checks were written
+to guarantee before the components moved.
+
+Two things the components still pass rather than let the kernel derive, and one
+is a bug in this app:
+
+- **`wallHeight`.** The Model fixes it — 7.375 ft for both, from the stud
+  length — and the reference targets use `wallHeightFt(model)`. But
+  `ShedConfigurator` defaults to a flat `8`, and `Canvas3D` never passes one,
+  so the configurator draws 8 ft walls while quoting a Peak Height off 7.375.
+  Deriving in the kernel would have left routed corner boards seven inches
+  short of unrouted walls. The kernel takes a stated `wallHeight` for that
+  reason; the app's own default is what wants fixing.
+- **`roofHeight` on `GableRoof`.** The slab still uses the prop; the metal
+  derives the rise from the width. They agree because `GableShed` passes
+  exactly `gableRoofRise(width)`, which is the same derivation — but nothing
+  enforces it, and a caller passing its own roof would put the ridge cap off
+  the slab.
+
+Routing left seven per-piece wrappers in `trimGeometry.js` with no component
+callers — `cornerBoards`, `gableFasciaBoards`, `gableCornerBoxes`,
+`barnRakeFlashing`, `barnKnuckleFlashing`, `rakeJChannel` and `bandUnderside`.
+They are not deleted: each still carries the property tests that say why its
+geometry is what it is, and `Skylight.jsx` still calls `roofRidgeCap` directly
+for the glass. Deleting them is a separate call, and it costs those tests.

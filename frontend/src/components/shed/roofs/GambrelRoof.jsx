@@ -9,8 +9,7 @@ import {
   GAMBREL_UPPER_PITCH,
 } from '../../../utils/roofGeometry';
 import { ridgeMaterial } from '../extras/skylightMaterial';
-import { barnKnuckleFlashing, roofRidgeCap, rakeJChannel } from '../../../utils/trimGeometry';
-import { gambrelEndOutline, gambrelRoofTopLine } from '../../../utils/roofGeometry';
+import { roofMetal } from '../../../utils/trimGeometry';
 import { ExtrudedBand } from '../../common/ExtrudedBand';
 
 /**
@@ -70,35 +69,22 @@ export const GambrelRoof = ({
   // Break flashing over each Knuckle and the ridge cap both run the length of
   // the shed and are boxes; the J-channel follows the gable-end edge, so it is
   // a mitred outline like the fly under it and is extruded rather than boxed.
-  const metalwork = useMemo(() => {
-    const topLine = gambrelRoofTopLine(shedWidth, roofLowerPitch, roofUpperPitch, { overhang });
-    const peak = topLine.reduce((hi, p) => Math.max(hi, p[1]), -Infinity);
-    return [
-      ...barnKnuckleFlashing(
-        gambrelEndOutline(shedWidth, roofLowerPitch, roofUpperPitch),
-        shedLength,
-        wallHeight,
-        { overhang }
-      ),
-      // The skylight is part of this call, not a part laid over it: the cap
-      // breaks either side of the glass and the glass fills exactly the run
-      // the metal gave up, so the two cannot drift (issue #42).
-      ...roofRidgeCap(peak, roofUpperPitch / 12, shedLength, wallHeight, {
-        overhang,
+  // That is the `parts` / `boards` split, and it is the only thing this file
+  // still decides about them.
+  //
+  // Which pieces a Barn's roof carries is asked for rather than listed: it is
+  // part of the Model bundle, and it was spelled out here, in GableRoof, and
+  // in both trim components. The skylight comes back in the same answer as the
+  // metal, not laid over it — the cap breaks either side of the glass and the
+  // glass fills exactly the run the metal gave up, so the two cannot drift
+  // (issue #42).
+  const { parts: metalwork, boards: jChannel } = useMemo(
+    () =>
+      roofMetal('Barn', shedWidth, shedLength, wallHeight, {
+        pitches: { lower: roofLowerPitch, upper: roofUpperPitch },
         skylightFt: skylight?.enabled ? (skylight.runningFt ?? 8) : 0,
       }),
-    ];
-  }, [shedWidth, shedLength, wallHeight, roofLowerPitch, roofUpperPitch, overhang, skylight]);
-
-  const jChannel = useMemo(
-    () =>
-      rakeJChannel(
-        gambrelRoofTopLine(shedWidth, roofLowerPitch, roofUpperPitch, { overhang }),
-        shedLength,
-        wallHeight,
-        { overhang }
-      ),
-    [shedWidth, shedLength, wallHeight, roofLowerPitch, roofUpperPitch, overhang]
+    [shedWidth, shedLength, wallHeight, roofLowerPitch, roofUpperPitch, skylight]
   );
 
   const METAL_MAT = {

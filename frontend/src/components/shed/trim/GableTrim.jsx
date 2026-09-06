@@ -1,81 +1,41 @@
 import { useMemo } from 'react';
-import { cornerBoards, gableFasciaBoards, gableCornerBoxes, TRIM_WIDTH } from '../../../utils/trimGeometry';
-import { ROOF_THICKNESS } from '../../../utils/roofGeometry';
+import { trimSet } from '../../../utils/trimGeometry';
 import { ExtrudedBand } from '../../common/ExtrudedBand';
 
 /**
  * GableTrim — the trim set that comes with the Gable Model.
- * Renders: 4 corner boards + 2 rake bands + 2 eave fascia + 4 corner boxes.
+ * Renders: 8 corner boards + 2 rake bands + 2 eave fascia + 4 corner boxes.
  * Only imported by GableShed — never shared with BarnShed.
  *
- * Nothing here works out a position. Corner boards come from `cornerBoards`,
- * shared with BarnTrim because a corner board is the same board on both Models;
- * the fascia comes from `gableFasciaBoards`, which is the Gable's alone. Both
- * live in `utils/trimGeometry.js` (ADR-0011).
- *
- * The rake is a mitred outline rather than a box, so it goes through
- * `ExtrudedBand`. The eave and the corner boxes are boxes and stay boxes.
+ * **Nothing here says what a Gable is trimmed with, or where any of it goes.**
+ * `trimSet` answers both: which pieces a Model carries is part of the Model
+ * bundle and a fact about the product, not about the renderer (CONTEXT.md,
+ * ADR-0011). This file chooses the material and the primitive, and that is all
+ * — the rake is a mitred outline so it goes through `ExtrudedBand`, the eave
+ * and the corner boxes really are boxes and stay boxes. That split is what the
+ * kernel's `boards` and `parts` are.
  */
-export const GableTrim = ({
-  shedWidth,
-  shedLength,
-  wallHeight,
-  roofHeight = 4,
-  trimColor,
-  trimWidth = TRIM_WIDTH,
-  overhangEave = 0.5,
-}) => {
+export const GableTrim = ({ shedWidth, shedLength, wallHeight, trimColor }) => {
   const TRIM_MAT = { color: trimColor, roughness: 0.6, metalness: 0 };
 
-  const corners = useMemo(
-    () => cornerBoards(shedWidth, shedLength, wallHeight, { trimWidth }),
-    [shedWidth, shedLength, wallHeight, trimWidth]
-  );
-
-  // Memoised because the rake outlines below become extruded geometry: a fresh
-  // array every render would rebuild both shapes every render.
-  const { rakes, eaves } = useMemo(
-    () =>
-      gableFasciaBoards(shedWidth, shedLength, wallHeight, roofHeight, {
-        overhang: overhangEave,
-        roofThickness: ROOF_THICKNESS,
-      }),
-    [shedWidth, shedLength, wallHeight, roofHeight, overhangEave]
-  );
-
-  const cornerBoxes = useMemo(
-    () =>
-      gableCornerBoxes(shedWidth, shedLength, wallHeight, roofHeight, {
-        overhang: overhangEave,
-        roofThickness: ROOF_THICKNESS,
-      }),
-    [shedWidth, shedLength, wallHeight, roofHeight, overhangEave]
+  // Memoised because the outlines below become extruded geometry: a fresh
+  // array every render would rebuild every shape every render.
+  const { boards, parts } = useMemo(
+    () => trimSet('Gable', shedWidth, shedLength, wallHeight),
+    [shedWidth, shedLength, wallHeight]
   );
 
   return (
     <group name="gableTrim">
-      {/* Corner boards, floor to eave: a Gable's roof does not cut them */}
-      {corners.map(({ id, outline, position, depth }) => (
-        <ExtrudedBand
-          key={id}
-          outline={outline}
-          position={position}
-          depth={depth}
-        >
-          <meshStandardMaterial {...TRIM_MAT} />
-        </ExtrudedBand>
-      ))}
-
-      {/* The rake: one board per gable end, mitred at the apex and cut plumb
-          where the eave fascia laps it */}
-      {rakes.map(({ id, outline, position, depth }) => (
+      {/* Corner boards floor to eave, and the rake mitred at the apex */}
+      {boards.map(({ id, outline, position, depth }) => (
         <ExtrudedBand key={id} outline={outline} position={position} depth={depth}>
           <meshStandardMaterial {...TRIM_MAT} />
         </ExtrudedBand>
       ))}
 
       {/* Eave fascia and the boxed soffit return at each corner */}
-      {[...eaves, ...cornerBoxes].map(({ id, position, size, rotation }) => (
+      {parts.map(({ id, position, size, rotation }) => (
         <mesh key={id} position={position} rotation={rotation} castShadow receiveShadow>
           <boxGeometry args={size} />
           <meshStandardMaterial {...TRIM_MAT} />

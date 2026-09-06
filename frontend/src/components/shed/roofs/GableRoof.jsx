@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
 import * as THREE from 'three';
 import { makeRoofShader } from '../../../utils/shaders';
-import { gableRoofProfile, gableRoofTopLine, roofSlabDepth, ROOF_THICKNESS } from '../../../utils/roofGeometry';
-import { roofRidgeCap, rakeJChannel } from '../../../utils/trimGeometry';
+import { gableRoofProfile, roofSlabDepth, ROOF_THICKNESS } from '../../../utils/roofGeometry';
+import { roofMetal } from '../../../utils/trimGeometry';
 import { ExtrudedBand } from '../../common/ExtrudedBand';
 import { ridgeMaterial } from '../extras/skylightMaterial';
 
@@ -70,24 +70,20 @@ export const GableRoof = ({
   // The roof's own metalwork, in the roof colour rather than with the trim.
   // The ridge cap runs the length of the shed and is a box; the J-channel
   // follows the gable-end edge, so it is a mitred outline like the fascia
-  // under it and is extruded rather than boxed.
-  // The skylight is part of this call, not a part laid over it: the cap
+  // under it and is extruded rather than boxed. That is the `parts` /
+  // `boards` split, and it is the only thing this file still decides about
+  // them — which pieces a Gable's roof carries is part of the Model bundle,
+  // and is asked for rather than listed here and in three other components.
+  //
+  // The skylight is part of the same answer, not a part laid over it: the cap
   // breaks either side of the glass and the glass fills exactly the run the
   // metal gave up, so the two cannot drift (issue #42).
-  const ridgeCap = useMemo(() => {
-    const slope = roofHeight / (shedWidth / 2);
-    return roofRidgeCap(roofHeight, slope, shedLength, wallHeight, {
-      overhang,
-      skylightFt: skylight?.enabled ? (skylight.runningFt ?? 8) : 0,
-    });
-  }, [shedWidth, shedLength, wallHeight, roofHeight, overhang, skylight]);
-
-  const jChannel = useMemo(
+  const { parts: ridgeCap, boards: jChannel } = useMemo(
     () =>
-      rakeJChannel(gableRoofTopLine(shedWidth, pitchX, { overhang }), shedLength, wallHeight, {
-        overhang,
+      roofMetal('Gable', shedWidth, shedLength, wallHeight, {
+        skylightFt: skylight?.enabled ? (skylight.runningFt ?? 8) : 0,
       }),
-    [shedWidth, shedLength, wallHeight, pitchX, overhang]
+    [shedWidth, shedLength, wallHeight, skylight]
   );
 
   return (
