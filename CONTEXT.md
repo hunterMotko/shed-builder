@@ -121,8 +121,21 @@ _Avoid_: cut list (that is lengths to cut, a later and different thing)
 ### Construction
 
 **Runner**:
-A pressure-treated 4x4 the shed sits on. A standard build has five.
-_Avoid_: skid, beam
+A pressure-treated 4x4 the shed sits on, running the full length. **Five, on every size
+sold** — the count is on the 12ft, 14ft and 16ft build sheets alike, so it is a spec and
+not a sample. The outboard pair is set in so its outside face clears the wall by 6in and
+the other three spread evenly between them.
+_Avoid_: skid, beam; reading five as a 12ft figure that scales with width
+
+**Framing**:
+What holds a shed up: Runners, floor joists, wall studs, rafters. The spec is on
+`shed-options.md`, the same sheet the price catalog is cut from, and it is the same on
+every size — **16in on centre 2x4 wall studs**, **24in on centre rafters**, five Runners,
+a 3/4in PT plywood deck. Only two lines move with the **Tier**: floor joists tighten from
+16in to 12in on centre, and rafters go from 2x4 to 2x6. A Deluxe is a heavier shed
+underneath and overhead, not a tighter one in between.
+_Avoid_: taking the rafter spacing from the stud spacing — they are different numbers for
+different reasons, and only one of them is 16
 
 **Knuckle**:
 The break point on a Barn roof where the steep lower slope meets the gentle upper

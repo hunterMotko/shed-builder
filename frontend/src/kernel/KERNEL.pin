@@ -11,4 +11,4 @@
 # A full SHA, not a branch: a branch would make CI's answer depend on when it
 # ran. Same reason `tools/gen-fixtures.mjs` over there pins a revision rather
 # than reading the working tree.
-hunterMotko/shed-cad-rs 7582498137bad2df795e4098e53a1931540f5212
+hunterMotko/shed-cad-rs 20828045873b4c060ee65da257d263a1a90d91f6

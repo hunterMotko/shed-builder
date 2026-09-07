@@ -41,7 +41,7 @@
 - 16 in on center 2x4 pt floor joist
 - 16 in on center 2x4 wall studs
 - smart siding
-- 2x4 rafters
+- 24 in on center 2x4 rafters
 - double swing barn doors with lock
 - 1/2 loft
 - premium steel roof with under laminate
@@ -52,7 +52,7 @@
 - 12 in on center 2x4 pt floor joist
 - 16 in on center 2x4 wall studs
 - smart siding
-- 2x6 rafters
+- 24 in on center 2x6 rafters
 - 8x7 roll up door & 36in entry door
 - premium steel roof with under laminate
 
@@ -62,7 +62,7 @@
 - 12 in on center 2x4 pt floor joist
 - 16 in on center 2x4 wall studs
 - smart siding
-- 2x6 rafters
+- 24 in on center 2x6 rafters
 - 8x7 roll up door & 36in entry door
 - 1/2 loft
 - premium steel roof with under laminate
