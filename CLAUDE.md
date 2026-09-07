@@ -415,8 +415,37 @@ are the reason it is a new file rather than a move:
   up within a few pixels of where it went down. Otherwise finishing an orbit drops a door wherever
   the rotation ended.
 
-`components/Canvas3D.jsx` and `components/ShedConfigurator.jsx` are still not mounted anywhere,
-and now have nothing left that `App.jsx` does not do.
+**An Opening can be added and not removed.** `WallPicker` and `PlacementDialog` put one on a
+wall; nothing takes it off again. `removePlacement` and `clearPlacements` are in the store and
+covered by its tests, waiting for a caller — `components/PlacementList.jsx` was that caller, and
+it was deleted unmounted along with ten other files that nothing reached. It is in git history if
+wiring it is easier than writing it again. Until then the only way back is Reset.
+
+### What was deleted unmounted, and what it was worth knowing
+
+Eleven files were unreachable from `main.jsx` and are gone. Nine were superseded and are not
+worth another word: `Canvas3D`, `ShedConfigurator`, `ColorPicker`, `ColorPresetsDropdown`,
+`PriceDisplay`, `RangeInput`, `ChevronDownIcon`, `BarnDoorPreview` and `BarnDoor` — `App.jsx`,
+`ColorSection`, `TrimAndDetailsSection` and `SwingBarnDoorPreview` do all of it. Three things in
+them are worth carrying forward:
+
+- **There were two colour catalogues and they disagreed.** `constants/colorPresets.js` listed 18
+  colours with categories and hard-coded WCAG ratios; `ColorSection.jsx` lists 10 siding and 10
+  roof colours and is what a customer sees. The same name meant different paint — "Barn Red" was
+  `#8B3A3A` in one and `#D2691E` in the other. `ColorSection` is authoritative, and contrast is
+  *computed* by `advancedColorUtils`, never stated. Do not reintroduce a static table of ratios;
+  it is a claim that cannot go stale loudly.
+- **`BarnDoor.jsx` held a seventh copy of the placement formula, with both of the bugs that
+  copying it causes.** Its `cy = -wallHeight / 2 + normalizedY * wallHeight` is the wall-*local*
+  expression used as world space, which is upstream issue #26 — every opening half a wall too
+  low. Its left and right cases measured `normalizedX * length` rather than the wall's own span,
+  which is upstream issue #17. Both were fixed everywhere else years before this file was
+  deleted, and it sat there with them intact because nothing rendered it. This is the concrete
+  argument for the kernel's ADR-0002: the copies do not stay correct, and a dead one does not
+  even fail.
+- **`Canvas3D` clamped its camera and drew a ground grid.** `OrbitControls minDistance={10}
+  maxDistance={50}` and a `gridHelper`, neither of which `App.jsx` has. Not restored because
+  nobody asked for them, but they are the two things it had that the live canvas does not.
 
 **Every form control needs a name of its own.** A styled `<label>` next to a `<select>` names
 nothing — bind them with `htmlFor`/`id` (via `useId`), or give the control an `aria-label`. Watch
