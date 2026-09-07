@@ -25,7 +25,6 @@ import * as kernel from '../kernel';
  * the two lists against each other found them.
  */
 
-
 /**
  * One Design, in the shape the kernel takes it.
  *

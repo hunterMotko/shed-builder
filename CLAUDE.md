@@ -397,7 +397,14 @@ measured-not-guessed rule survives because these invent no dimension, colour or 
 A stale fork of the shed components still sits under `pages/reference-match/barn/`; nothing
 imports it, and issue #4 deletes it.
 
-`components/Canvas3D.jsx` and `components/ShedConfigurator.jsx` are not mounted anywhere.
+`components/Canvas3D.jsx` and `components/ShedConfigurator.jsx` are not mounted anywhere, and
+neither is `components/PlacementDialog.jsx` — they are one unmounted subtree, not three loose
+files. `App.jsx` renders its own `<Canvas>` with `BarnShed`/`GableShed` directly; `Canvas3D` is
+the only importer of `ShedConfigurator`, its `RaycastingInteraction` is the only thing that would
+raise a wall click, and its handler still says *"Could also show a dialog"* where it would open
+`PlacementDialog`. So the dialog is unfinished rather than superseded, and the wiring it waits on
+is one callback. Read it that way before deleting it — unlike the trim wrappers, nothing has
+taken over its job.
 
 **Every form control needs a name of its own.** A styled `<label>` next to a `<select>` names
 nothing — bind them with `htmlFor`/`id` (via `useId`), or give the control an `aria-label`. Watch

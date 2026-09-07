@@ -56,13 +56,4 @@ export default defineConfig([
     files: ['src/kernel/index.js'],
     languageOptions: { globals: { ...globals.browser, ...globals.node } },
   },
-  {
-    // **A real issue, deferred rather than silenced.** PlacementDialog sets
-    // state synchronously in three effects, which cascades a render each time.
-    // Fixing it means deriving those values during render instead, and that is
-    // a change to a live dialog rather than a lint tidy-up — it does not belong
-    // in the commit that turned CI on. Kept visible in every lint run.
-    files: ['src/components/PlacementDialog.jsx'],
-    rules: { 'react-hooks/set-state-in-effect': 'warn' },
-  },
 ])

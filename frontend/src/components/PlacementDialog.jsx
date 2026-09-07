@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { useShedStore } from '../store/shedStore';
 import { PRESETS_BY_TYPE } from '../utils/placementPresets';
@@ -15,6 +15,19 @@ const PLACEMENT_TYPES = [
 /**
  * Dialog for placing doors and windows on shed walls.
  * Opens when user clicks on a wall in the 3D view.
+ *
+ * **Nothing here is stored that can be worked out.** The dialog used to keep
+ * the size and the validation in state and push three effects at them: one
+ * copying the chosen preset into `width`/`height`, one resetting the preset
+ * when the type changed, and one re-validating whenever anything moved. Each
+ * set state synchronously inside an effect, so every one of those changes
+ * rendered twice — once with the stale value, then again with the new one —
+ * and the first of those renders is a frame the user can see.
+ *
+ * The size is the preset's until the customer asks for a custom one, and the
+ * validation is a function of the size, so both are derived while rendering.
+ * What is left in state is only what a customer actually chose: the type, the
+ * preset index, whether they want a custom size, and the custom size itself.
  */
 export const PlacementDialog = ({
 	isOpen = false,
@@ -27,58 +40,61 @@ export const PlacementDialog = ({
 	// Wall height is a Model constant now, not a stored field (issue #29).
 	const wallHeight = wallHeightFt(model);
 	const [placementType, setPlacementType] = useState('door');
-	const [width, setWidth] = useState(3);
-	const [height, setHeight] = useState(6.8);
 	const [usePreset, setUsePreset] = useState(true);
 	const [selectedPreset, setSelectedPreset] = useState(0);
-	const [validationErrors, setValidationErrors] = useState([]);
-	const [validationWarnings, setValidationWarnings] = useState([]);
+	// Only read while `usePreset` is false. Seeded from whatever is on screen
+	// at the moment the customer asks for a custom size, so the fields open on
+	// the size they were already looking at rather than jumping.
+	const [custom, setCustom] = useState({ width: 3, height: 6.8 });
 
-	// Update values when preset changes
-	useEffect(() => {
-		const presets = PRESETS_BY_TYPE[placementType];
-		if (usePreset && presets && selectedPreset < presets.length) {
-			const preset = presets[selectedPreset];
-			setWidth(preset.width);
-			setHeight(preset.height);
-		}
-	}, [selectedPreset, placementType, usePreset]);
+	const presets = PRESETS_BY_TYPE[placementType] ?? [];
+	const preset = presets[selectedPreset];
 
-	// Reset preset selection when type changes
-	useEffect(() => {
+	// The preset's size, or the customer's own. A type with no presets at all
+	// falls through to the custom fields, which is the only answer that is not
+	// a guess.
+	const size = usePreset && preset ? preset : custom;
+	const { width, height } = size;
+
+	// Derived, not stored: two states that can disagree about one placement are
+	// two chances to show a stale error beside a fresh size.
+	//
+	// Not memoised. It crosses into wasm, so the instinct is to wrap it — but
+	// the React Compiler does that itself and refuses to compile a component
+	// that has already done it by hand. A dialog re-validating on a keystroke
+	// is nowhere near the cost of being wrong about the size on screen.
+	const { errors: validationErrors, warnings: validationWarnings } =
+		!wall || shedWidth === undefined
+			? { errors: [], warnings: [] }
+			: validatePlacement(
+					{
+						id: 'temp',
+						type: placementType,
+						wall,
+						normalizedX,
+						normalizedY,
+						width,
+						height,
+						rotationZ: 0,
+					},
+					{ width: shedWidth, length: shedLength, wallHeight }
+				);
+
+	// Changing the type invalidates the preset index — the lists are different
+	// lengths and mean different things. Reset it here, in the event that
+	// caused it, rather than in an effect watching for it afterwards.
+	const handleTypeChange = (type) => {
+		setPlacementType(type);
 		setSelectedPreset(0);
-	}, [placementType]);
+	};
 
-	// Validate placement when values change
-	useEffect(() => {
-		if (!wall || shedWidth === undefined) return;
-		const testPlacement = {
-			id: 'temp',
-			type: placementType,
-			wall,
-			normalizedX,
-			normalizedY,
-			width,
-			height,
-			rotationZ: 0,
-		};
-		const validation = validatePlacement(testPlacement, {
-			width: shedWidth,
-			length: shedLength,
-			wallHeight,
-		});
-		setValidationErrors(validation.errors);
-		setValidationWarnings(validation.warnings);
-	}, [placementType, wall, normalizedX, normalizedY, width, height, shedWidth, shedLength, wallHeight]);
-
-	const handlePresetChange = (e) => {
-		const index = Number(e.target.value);
-		setSelectedPreset(index);
-		const preset = PRESETS_BY_TYPE[placementType]?.[index];
-		if (preset) {
-			setWidth(preset.width);
-			setHeight(preset.height);
-		}
+	// Ticking "Custom Size" opens the fields on the size already on screen, so
+	// the number does not jump the moment it becomes editable. Copied field by
+	// field: `size` may be a preset, which carries a name and a type that have
+	// no business in a custom measurement.
+	const handleCustomToggle = (wantsCustom) => {
+		if (wantsCustom) setCustom({ width, height });
+		setUsePreset(!wantsCustom);
 	};
 
 	const handleAddPlacement = () => {
@@ -117,7 +133,6 @@ export const PlacementDialog = ({
 
 	if (!isOpen || !wall) return null;
 
-	const presets = PRESETS_BY_TYPE[placementType] ?? [];
 	const wallName = wall.charAt(0).toUpperCase() + wall.slice(1);
 	const typeLabel = PLACEMENT_TYPES.find((t) => t.value === placementType)?.label ?? placementType;
 
@@ -144,7 +159,7 @@ export const PlacementDialog = ({
 									name="type"
 									value={t.value}
 									checked={placementType === t.value}
-									onChange={(e) => setPlacementType(e.target.value)}
+									onChange={(e) => handleTypeChange(e.target.value)}
 									className="w-4 h-4"
 								/>
 								<span className="text-sm text-gray-700">{t.label}</span>
@@ -158,7 +173,7 @@ export const PlacementDialog = ({
 					<label className="block text-sm font-semibold text-gray-700 mb-3">Size Preset</label>
 					<select
 						value={selectedPreset}
-						onChange={handlePresetChange}
+						onChange={(e) => setSelectedPreset(Number(e.target.value))}
 						className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
 					>
 						{presets.map((preset, idx) => (
@@ -175,7 +190,7 @@ export const PlacementDialog = ({
 						<input
 							type="checkbox"
 							checked={!usePreset}
-							onChange={(e) => setUsePreset(!e.target.checked)}
+							onChange={(e) => handleCustomToggle(e.target.checked)}
 							className="w-4 h-4"
 						/>
 						<span className="text-sm text-gray-700">Custom Size</span>
@@ -191,7 +206,7 @@ export const PlacementDialog = ({
 									max="14"
 									step="0.5"
 									value={width}
-									onChange={(e) => setWidth(Number(e.target.value))}
+									onChange={(e) => setCustom((c) => ({ ...c, width: Number(e.target.value) }))}
 									className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
 								/>
 							</div>
@@ -203,7 +218,7 @@ export const PlacementDialog = ({
 									max="12"
 									step="0.5"
 									value={height}
-									onChange={(e) => setHeight(Number(e.target.value))}
+									onChange={(e) => setCustom((c) => ({ ...c, height: Number(e.target.value) }))}
 									className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
 								/>
 							</div>

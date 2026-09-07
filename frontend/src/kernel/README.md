@@ -112,13 +112,13 @@ to guarantee before the components moved.
 Two things the components still pass rather than let the kernel derive, and one
 is a bug in this app:
 
-- **`wallHeight`.** The Model fixes it — 7.375 ft for both, from the stud
-  length — and the reference targets use `wallHeightFt(model)`. But
-  `ShedConfigurator` defaults to a flat `8`, and `Canvas3D` never passes one,
-  so the configurator draws 8 ft walls while quoting a Peak Height off 7.375.
-  Deriving in the kernel would have left routed corner boards seven inches
-  short of unrouted walls. The kernel takes a stated `wallHeight` for that
-  reason; the app's own default is what wants fixing.
+- **`wallHeight`.** Every live caller passes `wallHeightFt(model)` — `App.jsx`
+  and the reference targets both — so it is the Model's own value and the
+  kernel could derive it with no change. It is passed because the components
+  place the walls, the Openings and the ends with the height they were handed,
+  and trim that measured its own wall would be nailed to a different one the
+  day the two part company. Discarding an argument a caller passed is a worse
+  trap than honouring it.
 - **`roofHeight` on `GableRoof`.** The slab still uses the prop; the metal
   derives the rise from the width. They agree because `GableShed` passes
   exactly `gableRoofRise(width)`, which is the same derivation — but nothing
