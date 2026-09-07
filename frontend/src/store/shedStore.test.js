@@ -67,6 +67,27 @@ describe('Placements', () => {
 		expect(state().placements).toHaveLength(0);
 	});
 
+	it('drops only the Placement named, and leaves the rest on the shed', () => {
+		// The list's Remove button is per row. Filtering by anything less exact
+		// than the id — the wall, the type — would take a neighbour off with it.
+		state().addPlacement(placement);
+		state().addPlacement({ ...placement, id: 'p2' });
+		state().addPlacement({ ...placement, id: 'p3', wall: 'back' });
+
+		state().removePlacement('p2');
+		expect(state().placements.map((p) => p.id)).toEqual(['p1', 'p3']);
+	});
+
+	it('clears every Placement at once', () => {
+		// Behind the list's "Clear all", which is the only bulk way back off the
+		// walls short of Reset — and Reset throws the whole Design away.
+		state().addPlacement(placement);
+		state().addPlacement({ ...placement, id: 'p2', wall: 'left' });
+
+		state().clearPlacements();
+		expect(state().placements).toEqual([]);
+	});
+
 	it('returns only the Placements on the wall asked for', () => {
 		state().addPlacement(placement);
 		state().addPlacement({ ...placement, id: 'p2', wall: 'back' });

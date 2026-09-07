@@ -52,3 +52,37 @@ export const PRESETS_BY_TYPE = {
   swing_barn_door: SWING_BARN_DOOR_PRESETS,
   entry_door:      ENTRY_DOOR_PRESETS,
 };
+
+/**
+ * The Opening types a customer can place, and what each is called.
+ *
+ * Shared rather than private to the dialog: `PlacementDialog` offers them and
+ * `PlacementList` names them back, and a shed that offers "Swing Barn Door" and
+ * then lists "Swing_barn_door" has told the customer two different things about
+ * one Opening.
+ *
+ * Not every key in `PRESETS_BY_TYPE` is here. `entry_door` has presets but is
+ * not offered, so it is a type that can be loaded from a saved Design and never
+ * chosen — which is why the lookup below falls back instead of asserting.
+ */
+export const PLACEMENT_TYPES = [
+	{ value: 'door', label: 'Entry Door' },
+	{ value: 'window', label: 'Window' },
+	{ value: 'garage_door', label: 'Garage Door' },
+	{ value: 'swing_barn_door', label: 'Swing Barn Door' },
+];
+
+/**
+ * What to call an Opening of this type.
+ *
+ * Falls back to the raw type with its underscores opened out, so a Design saved
+ * with a type this build does not offer still reads as words.
+ */
+export function placementTypeLabel(type) {
+	const known = PLACEMENT_TYPES.find((t) => t.value === type);
+	if (known) return known.label;
+	return String(type ?? '')
+		.split('_')
+		.map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+		.join(' ');
+}

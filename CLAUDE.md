@@ -415,11 +415,23 @@ are the reason it is a new file rather than a move:
   up within a few pixels of where it went down. Otherwise finishing an orbit drops a door wherever
   the rotation ended.
 
-**An Opening can be added and not removed.** `WallPicker` and `PlacementDialog` put one on a
-wall; nothing takes it off again. `removePlacement` and `clearPlacements` are in the store and
-covered by its tests, waiting for a caller — `components/PlacementList.jsx` was that caller, and
-it was deleted unmounted along with ten other files that nothing reached. It is in git history if
-wiring it is easier than writing it again. Until then the only way back is Reset.
+**Openings go on and come off.** `WallPicker` and `PlacementDialog` put one on a wall;
+`PlacementsSection`, under the Options tab, lists what is on the shed and takes it off again. The
+two are a pair and should stay one: an Opening a customer can add and not remove leaves Reset —
+which throws the whole Design away — as the only way back.
+
+It is a new component rather than the deleted `PlacementList.jsx`, which was written in
+light-theme Tailwind for a panel that no longer exists, and named a `swing_barn_door` as
+"Swing_barn_door". `PLACEMENT_TYPES` moved out of `PlacementDialog` into `placementPresets.js`
+for that reason: the dialog offers a type and the list names it back, and a shed that offers
+"Swing Barn Door" then lists "Swing_barn_door" has told the customer two different things about
+one Opening. `placementTypeLabel` falls back to the opened-out type rather than asserting,
+because `entry_door` has presets but is not offered — a saved Design can carry a type this build
+cannot produce.
+
+**Placements are not Options.** An Option is a catalog item with a price and a checkbox; a
+Placement is a position on a named wall. They share a tab because that is where a customer looks
+for what has been added, not because they are the same thing.
 
 ### What was deleted unmounted, and what it was worth knowing
 

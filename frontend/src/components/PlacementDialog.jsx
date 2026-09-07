@@ -1,16 +1,9 @@
 import { useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { useShedStore } from '../store/shedStore';
-import { PRESETS_BY_TYPE } from '../utils/placementPresets';
+import { PRESETS_BY_TYPE, PLACEMENT_TYPES, placementTypeLabel } from '../utils/placementPresets';
 import { validatePlacement, checkPlacementConflicts } from '../utils/placementValidator';
 import { wallHeightFt } from '../utils/modelSpec';
-
-const PLACEMENT_TYPES = [
-  { value: 'door',            label: 'Entry Door' },
-  { value: 'window',          label: 'Window' },
-  { value: 'garage_door',     label: 'Garage Door' },
-  { value: 'swing_barn_door', label: 'Swing Barn Door' },
-];
 
 /**
  * Dialog for placing doors and windows on shed walls.
@@ -134,7 +127,7 @@ export const PlacementDialog = ({
 	if (!isOpen || !wall) return null;
 
 	const wallName = wall.charAt(0).toUpperCase() + wall.slice(1);
-	const typeLabel = PLACEMENT_TYPES.find((t) => t.value === placementType)?.label ?? placementType;
+	const typeLabel = placementTypeLabel(placementType);
 
 	// The backdrop is `bg-black/50`, not `bg-black bg-opacity-50` — the separate
 	// opacity utilities were removed in Tailwind v4, so that pair rendered a

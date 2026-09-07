@@ -6,6 +6,7 @@ import { ModelSection }          from './controls/ModelSection';
 import { TrimAndDetailsSection } from './controls/TrimAndDetailsSection';
 import { ColorSection }          from './controls/ColorSection';
 import { OptionsSection }         from './controls/OptionsSection';
+import { PlacementsSection }      from './controls/PlacementsSection';
 import { ActionButtons }         from './controls/ActionButtons';
 import { lookupBasePrice, getOptionLineItems } from '../utils/pricingUtils';
 
@@ -130,7 +131,10 @@ export const ControlPanel = ({ onClose }) => {
           )}
 
           {activeTab === 'options' && (
-            <OptionsSection />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+              <OptionsSection />
+              <PlacementsSection />
+            </div>
           )}
         </div>
       </div>
