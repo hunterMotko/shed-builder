@@ -42,13 +42,17 @@ why**, and the failure looks nothing like a kernel problem.
 | File | Routed | Still JavaScript |
 |---|---|---|
 | `utils/wallOpenings.js` | `wallSpan`, `openingTransform`, `cutOpenings` | — |
-| `utils/coordinateUtils.js` | `getWallFromIntersection`, `getWallNormalizedCoordinates` | — |
+| `utils/coordinateUtils.js` | `getWallFromIntersection`, `getWallNormalizedCoordinates`, `wallHitAt` | — |
 | `utils/gableEndOpenings.js` | `octagonOpening`, `octagonEnds` | `octagonForEnd`, which reads two Options out of a Design |
 | `utils/modelSpec.js` | `wallHeightFt`, `roofRiseFt`, `peakHeightFt` | the `MODEL_SPEC` table |
 | `utils/roofGeometry.js` | every live export | the prism-era half, which has no callers |
 | `utils/trimGeometry.js` | `trimSet`, `roofMetal`, `roofRidgeCap` — all that is left | — |
 | `components/shed/trim/*`, `components/shed/roofs/{Gable,Gambrel}Roof.jsx` | which pieces a Model carries — `trimSet`, `roofMetal` | the material and the primitive |
 | `utils/placementValidator.js` | `validatePlacement`, `checkOverlap`, `checkPlacementConflicts` | the id/type check, which is identity and not geometry |
+
+`wallHitAt` is the one to reach for after a raycast, and `WallPicker` uses it. ADR-0002 is
+explicit about why: the other two take the same point and the same shed twice, with
+nothing keeping the two calls agreeing about the wall.
 
 `cutOpenings` no longer runs a CSG boolean. It calls `wallPanelForSpan` and
 wraps the result in a `THREE.BufferGeometry`, keeping its old signature so its

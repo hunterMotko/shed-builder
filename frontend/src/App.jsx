@@ -5,6 +5,8 @@ import { BarnShed } from './components/BarnShed/BarnShed';
 import { GableShed } from './components/GableShed/GableShed';
 import { ShedLights } from './components/common/ShedLights';
 import { GeometryErrorBoundary } from './components/common/GeometryErrorBoundary';
+import { WallPicker } from './components/common/WallPicker';
+import { PlacementDialog } from './components/PlacementDialog';
 import { ControlPanel } from './components/ControlPanel';
 import { ComponentPreview } from './pages/ComponentPreview';
 import { ReferenceMatch } from './pages/ReferenceMatch';
@@ -31,6 +33,10 @@ const navBtn = (active) => ({
 export default function App() {
   const [page, setPage]           = useState('configurator');
   const [drawerOpen, setDrawerOpen] = useState(true);
+  // Where the customer last clicked on the shed, or null when nothing is being
+  // placed. The dialog is open exactly when this is set, so there is no second
+  // `isDialogOpen` to fall out of step with it.
+  const [pendingPlacement, setPendingPlacement] = useState(null);
 
   const { width, length, tier, model, color, roofColor, options,
           roofLowerPitch, roofUpperPitch, sidingTexture, roofMaterial } = useShedStore();
@@ -166,9 +172,26 @@ export default function App() {
                   <GableShed width={width} length={length} wallHeight={wallHeight} color={color} roofColor={roofColor} />
                 )}
               </Suspense>
+              <WallPicker
+                shedWidth={width}
+                shedLength={length}
+                wallHeight={wallHeight}
+                onPick={setPendingPlacement}
+              />
               <OrbitControls />
             </Canvas>
             </GeometryErrorBoundary>
+
+            {/* Outside the Canvas for the same reason the error boundary is:
+                this is DOM, and r3f's tree renders through its own reconciler.
+                It draws nothing until a click on the shed names a wall. */}
+            <PlacementDialog
+              isOpen={pendingPlacement !== null}
+              wall={pendingPlacement?.wall ?? null}
+              normalizedX={pendingPlacement?.normalizedX ?? 0.5}
+              normalizedY={pendingPlacement?.normalizedY ?? 0.5}
+              onClose={() => setPendingPlacement(null)}
+            />
 
             {/*
               Hidden from the accessibility tree: it repeats the size, Tier,

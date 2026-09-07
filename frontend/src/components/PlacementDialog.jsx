@@ -136,9 +136,16 @@ export const PlacementDialog = ({
 	const wallName = wall.charAt(0).toUpperCase() + wall.slice(1);
 	const typeLabel = PLACEMENT_TYPES.find((t) => t.value === placementType)?.label ?? placementType;
 
+	// The backdrop is `bg-black/50`, not `bg-black bg-opacity-50` — the separate
+	// opacity utilities were removed in Tailwind v4, so that pair rendered a
+	// fully opaque black with the shed invisible behind it. Nothing had ever
+	// mounted this dialog, so nothing had ever seen it.
 	return (
-		<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-			<div className="bg-white rounded-lg shadow-lg p-6 w-96">
+		<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+			{/* Capped and scrollable: with the padding working this is taller
+			    than a short viewport, and a dialog whose buttons are off the
+			    bottom of the screen cannot be cancelled. */}
+			<div className="bg-white rounded-lg shadow-lg p-6 w-96 max-h-[90vh] overflow-y-auto">
 				{/* Header */}
 				<div className="mb-6">
 					<h2 className="text-2xl font-bold text-gray-800">Add Opening</h2>

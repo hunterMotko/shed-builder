@@ -66,3 +66,25 @@ export function getWallDimensions(wall, width, length) {
 			return { wallWidth: 0, wallLength: 0 };
 	}
 }
+
+/**
+ * Which wall a ray hit, and where on it — both answers from one call.
+ *
+ * The one to reach for when a raycast has just returned a point. ADR-0002 is
+ * explicit about why: `getWallFromIntersection` and `getWallNormalizedCoordinates`
+ * take the same point and the same shed twice, with nothing keeping the two
+ * calls agreeing about the wall. This asks once.
+ *
+ * Answers `null` when the point is not within the kernel's pick tolerance of
+ * any wall plane, which is the caller's signal to ignore the click rather than
+ * place something. It tests distance to a wall's *plane*, not whether the hit
+ * is inside that wall's extent — so a caller that can be handed a hit on the
+ * roof should check the height itself.
+ *
+ * @param {{x: number, y: number, z: number}} point world-space intersection
+ * @returns {{wall: string, normalizedX: number, normalizedY: number} | null}
+ */
+export function wallHitAt(point, width, length, wallHeight) {
+	return kernel.wallHit({ x: point.x, y: point.y, z: point.z }, { width, length, wallHeight })
+		?? null;
+}

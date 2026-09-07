@@ -397,14 +397,26 @@ measured-not-guessed rule survives because these invent no dimension, colour or 
 A stale fork of the shed components still sits under `pages/reference-match/barn/`; nothing
 imports it, and issue #4 deletes it.
 
-`components/Canvas3D.jsx` and `components/ShedConfigurator.jsx` are not mounted anywhere, and
-neither is `components/PlacementDialog.jsx` — they are one unmounted subtree, not three loose
-files. `App.jsx` renders its own `<Canvas>` with `BarnShed`/`GableShed` directly; `Canvas3D` is
-the only importer of `ShedConfigurator`, its `RaycastingInteraction` is the only thing that would
-raise a wall click, and its handler still says *"Could also show a dialog"* where it would open
-`PlacementDialog`. So the dialog is unfinished rather than superseded, and the wiring it waits on
-is one callback. Read it that way before deleting it — unlike the trim wrappers, nothing has
-taken over its job.
+**Click a wall to place an Opening.** `WallPicker` sits inside `App.jsx`'s `<Canvas>`, turns a
+click into `{ wall, normalizedX, normalizedY }` through the kernel's `wallHit`, and `App` opens
+`PlacementDialog` on it. The dialog is open exactly when that pick is non-null, so there is no
+second `isOpen` to fall out of step with it.
+
+Two things `WallPicker` does that the `RaycastingInteraction` inside `Canvas3D` did not, and both
+are the reason it is a new file rather than a move:
+
+- **It casts at the whole scene, not one nominated mesh.** The old one raycast a `shedMesh` that
+  only `GableShed` ever supplied and only for its *front* wall; `BarnShed` handed over `null` with
+  a note that Barn placement was "not yet wired". There was nothing to wire — which wall a point
+  is on is the kernel's question and it answers from the point alone, so any hit on the building
+  serves. It checks the hit is between the floor and the eave, because `wallHit` measures distance
+  to a wall's *plane* and would otherwise name a wall for a click on the roof.
+- **A drag is not a click.** OrbitControls owns the same pointer, so the pointer has to come back
+  up within a few pixels of where it went down. Otherwise finishing an orbit drops a door wherever
+  the rotation ended.
+
+`components/Canvas3D.jsx` and `components/ShedConfigurator.jsx` are still not mounted anywhere,
+and now have nothing left that `App.jsx` does not do.
 
 **Every form control needs a name of its own.** A styled `<label>` next to a `<select>` names
 nothing — bind them with `htmlFor`/`id` (via `useId`), or give the control an `aria-label`. Watch

@@ -1,9 +1,26 @@
 @import "tailwindcss";
 
-* {
-	margin: 0;
-	padding: 0;
-	box-sizing: border-box;
+/*
+ * The reset belongs in a layer, and specifically in `base`.
+ *
+ * Tailwind v4 puts its utilities in `@layer utilities`, and an **unlayered**
+ * rule beats every layered one whatever the specificity — so this `*`, sitting
+ * outside any layer, silently defeated every `p-*` and `m-*` in the app.
+ * `p-6` computed to `0px`. Colours, flex, sizing and radii were unaffected,
+ * which is why it never looked broken: the components that would have shown it
+ * lay out with inline styles instead.
+ *
+ * `box-sizing` and most of the `margin: 0` here are already Tailwind's own
+ * preflight. The rule is kept rather than deleted because `padding: 0` on
+ * everything is not, and dropping it would move the parts of the UI that have
+ * been built on top of it.
+ */
+@layer base {
+	* {
+		margin: 0;
+		padding: 0;
+		box-sizing: border-box;
+	}
 }
 
 html,
