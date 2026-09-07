@@ -15,13 +15,18 @@ import { GAMBREL_LOWER_PITCH, GAMBREL_UPPER_PITCH } from '../utils/roofGeometry'
  * @property {number} rotationZ - Optional rotation in radians (default: 0)
  */
 export const useShedStore = create((set) => ({
-	// Configuration state — defaults to smallest standard barn (12×16×10)
+	// Configuration state — the smallest Gable the catalog sells.
 	width: 12,
 	length: 16,
 	// Tier, not a height. Every catalog size is 11ft to the peak now, so the
 	// height stopped telling the two grades apart and Tier does it instead.
 	// The geometry's wall height comes from the Model (utils/modelSpec.js).
-	tier: 'Standard',
+	//
+	// Deluxe because the Model is a Gable and a Gable is sold as a Deluxe only.
+	// This used to open on a Standard Gable — a shed that is not in the catalog,
+	// quoted at a Barn's price and, since the grade became geometry, drawn with
+	// a Barn's 4in roof edge.
+	tier: 'Deluxe',
 	model: 'Gable',
 	color: '#D2691E',
 	roofColor: '#8B4513',
@@ -65,20 +70,16 @@ export const useShedStore = create((set) => ({
 	// type: 'door' | 'window' | 'garage_door' | 'barn_door'
 	placements: [],
 	// Configuration Actions
-	setWidth: (width) => set((s) => {
-		const snapped = snapToValidCombo(width, s.length, s.tier);
-		return { width: snapped.width, length: snapped.length, tier: snapped.tier };
-	}),
-	setLength: (length) => set((s) => {
-		const snapped = snapToValidCombo(s.width, length, s.tier);
-		return { width: snapped.width, length: snapped.length, tier: snapped.tier };
-	}),
-	setTier: (tier) => set((s) => {
-		const snapped = snapToValidCombo(s.width, s.length, tier);
-		return { width: snapped.width, length: snapped.length, tier: snapped.tier };
-	}),
+	setWidth: (width) => set((s) => snapToValidCombo(width, s.length, s.tier, s.model)),
+	setLength: (length) => set((s) => snapToValidCombo(s.width, length, s.tier, s.model)),
+	setTier: (tier) => set((s) => snapToValidCombo(s.width, s.length, tier, s.model)),
+	// Changing the Model can change the grade, because a Gable is sold as a
+	// Deluxe only: switching a Standard Barn to a Gable has to move it up a
+	// grade rather than leave it on a combination the catalog does not sell.
+	// Every Standard size is also sold as a Deluxe, so it keeps its size.
 	setModel: (model) => set((s) => ({
 		model,
+		...snapToValidCombo(s.width, s.length, s.tier, model),
 		options: {
 			...s.options,
 			garageDoor: {
@@ -137,7 +138,8 @@ export const useShedStore = create((set) => ({
 	reset: () => set({
 		width: 12,
 		length: 16,
-		tier: 'Standard',
+		// A Gable is Deluxe only — see the initial state.
+		tier: 'Deluxe',
 		model: 'Gable',
 		color: '#D2691E',
 		roofColor: '#8B4513',

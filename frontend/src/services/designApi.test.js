@@ -14,14 +14,15 @@ import { validateDesignConfig,
 const validConfig = (overrides = {}) => ({
 	width: 12,
 	length: 16,
-	tier: 'Standard',
+	// A Gable is sold as a Deluxe only, so this is the cheapest Gable there is.
+	tier: 'Deluxe',
 	model: 'Gable',
 	color: '#D2691E',
 	roofColor: '#8B4513',
 	trimColor: '#654321',
 	placements: [],
 	options: {},
-	price: 6089,
+	price: 6389,
 	...overrides,
 });
 
@@ -55,11 +56,12 @@ describe('validateDesignConfig', () => {
 		it('rejects a size the catalog does not sell', () => {
 			// 14-wide appears only under "Deluxe barns & gables" — there is no
 			// Standard 14x20 to sell, so a Quote for one cannot be honoured.
-			expect(validateDesignConfig(validConfig({ width: 14, length: 20 })).isValid).toBe(false);
+			const barn = (o) => validConfig({ model: 'Barn', tier: 'Standard', ...o });
+			expect(validateDesignConfig(barn({ width: 14, length: 20 })).isValid).toBe(false);
 			// 12x26 is likewise Deluxe-only.
-			expect(validateDesignConfig(validConfig({ width: 12, length: 26 })).isValid).toBe(false);
+			expect(validateDesignConfig(barn({ width: 12, length: 26 })).isValid).toBe(false);
 			// And 10x18 is not a length the catalog lists at any grade.
-			expect(validateDesignConfig(validConfig({ width: 10, length: 18 })).isValid).toBe(false);
+			expect(validateDesignConfig(barn({ width: 10, length: 18 })).isValid).toBe(false);
 		});
 
 		it('accepts those same sizes at the grade that does sell them', () => {
@@ -69,6 +71,26 @@ describe('validateDesignConfig', () => {
 			expect(validateDesignConfig(
 				validConfig({ width: 12, length: 26, tier: 'Deluxe' })
 			).isValid).toBe(true);
+		});
+
+		it('rejects a Gable at a grade the catalog does not sell it at', () => {
+			// The price table is keyed by size and Tier with no Model in it, so
+			// 12x16xStandard is a real price — for a Barn. Checking the table
+			// alone would wave a Standard Gable through at a Barn's number.
+			const { isValid, errors } = validateDesignConfig(
+				validConfig({ model: 'Gable', tier: 'Standard' })
+			);
+
+			expect(isValid).toBe(false);
+			expect(errors.join(' ')).toMatch(/Gable is sold as Deluxe only/);
+		});
+
+		it('accepts a Barn at either grade, which is what Standard is for', () => {
+			for (const tier of ['Standard', 'Deluxe']) {
+				expect(validateDesignConfig(
+					validConfig({ model: 'Barn', tier })
+				).isValid).toBe(true);
+			}
 		});
 
 		it('rejects a dimension that is missing or not a number', () => {

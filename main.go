@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 )
@@ -32,10 +33,18 @@ var priceTable map[string]float64
 // optionPrices maps add-on keys to dollar amounts.
 var optionPrices map[string]float64
 
+// modelTiers maps a Model to the Tiers it is sold at. A Gable is Deluxe only:
+// the price list has "Standard barn prices" and then "Deluxe barns & gables",
+// and there is no Standard gable in the table. The price table is not keyed by
+// Model, so this is the only place that rule can live — 12x16xStandard is a
+// real price, for a Barn.
+var modelTiers map[string][]string
+
 func init() {
 	var catalog struct {
-		BasePrices   map[string]float64 `json:"basePrices"`
-		OptionPrices map[string]float64 `json:"optionPrices"`
+		BasePrices   map[string]float64  `json:"basePrices"`
+		OptionPrices map[string]float64  `json:"optionPrices"`
+		ModelTiers   map[string][]string `json:"modelTiers"`
 	}
 	if err := json.Unmarshal(catalogJSON, &catalog); err != nil {
 		// Unreachable short of shipping a malformed catalog, and refusing to
@@ -46,8 +55,34 @@ func init() {
 	if len(catalog.BasePrices) == 0 || len(catalog.OptionPrices) == 0 {
 		panic("catalog.json carries no prices")
 	}
+	if len(catalog.ModelTiers) == 0 {
+		panic("catalog.json says no Model is sold at any grade")
+	}
 	priceTable = catalog.BasePrices
 	optionPrices = catalog.OptionPrices
+	modelTiers = catalog.ModelTiers
+}
+
+// soldAsTier reports whether the catalog sells this Model at this Tier.
+func soldAsTier(model, tier string) bool {
+	for _, t := range modelTiers[model] {
+		if t == tier {
+			return true
+		}
+	}
+	return false
+}
+
+// defaultTier is the grade to quote a Model at when the client names none.
+//
+// Per Model rather than a flat "Standard": a Gable is Deluxe only, so quoting
+// one as a Standard would price it off a Barn's line and, since the grade
+// became geometry, describe a shed with the wrong roof edge.
+func defaultTier(model string) string {
+	if tiers := modelTiers[model]; len(tiers) > 0 {
+		return tiers[0]
+	}
+	return "Standard"
 }
 
 // lookupBasePrice returns the catalog price for the given dimensions.
@@ -268,9 +303,27 @@ func saveDesign(c *gin.Context) {
 		return
 	}
 
-	// Default Tier to Standard if not supplied
+	// The Model is checked first now, because the Tier's default depends on it.
+	if input.Model != "Gable" && input.Model != "Barn" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Model must be 'Gable' or 'Barn'"})
+		return
+	}
+
+	// Default the Tier to the grade this Model is sold at, if the client names
+	// none. A flat "Standard" made a Gable into a shed the catalog does not
+	// sell, priced off a Barn's line.
 	if input.Tier == "" {
-		input.Tier = "Standard"
+		input.Tier = defaultTier(input.Model)
+	}
+
+	if !soldAsTier(input.Model, input.Tier) {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": fmt.Sprintf(
+				"A %s is sold as %s only",
+				input.Model, strings.Join(modelTiers[input.Model], " or "),
+			),
+		})
+		return
 	}
 
 	// Validate combo against price table
@@ -282,11 +335,6 @@ func saveDesign(c *gin.Context) {
 				input.Width, input.Length, input.Tier,
 			),
 		})
-		return
-	}
-
-	if input.Model != "Gable" && input.Model != "Barn" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Model must be 'Gable' or 'Barn'"})
 		return
 	}
 

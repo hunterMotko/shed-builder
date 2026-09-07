@@ -29,7 +29,7 @@ func post(t *testing.T, body string) (*httptest.ResponseRecorder, Design) {
 // The Quote is the server's number, not the client's. Expected prices come
 // from shed-options.md.
 func TestQuoteIgnoresClientSuppliedPrice(t *testing.T) {
-	rec, design := post(t, `{"width":12,"length":16,"tier":"Standard","model":"Gable","price":1}`)
+	rec, design := post(t, `{"width":12,"length":16,"tier":"Standard","model":"Barn","price":1}`)
 
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("want 201, got %d: %s", rec.Code, rec.Body.String())
@@ -40,7 +40,7 @@ func TestQuoteIgnoresClientSuppliedPrice(t *testing.T) {
 }
 
 func TestRejectsCombinationNotInCatalog(t *testing.T) {
-	rec, _ := post(t, `{"width":13,"length":17,"tier":"Standard","model":"Gable"}`)
+	rec, _ := post(t, `{"width":13,"length":17,"tier":"Standard","model":"Barn"}`)
 
 	if rec.Code != http.StatusBadRequest {
 		t.Errorf("want 400 for a combination we do not sell, got %d", rec.Code)
@@ -56,7 +56,7 @@ func TestRejectsUnknownModel(t *testing.T) {
 }
 
 func TestSavedDesignCanBeFetchedByID(t *testing.T) {
-	_, saved := post(t, `{"width":12,"length":16,"tier":"Standard","model":"Gable"}`)
+	_, saved := post(t, `{"width":12,"length":16,"tier":"Deluxe","model":"Gable"}`)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/design/"+saved.ID, nil)
 	rec := httptest.NewRecorder()
@@ -76,7 +76,7 @@ func TestSavedDesignCanBeFetchedByID(t *testing.T) {
 
 // Interior Options: workbench $35/running ft, pegboard $70/sheet, loft $4/sqft.
 func TestQuotePricesInteriorOptions(t *testing.T) {
-	_, design := post(t, `{"width":12,"length":16,"tier":"Standard","model":"Gable","options":{
+	_, design := post(t, `{"width":12,"length":16,"tier":"Standard","model":"Barn","options":{
 		"workbench":{"enabled":true,"runningFt":8},
 		"pegboard":{"enabled":true,"sheets":3},
 		"loft":{"enabled":true,"sqft":96}}}`)
@@ -93,16 +93,16 @@ func TestQuotePricesInteriorOptions(t *testing.T) {
 // would be shown one price and billed another.
 func TestQuoteChargesAnOctagonPerEnd(t *testing.T) {
 	// shed-options.md: octagon gable window $85, octagon gable vent $85.
-	_, one := post(t, `{"width":12,"length":16,"tier":"Standard","model":"Gable","options":{
+	_, one := post(t, `{"width":12,"length":16,"tier":"Deluxe","model":"Gable","options":{
 		"octagonWindow":{"enabled":true,"ends":"front"}}}`)
-	if want := 6089.0 + 85; one.Price != want {
+	if want := 6389.0 + 85; one.Price != want {
 		t.Errorf("one end: want Quote %v, got %v", want, one.Price)
 	}
 
-	_, both := post(t, `{"width":12,"length":16,"tier":"Standard","model":"Gable","options":{
+	_, both := post(t, `{"width":12,"length":16,"tier":"Deluxe","model":"Gable","options":{
 		"octagonWindow":{"enabled":true,"ends":"both"},
 		"octagonVent":{"enabled":true,"ends":"both"}}}`)
-	if want := 6089.0 + 2*85 + 2*85; both.Price != want {
+	if want := 6389.0 + 2*85 + 2*85; both.Price != want {
 		t.Errorf("both ends: want Quote %v, got %v", want, both.Price)
 	}
 }
@@ -123,6 +123,38 @@ func TestTierSelectsThePrice(t *testing.T) {
 	}
 }
 
+// The price list has "Standard barn prices" and then "Deluxe barns & gables":
+// a Gable is sold as a Deluxe only. The price table is keyed by size and Tier
+// with no Model in it, so it cannot carry this on its own — 12x16xStandard is a
+// real price, for a Barn — and a Standard Gable would otherwise be quoted off
+// the wrong line and drawn with the wrong roof edge.
+func TestAGableIsSoldAsDeluxeOnly(t *testing.T) {
+	rec, _ := post(t, `{"width":12,"length":16,"tier":"Standard","model":"Gable"}`)
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("want 400 for a Standard Gable, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	// A Barn is still sold at either grade.
+	if rec, _ := post(t, `{"width":12,"length":16,"tier":"Standard","model":"Barn"}`); rec.Code != http.StatusCreated {
+		t.Errorf("want 201 for a Standard Barn, got %d", rec.Code)
+	}
+}
+
+// An absent Tier used to default to Standard flatly, which turned a Gable into
+// a shed the catalog does not sell — priced off a Barn's line. The default is
+// per Model now: the grade that Model is actually sold at.
+func TestAnAbsentTierDefaultsToTheGradeTheModelIsSoldAt(t *testing.T) {
+	_, gable := post(t, `{"width":12,"length":16,"model":"Gable"}`)
+	if gable.Tier != "Deluxe" || gable.Price != 6389 {
+		t.Errorf("want a Deluxe Gable at 6389, got a %s at %v", gable.Tier, gable.Price)
+	}
+
+	_, barn := post(t, `{"width":12,"length":16,"model":"Barn"}`)
+	if barn.Tier != "Standard" || barn.Price != 6089 {
+		t.Errorf("want a Standard Barn at 6089, got a %s at %v", barn.Tier, barn.Price)
+	}
+}
+
 // 14 and 16 wide appear in the Deluxe list only.
 func TestWideSizesAreDeluxeOnly(t *testing.T) {
 	rec, _ := post(t, `{"width":16,"length":24,"tier":"Standard","model":"Barn"}`)
@@ -140,7 +172,7 @@ func TestWideSizesAreDeluxeOnly(t *testing.T) {
 // error. Without an explicit presence check the Opening is accepted and lands
 // in the bottom-left corner of its wall rather than being refused.
 func TestRejectsPlacementWithMissingCoordinate(t *testing.T) {
-	design := `{"width":12,"length":16,"tier":"Standard","model":"Gable","placements":[%s]}`
+	design := `{"width":12,"length":16,"tier":"Deluxe","model":"Gable","placements":[%s]}`
 
 	cases := map[string]string{
 		"null X":   `{"id":"a","type":"window","wall":"front","normalizedX":null,"normalizedY":0.5,"width":3,"height":3}`,
@@ -160,7 +192,7 @@ func TestRejectsPlacementWithMissingCoordinate(t *testing.T) {
 }
 
 func TestRejectsUnrenderablePlacement(t *testing.T) {
-	design := `{"width":12,"length":16,"tier":"Standard","model":"Gable","placements":[%s]}`
+	design := `{"width":12,"length":16,"tier":"Deluxe","model":"Gable","placements":[%s]}`
 
 	cases := map[string]string{
 		"X past the end of the wall": `{"id":"a","type":"window","wall":"front","normalizedX":1.4,"normalizedY":0.5,"width":3,"height":3}`,
@@ -183,7 +215,7 @@ func TestRejectsUnrenderablePlacement(t *testing.T) {
 // The guard must not refuse Openings the configurator can legitimately make:
 // 0 is the floor and the left edge, 1 is the eave and the right edge.
 func TestAcceptsPlacementAtTheEdgesOfItsWall(t *testing.T) {
-	rec, saved := post(t, `{"width":12,"length":16,"tier":"Standard","model":"Gable","placements":[
+	rec, saved := post(t, `{"width":12,"length":16,"tier":"Deluxe","model":"Gable","placements":[
 		{"id":"a","type":"window","wall":"front","normalizedX":0,"normalizedY":1,"width":3,"height":3},
 		{"id":"b","type":"door","wall":"left","normalizedX":1,"normalizedY":0,"width":3,"height":6.67}
 	]}`)
@@ -244,7 +276,7 @@ func TestCatalogIsLoadedBeforeAnyRequestIsServed(t *testing.T) {
 		t.Fatal("option prices are empty — the embedded catalog did not load")
 	}
 
-	rec, design := post(t, `{"width":12,"length":16,"tier":"Standard","model":"Gable","price":1}`)
+	rec, design := post(t, `{"width":12,"length":16,"tier":"Standard","model":"Barn","price":1}`)
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("want 201, got %d: %s", rec.Code, rec.Body.String())
 	}

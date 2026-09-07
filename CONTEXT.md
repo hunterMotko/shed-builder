@@ -55,10 +55,18 @@ The build grade — **Standard** or **Deluxe**. A grade, not a size: a Deluxe is
 2x6 rafters and 12in floor joists where a Standard uses 2x4 and 16in, and it carries a
 roll-up garage door and a 36in entry door where a Standard carries double swing barn
 doors. Both stand the same height, so **Tier is what selects a price** alongside width and
-length — a `12x16` costs $6,089 as a Standard and $6,389 as a Deluxe. Widths above 12ft
-are Deluxe only.
-_Avoid_: Special (no such grade), and reading a height as a grade — the catalog's third
-number is the same 11 on both
+length — a `12x16` costs $6,089 as a Standard and $6,389 as a Deluxe.
+
+Two rules narrow which grades are on offer, and they are separate rules. **Widths above
+12ft are Deluxe only**, whatever the Model. And **a Gable is sold as a Deluxe only**,
+whatever its size: the price list has "Standard barn prices" and then "Deluxe barns &
+gables", and there is no Standard gable in it. Standard *is* the barn package — 2x4
+rafters, 16in joists, double swing barn doors — so a Standard Gable is not a shed with a
+missing price, it is a shed the shop does not build.
+_Avoid_: Special (no such grade); reading a height as a grade — the catalog's third
+number is the same 11 on both; and taking the price table alone as the catalog, since it
+is keyed by size and grade with no Model in it (`12x16xStandard` is a real price, for a
+Barn)
 
 **Deluxe Barn**:
 The Deluxe-grade Barn. `db` in the reference photo filenames. Not a taller building — a

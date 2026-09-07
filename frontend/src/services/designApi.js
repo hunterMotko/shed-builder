@@ -6,7 +6,7 @@
  */
 
 import axios from 'axios';
-import { isValidCombo, TIERS } from '../utils/pricingUtils';
+import { isValidCombo, isSoldAsTier, tiersForModel, TIERS } from '../utils/pricingUtils';
 import { WALL_SIDES } from '../utils/wallSides';
 
 // API Configuration
@@ -184,6 +184,12 @@ export const validateDesignConfig = (config) => {
 	} else if (!isValidCombo(config.width, config.length, config.tier)) {
 		errors.push(
 			`The catalog does not sell ${config.width}x${config.length} as ${config.tier}`
+		);
+	} else if (config.model && !isSoldAsTier(config.model, config.tier)) {
+		// The price table is not keyed by Model, so a size can be in it and the
+		// shed still not be sold: `12x16xStandard` is a real price, for a Barn.
+		errors.push(
+			`A ${config.model} is sold as ${tiersForModel(config.model).join(' or ')} only`
 		);
 	}
 

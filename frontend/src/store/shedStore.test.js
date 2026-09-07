@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useShedStore } from './shedStore';
-import { lookupBasePrice } from '../utils/pricingUtils';
+import { lookupBasePrice, isSoldAsTier } from '../utils/pricingUtils';
 
 // Names here use the CONTEXT.md vocabulary (Model, Option, Placement) while the
 // calls still use the current identifiers. Issue #1 changes the calls; these
@@ -14,8 +14,12 @@ beforeEach(() => {
 
 describe('dimensions', () => {
 	it('starts on a Design the catalog can sell', () => {
-		const { width, length, tier } = state();
+		const { width, length, tier, model } = state();
 		expect(lookupBasePrice(width, length, tier)).not.toBeNull();
+		// A price is not enough: the table has no Model in it, so it would
+		// happily quote the opening Gable off a Barn's Standard line. It used
+		// to — the app opened on a Standard Gable, a shed that is not sold.
+		expect(isSoldAsTier(model, tier)).toBe(true);
 	});
 
 	it('never lands on a Design the catalog cannot sell', () => {
@@ -43,6 +47,36 @@ describe('dimensions', () => {
 		expect(state().width).toBe(12);
 		expect(state().length).toBe(16);
 		expect(state().tier).toBe('Deluxe');
+	});
+});
+
+describe('the grade a Model is sold at', () => {
+	// A Gable is Deluxe only. Since the grade became geometry — a Deluxe's 2x6
+	// rafters give it a 6in roof edge — a Standard Gable is not merely unpriced,
+	// it is a shed that would be drawn wrong.
+	it('moves a Standard Barn up a grade when it becomes a Gable', () => {
+		state().setModel('Barn');
+		state().setTier('Standard');
+		expect(state().tier).toBe('Standard');
+
+		state().setModel('Gable');
+		expect(state().tier).toBe('Deluxe');
+		// And keeps the size: every Standard size is sold as a Deluxe too.
+		expect(state().width).toBe(12);
+		expect(state().length).toBe(16);
+	});
+
+	it('will not be asked into a Standard Gable', () => {
+		state().setModel('Gable');
+		state().setTier('Standard');
+		expect(state().tier).toBe('Deluxe');
+	});
+
+	it('leaves a Barn on the grade it was asked for', () => {
+		state().setModel('Barn');
+		state().setTier('Standard');
+		expect(state().tier).toBe('Standard');
+		expect(lookupBasePrice(state().width, state().length, state().tier)).toBe(6089);
 	});
 });
 

@@ -55,10 +55,39 @@ export const CATALOG_WIDTHS = [...new Set(
 )].sort((a, b) => a - b);
 
 /**
- * Returns the Tiers a given width is sold in.
+ * The Tiers each Model is sold at.
+ *
+ * A Gable is **Deluxe only**. The price list says so in its headings — "Standard
+ * barn prices", then "Deluxe barns & gables" — and there is no Standard gable in
+ * the table. It is not a pricing quirk: a Standard is the barn package, 2x4
+ * rafters and 16in joists and double swing barn doors, and the shop does not
+ * build a gable that way.
+ *
+ * In the catalog rather than in code so the Go server reads the same rule
+ * (issue #8). It is also geometry now — a Deluxe's 2x6 rafters give it a 6in
+ * roof edge — so a Standard Gable is not merely unpriced, it is a shed that
+ * would be drawn wrong.
  */
-export function getAvailableTiers(width) {
-  return TIERS.filter((tier) =>
+export const MODEL_TIERS = catalog.modelTiers;
+
+/** The Tiers one Model is sold at, before any width narrows it further. */
+export function tiersForModel(model) {
+  return MODEL_TIERS[model] ?? TIERS;
+}
+
+/** Whether the catalog sells this Model at this Tier at all. */
+export function isSoldAsTier(model, tier) {
+  return tiersForModel(model).includes(tier);
+}
+
+/**
+ * Returns the Tiers a given width is sold in for a Model.
+ *
+ * Two rules narrow it, and they are different rules: a Gable is Deluxe whatever
+ * its size, and a 14 or 16 wide is Deluxe whatever its Model.
+ */
+export function getAvailableTiers(width, model) {
+  return tiersForModel(model).filter((tier) =>
     Object.keys(PRICE_TABLE).some((k) => k.startsWith(`${width}x`) && k.endsWith(`x${tier}`))
   );
 }
@@ -75,6 +104,10 @@ export function getAvailableLengths(width, tier) {
 
 /**
  * Returns true if the given combo exists in the price table.
+ *
+ * A price-table question, and only that: the table is not keyed by Model, so
+ * this says nothing about whether the Model is sold at that Tier. Ask
+ * `isSoldAsTier` as well — `12x16xStandard` is a real price, for a Barn.
  */
 export function isValidCombo(width, length, tier) {
   return `${width}x${length}x${tier}` in PRICE_TABLE;
@@ -88,33 +121,39 @@ export function lookupBasePrice(width, length, tier) {
 }
 
 /**
- * Snaps to the nearest valid combo when a dimension changes.
- * Prefers same width & Tier; picks the closest available length.
+ * Snaps to the nearest combo the catalog actually sells.
+ *
+ * The Model is part of the question, not decoration: a Gable is Deluxe only, so
+ * asking for a Standard one has to land on a Deluxe rather than on a price that
+ * belongs to a Barn. Every Standard size is also sold as a Deluxe, so moving a
+ * Gable up a grade never costs it its size.
  */
-export function snapToValidCombo(width, length, tier) {
-  // First try exact match
-  if (isValidCombo(width, length, tier)) return { width, length, tier };
+export function snapToValidCombo(width, length, tier, model) {
+  // The Model's rule comes first: a Tier it is not sold at is not a starting
+  // point to search from, it is a wrong answer to correct before searching.
+  const sold = getAvailableTiers(width, model);
+  const wanted = sold.includes(tier) ? tier : sold[0];
 
-  // Try same width + Tier with closest length
-  const lengths = getAvailableLengths(width, tier);
-  if (lengths.length > 0) {
-    const closest = lengths.reduce((a, b) =>
-      Math.abs(b - length) < Math.abs(a - length) ? b : a
-    );
-    return { width, length: closest, tier };
+  if (wanted !== undefined) {
+    if (isValidCombo(width, length, wanted)) return { width, length, tier: wanted };
+
+    // Same width and grade, closest length.
+    const lengths = getAvailableLengths(width, wanted);
+    if (lengths.length > 0) {
+      const closest = lengths.reduce((a, b) =>
+        Math.abs(b - length) < Math.abs(a - length) ? b : a
+      );
+      return { width, length: closest, tier: wanted };
+    }
   }
 
-  // Try same width in whichever Tier it is sold in. A 14 or 16 wide is Deluxe
-  // only, so asking for a Standard one has to land somewhere.
-  const tiers = getAvailableTiers(width);
-  if (tiers.length > 0) {
-    const t = tiers[0];
-    const ls = getAvailableLengths(width, t);
-    return { width, length: ls[0], tier: t };
-  }
-
-  // Fallback to first entry in the table
-  const [w, l, t] = Object.keys(PRICE_TABLE)[0].split('x');
+  // The width is sold at no grade this Model comes in. Fall back to the first
+  // combination that is — a Model is a stronger choice than a size, and a
+  // customer who picked one should not be handed the other Model's shed.
+  const fallback = Object.keys(PRICE_TABLE).find((k) =>
+    isSoldAsTier(model, k.split('x')[2])
+  ) ?? Object.keys(PRICE_TABLE)[0];
+  const [w, l, t] = fallback.split('x');
   return { width: Number(w), length: Number(l), tier: t };
 }
 

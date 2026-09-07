@@ -1,5 +1,5 @@
 {
-  "note": "The catalog of record is shed-options.md. This file is the single machine-readable copy of it: the frontend imports it and the Go server embeds it at compile time, so the two cannot drift (issue #8). Base prices are keyed WIDTHxLENGTHxTIER.",
+  "note": "The catalog of record is shed-options.md. This file is the single machine-readable copy of it: the frontend imports it and the Go server embeds it at compile time, so the two cannot drift (issue #8). Base prices are keyed WIDTHxLENGTHxTIER; modelTiers carries the rule the price list states in its headings, that a Gable is sold as a Deluxe only.",
   "basePrices": {
     "10x12xStandard": 4689,
     "10x16xStandard": 5189,
@@ -26,6 +26,15 @@
     "16x28xDeluxe": 12789,
     "16x32xDeluxe": 13389,
     "16x36xDeluxe": 13989
+  },
+  "modelTiers": {
+    "Barn": [
+      "Standard",
+      "Deluxe"
+    ],
+    "Gable": [
+      "Deluxe"
+    ]
   },
   "optionPrices": {
     "garage_door_6x7": 450,

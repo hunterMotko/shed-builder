@@ -4,6 +4,9 @@ import {
 	getOptionLineItems,
 	calculateTotalPrice,
 	getAvailableTiers,
+	tiersForModel,
+	isSoldAsTier,
+	snapToValidCombo,
 	PRICE_TABLE,
 } from './pricingUtils';
 
@@ -33,8 +36,49 @@ describe('base price', () => {
 
 	// Widths above 12 appear only in the Deluxe list.
 	it('sells the wide sizes at Deluxe only', () => {
-		expect(getAvailableTiers(12)).toEqual(['Standard', 'Deluxe']);
-		expect(getAvailableTiers(16)).toEqual(['Deluxe']);
+		expect(getAvailableTiers(12, 'Barn')).toEqual(['Standard', 'Deluxe']);
+		expect(getAvailableTiers(16, 'Barn')).toEqual(['Deluxe']);
+	});
+});
+
+// The price list has "Standard barn prices" and then "Deluxe barns & gables".
+// There is no Standard gable in it and never was: Standard *is* the barn
+// package — 2x4 rafters, 16in joists, double swing barn doors.
+describe('a Gable is sold as a Deluxe only', () => {
+	it('offers a Barn both grades and a Gable one', () => {
+		expect(tiersForModel('Barn')).toEqual(['Standard', 'Deluxe']);
+		expect(tiersForModel('Gable')).toEqual(['Deluxe']);
+
+		expect(isSoldAsTier('Gable', 'Standard')).toBe(false);
+		expect(isSoldAsTier('Barn', 'Standard')).toBe(true);
+	});
+
+	it('narrows by Model and by width, which are different rules', () => {
+		// A Gable is Deluxe whatever its size; a 16 wide is Deluxe whatever its
+		// Model. Neither implies the other, and a 12 wide Barn escapes both.
+		expect(getAvailableTiers(12, 'Gable')).toEqual(['Deluxe']);
+		expect(getAvailableTiers(16, 'Gable')).toEqual(['Deluxe']);
+		expect(getAvailableTiers(12, 'Barn')).toEqual(['Standard', 'Deluxe']);
+	});
+
+	it('moves a Gable up a grade rather than onto a Barn price', () => {
+		// 12x16xStandard is $6089 — a real entry, and the wrong one for a
+		// Gable. Every Standard size is also sold as a Deluxe, so a Gable that
+		// is moved up a grade keeps the size the customer picked.
+		expect(snapToValidCombo(12, 16, 'Standard', 'Gable'))
+			.toEqual({ width: 12, length: 16, tier: 'Deluxe' });
+		expect(snapToValidCombo(12, 16, 'Standard', 'Barn'))
+			.toEqual({ width: 12, length: 16, tier: 'Standard' });
+	});
+
+	it('leaves a size alone when only the grade was wrong', () => {
+		// Each of the seven Standard sizes has a Deluxe twin, so switching a
+		// Barn to a Gable never costs it its length.
+		for (const key of Object.keys(PRICE_TABLE).filter((k) => k.endsWith('xStandard'))) {
+			const [w, l] = key.split('x').map(Number);
+			expect(snapToValidCombo(w, l, 'Standard', 'Gable'))
+				.toEqual({ width: w, length: l, tier: 'Deluxe' });
+		}
 	});
 });
 

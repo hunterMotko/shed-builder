@@ -42,3 +42,6 @@ reference/
 
 # Go live-reload build artifacts
 tmp/
+
+# The compiled server binary, left by `go build ./...`.
+/shed-app

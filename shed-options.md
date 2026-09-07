@@ -3,6 +3,10 @@
 > what separates them.
 
 # Standard barn prices
+
+Standard is a barn package: 2x4 rafters, 16in joists and double swing barn doors. **A
+gable is sold as a Deluxe only** — there is no Standard gable in this list and never was.
+
 - 10x12x11: $4689
 - 10x16x11: $5189
 - 10x20x11: $5689
@@ -13,6 +17,9 @@
 - 12x24x11: $7089
 
 # Deluxe barns & gables
+
+Both Models, and the only grade a gable is sold at.
+
 - 10x12x11: $5789
 - 10x16x11: $6389
 - 10x20x11: $6989

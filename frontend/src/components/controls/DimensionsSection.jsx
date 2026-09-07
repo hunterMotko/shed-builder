@@ -25,6 +25,13 @@ const SELECT = {
   cursor: 'pointer',
 };
 
+const HINT = {
+  color: '#64748b',
+  fontSize: 11,
+  marginTop: 5,
+  lineHeight: 1.4,
+};
+
 const LABEL = {
   display: 'block',
   color: '#94a3b8',
@@ -43,11 +50,19 @@ export const DimensionsSection = () => {
   const width      = useShedStore((s) => s.width);
   const length     = useShedStore((s) => s.length);
   const tier       = useShedStore((s) => s.tier);
+  const model      = useShedStore((s) => s.model);
   const setWidth      = useShedStore((s) => s.setWidth);
   const setLength     = useShedStore((s) => s.setLength);
   const setTier       = useShedStore((s) => s.setTier);
 
-  const availableTiers   = getAvailableTiers(width);
+  // Two different rules narrow this, and the caption below has to say which
+  // one bit: a Gable is Deluxe whatever its size, a 14 or 16 wide is Deluxe
+  // whatever its Model. A single-option Build select with no reason beside it
+  // reads as a broken control.
+  const availableTiers   = getAvailableTiers(width, model);
+  const forcedBy = availableTiers.length > 1 ? null
+    : getAvailableTiers(width, 'Barn').length === 1 ? `A ${width} ft wide shed`
+    : `A ${model}`;
   const availableLengths = getAvailableLengths(width, tier);
   const tierStyle = TIER_STYLE[tier] ?? TIER_STYLE.Standard;
 
@@ -78,6 +93,9 @@ export const DimensionsSection = () => {
             <option key={t} value={t}>{t}</option>
           ))}
         </select>
+        {forcedBy && (
+          <p style={HINT}>{forcedBy} is sold as {availableTiers[0]} only.</p>
+        )}
       </div>
 
       {/* Summary chip */}

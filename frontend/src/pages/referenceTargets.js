@@ -188,12 +188,11 @@ const BARN_BARNDOORS_DESIGN = {
 const GABLE_FRONT_DESIGN = {
 	width: 12,
 	length: 16,
-	// Stated, not measured: nothing in the photograph or the numbers fitted from
-	// it records a grade, and 12 wide is sold at both. Held at the entry grade,
-	// which is what the frozen baseline was cut against. If these gables turn
-	// out to be Deluxe only — the price list groups them under "Deluxe barns &
-	// gables" — this moves and its baseline moves with it.
-	tier: 'Standard',
+	// A Gable is sold as a Deluxe only, so this is not a choice about this
+	// photograph — it is the only grade the shed in it can be. That makes its
+	// roof edge 6in rather than 4in, which is the one respect in which this
+	// reconstruction was wrong against the photo it was fitted to.
+	tier: 'Deluxe',
 	wallHeight: GABLE_WALL_HEIGHT,
 	color: ALMOND,
 	roofColor: ROOF_BROWN,

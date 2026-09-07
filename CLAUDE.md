@@ -20,7 +20,7 @@ Read these before changing anything substantial:
 | Term | Meaning |
 |---|---|
 | **Model** | The product line — `Gable` or `Barn`. Carries roof profile, wall height (84in vs 80.5in studs) and trim set as one bundle. Not a roof toggle. |
-| **Tier** | The build grade — `Standard` or `Deluxe`. Not a height: both stand the same, and Tier is what selects a price alongside width and length. It is also **geometry**: a Deluxe is framed with 2x6 rafters, so its roof edge reads 6in against a Standard's 4in. |
+| **Tier** | The build grade — `Standard` or `Deluxe`. Not a height: both stand the same, and Tier is what selects a price alongside width and length. It is also **geometry**: a Deluxe is framed with 2x6 rafters, so its roof edge reads 6in against a Standard's 4in. **A Gable is Deluxe only**; so is any width above 12ft. |
 | **Design** | One complete specification: Model, dimensions, colors, Options with their Placements. |
 | **Option** | A priced catalog item. An **Opening** cuts a wall (doors, windows); an **Attachment** does not (ramp, shutters, skylight, porch, loft). |
 | **Placement** | Where an Option sits on the shed. |
@@ -249,7 +249,19 @@ quietly moved to the corner of its wall rather than refused (issue #19). It mirr
 
 Base prices are a **fixed catalog of 25 width×length×Tier combinations** from
 `shed-options.md` — not a formula. Widths sold: 10, 12, 14, 16; above 12 is Deluxe only. There
-is no square-foot rate and no Model surcharge. The key is the Tier, not the height: every size
+is no square-foot rate and no Model surcharge.
+
+**The price table is not the whole catalog.** It has no Model in its key, so it cannot say
+that a Gable is sold as a Deluxe only — and `12x16xStandard` is a real price, for a Barn.
+That rule lives in `catalog.json`'s `modelTiers`, which both `pricingUtils.js` and the Go
+server read, and it is enforced in three places for three different reasons: the store
+snaps to it (`setModel` moves a Standard Barn up a grade when it becomes a Gable),
+`validateDesignConfig` refuses it on save, and the server refuses it and defaults an absent
+Tier to the grade that Model is sold at rather than flatly to Standard. Since the grade
+became geometry, a Standard Gable is not merely unpriced — it would be drawn with a
+Barn's 4in roof edge.
+
+The key is the Tier, not the height: every size
 is 11ft, so a height key would collapse all seven Standard sizes onto their Deluxe twin.
 
 Options are priced per item or per unit (per foot, per sheet, per pair, per sqft).
