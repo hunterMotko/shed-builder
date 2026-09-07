@@ -36,6 +36,7 @@ export const BarnTrim = ({
   wallHeight,
   roofLowerPitch,
   roofUpperPitch,
+  tier,
   trimColor,
 }) => {
   const TRIM_MAT = { color: trimColor, roughness: 0.6, metalness: 0 };
@@ -44,10 +45,10 @@ export const BarnTrim = ({
   // array each render would rebuild every shape each render.
   const { boards } = useMemo(
     () =>
-      trimSet('Barn', shedWidth, shedLength, wallHeight, {
+      trimSet('Barn', shedWidth, shedLength, wallHeight, tier, {
         pitches: { lower: roofLowerPitch, upper: roofUpperPitch },
       }),
-    [shedWidth, shedLength, wallHeight, roofLowerPitch, roofUpperPitch]
+    [shedWidth, shedLength, wallHeight, tier, roofLowerPitch, roofUpperPitch]
   );
 
   return (

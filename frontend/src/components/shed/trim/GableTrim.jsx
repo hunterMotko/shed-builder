@@ -15,14 +15,14 @@ import { ExtrudedBand } from '../../common/ExtrudedBand';
  * and the corner boxes really are boxes and stay boxes. That split is what the
  * kernel's `boards` and `parts` are.
  */
-export const GableTrim = ({ shedWidth, shedLength, wallHeight, trimColor }) => {
+export const GableTrim = ({ shedWidth, shedLength, wallHeight, tier, trimColor }) => {
   const TRIM_MAT = { color: trimColor, roughness: 0.6, metalness: 0 };
 
   // Memoised because the outlines below become extruded geometry: a fresh
   // array every render would rebuild every shape every render.
   const { boards, parts } = useMemo(
-    () => trimSet('Gable', shedWidth, shedLength, wallHeight),
-    [shedWidth, shedLength, wallHeight]
+    () => trimSet('Gable', shedWidth, shedLength, wallHeight, tier),
+    [shedWidth, shedLength, wallHeight, tier]
   );
 
   return (

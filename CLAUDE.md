@@ -20,7 +20,7 @@ Read these before changing anything substantial:
 | Term | Meaning |
 |---|---|
 | **Model** | The product line — `Gable` or `Barn`. Carries roof profile, wall height (84in vs 80.5in studs) and trim set as one bundle. Not a roof toggle. |
-| **Tier** | The build grade — `Standard` or `Deluxe`. Not a height: both stand the same, and Tier is what selects a price alongside width and length. |
+| **Tier** | The build grade — `Standard` or `Deluxe`. Not a height: both stand the same, and Tier is what selects a price alongside width and length. It is also **geometry**: a Deluxe is framed with 2x6 rafters, so its roof edge reads 6in against a Standard's 4in. |
 | **Design** | One complete specification: Model, dimensions, colors, Options with their Placements. |
 | **Option** | A priced catalog item. An **Opening** cuts a wall (doors, windows); an **Attachment** does not (ramp, shutters, skylight, porch, loft). |
 | **Placement** | Where an Option sits on the shed. |
@@ -92,10 +92,14 @@ All geometry is procedural. There are no model files (`.obj`, `.gltf`).
 trim, Runners and any Placements. Roofs come from `ExtrudeGeometry` over a 2D profile; walls are
 `BoxGeometry` with openings cut out.
 
-**The roof is a slab, not a solid** (ADR-0013): a plane with `ROOF_THICKNESS`, extruded
+**The roof is a slab, not a solid** (ADR-0013): a plane `roofThicknessFt(tier)` deep, extruded
 `shedLength + 2 * overhang` so it runs past both gable ends. `y = 0` in the profile is the eave
 **at the wall**, so the ridge lands on the rise `roofRiseFt` quotes and the overhang tip hangs
-below the top plate. Measuring from the overhang tip instead put a 12ft Barn's ridge 10in above
+below the top plate. **The slab's depth is the grade's, not a constant** — a Deluxe's 2x6 rafters
+make it 6in where a Standard's 2x4 make it 4in, and the fascia, the rake, the J-channel and a
+Barn's corner boards all finish on that edge. `BarnShed` and `GableShed` read `tier` off the store
+into their Design overlay and hand it down; the kernel refuses a Design without one rather than
+draw a Standard's roof on a Deluxe. Measuring from the overhang tip instead put a 12ft Barn's ridge 10in above
 its own quoted Peak Height and rendered a Gable's 6:12 as 5.54:12; there is a test asserting the
 two agree at every catalog width. Outlines come from `gableRoofProfile` / `gambrelRoofProfile` —
 the components do not compute them.

@@ -44,6 +44,10 @@ export const BarnShed = ({
 		roofMaterial: useShedStore((s) => s.roofMaterial),
 		roofLowerPitch: useShedStore((s) => s.roofLowerPitch),
 		roofUpperPitch: useShedStore((s) => s.roofUpperPitch),
+		// The build grade, which is geometry and not only a price: a Deluxe is
+		// framed with 2x6 rafters, so its roof edge reads 6in where a Standard's
+		// reads 4in, and every board that finishes on that edge moves with it.
+		tier: useShedStore((s) => s.tier),
 		porch: useShedStore((s) => s.porch),
 		options: useShedStore((s) => s.options),
 	};
@@ -55,7 +59,7 @@ export const BarnShed = ({
 	const {
 		width, length, wallHeight, color, roofColor,
 		placements, trimColor, sidingTexture, roofMaterial,
-		roofLowerPitch, roofUpperPitch, porch, options,
+		roofLowerPitch, roofUpperPitch, tier, porch, options,
 	} = d;
 	const garageDoorStyle = options.garageDoor.style ?? 'sectional';
 	// A barn has no soffit box: the panel runs 2 in past and finishes in J-channel.
@@ -138,6 +142,7 @@ export const BarnShed = ({
 				wallHeight={wallHeight}
 				roofLowerPitch={roofLowerPitch}
 				roofUpperPitch={roofUpperPitch}
+				tier={tier}
 				roofColor={roofColor}
 				roofMaterial={roofMaterial}
 				skylight={options.skylight}
@@ -150,6 +155,7 @@ export const BarnShed = ({
 				wallHeight={wallHeight}
 				roofLowerPitch={roofLowerPitch}
 				roofUpperPitch={roofUpperPitch}
+				tier={tier}
 				trimColor={trimColor}
 			/>
 

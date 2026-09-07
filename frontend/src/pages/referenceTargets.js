@@ -166,6 +166,11 @@ const barnGuardOpenings = [
 const BARN_BARNDOORS_DESIGN = {
 	width: 12,
 	length: 20,
+	// Read off the shop sheet rather than the photograph: double swing barn
+	// doors with a lock are the Standard package, where a Deluxe carries a
+	// roll-up and a 36in entry. The grade matters to the picture now — a
+	// Deluxe's 2x6 rafters make its roof edge 6in deep against a Standard's 4in.
+	tier: 'Standard',
 	wallHeight: BARN_WALL_HEIGHT,
 	color: GREEN,
 	roofColor: GALVANIZED,
@@ -183,6 +188,12 @@ const BARN_BARNDOORS_DESIGN = {
 const GABLE_FRONT_DESIGN = {
 	width: 12,
 	length: 16,
+	// Stated, not measured: nothing in the photograph or the numbers fitted from
+	// it records a grade, and 12 wide is sold at both. Held at the entry grade,
+	// which is what the frozen baseline was cut against. If these gables turn
+	// out to be Deluxe only — the price list groups them under "Deluxe barns &
+	// gables" — this moves and its baseline moves with it.
+	tier: 'Standard',
 	wallHeight: GABLE_WALL_HEIGHT,
 	color: ALMOND,
 	roofColor: ROOF_BROWN,

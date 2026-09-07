@@ -4,7 +4,7 @@ import { makeRoofShader } from '../../../utils/shaders';
 import {
   gambrelRoofProfile,
   roofSlabDepth,
-  ROOF_THICKNESS,
+  roofThicknessFt,
   GAMBREL_LOWER_PITCH,
   GAMBREL_UPPER_PITCH,
 } from '../../../utils/roofGeometry';
@@ -34,6 +34,7 @@ export const GambrelRoof = ({
   wallHeight,
   roofLowerPitch = GAMBREL_LOWER_PITCH,
   roofUpperPitch = GAMBREL_UPPER_PITCH,
+  tier,
   roofColor,
   roofMaterial,
   overhang = 2 / 12,
@@ -45,13 +46,13 @@ export const GambrelRoof = ({
     const shape = new THREE.Shape();
     const points = gambrelRoofProfile(shedWidth, roofLowerPitch, roofUpperPitch, {
       overhang,
-      thickness: ROOF_THICKNESS,
+      thickness: roofThicknessFt(tier),
     });
     shape.moveTo(points[0][0], points[0][1]);
     for (const [x, y] of points.slice(1)) shape.lineTo(x, y);
     shape.closePath();
     return shape;
-  }, [shedWidth, roofLowerPitch, roofUpperPitch, overhang]);
+  }, [shedWidth, roofLowerPitch, roofUpperPitch, overhang, tier]);
 
   const depth = roofSlabDepth(shedLength, overhang);
 
@@ -80,11 +81,11 @@ export const GambrelRoof = ({
   // (issue #42).
   const { parts: metalwork, boards: jChannel } = useMemo(
     () =>
-      roofMetal('Barn', shedWidth, shedLength, wallHeight, {
+      roofMetal('Barn', shedWidth, shedLength, wallHeight, tier, {
         pitches: { lower: roofLowerPitch, upper: roofUpperPitch },
         skylightFt: skylight?.enabled ? (skylight.runningFt ?? 8) : 0,
       }),
-    [shedWidth, shedLength, wallHeight, roofLowerPitch, roofUpperPitch, skylight]
+    [shedWidth, shedLength, wallHeight, tier, roofLowerPitch, roofUpperPitch, skylight]
   );
 
   const METAL_MAT = {

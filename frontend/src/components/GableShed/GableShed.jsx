@@ -40,6 +40,10 @@ export const GableShed = ({
 		trimColor: useShedStore((s) => s.trimColor),
 		sidingTexture: useShedStore((s) => s.sidingTexture),
 		roofMaterial: useShedStore((s) => s.roofMaterial),
+		// The build grade, which is geometry and not only a price: a Deluxe is
+		// framed with 2x6 rafters, so its roof edge reads 6in where a Standard's
+		// reads 4in, and every board that finishes on that edge moves with it.
+		tier: useShedStore((s) => s.tier),
 		porch: useShedStore((s) => s.porch),
 		options: useShedStore((s) => s.options),
 	};
@@ -50,7 +54,7 @@ export const GableShed = ({
 	const d = overlayDesign(storeDesign, design);
 	const {
 		width, length, wallHeight, color, roofColor,
-		placements, trimColor, sidingTexture, roofMaterial, porch, options,
+		placements, trimColor, sidingTexture, roofMaterial, tier, porch, options,
 	} = d;
 	const garageDoorStyle = options.garageDoor.style ?? 'sectional';
 
@@ -133,6 +137,7 @@ export const GableShed = ({
 				shedWidth={width}
 				shedLength={length}
 				wallHeight={wallHeight}
+				tier={tier}
 				trimColor={trimColor}
 			/>
 
@@ -142,6 +147,7 @@ export const GableShed = ({
 				shedLength={length}
 				wallHeight={wallHeight}
 				roofHeight={roofHeight}
+				tier={tier}
 				roofColor={roofColor}
 				roofMaterial={roofMaterial}
 				skylight={options.skylight}

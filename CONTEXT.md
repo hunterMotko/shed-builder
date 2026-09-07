@@ -134,6 +134,11 @@ every size — **16in on centre 2x4 wall studs**, **24in on centre rafters**, fi
 a 3/4in PT plywood deck. Only two lines move with the **Tier**: floor joists tighten from
 16in to 12in on centre, and rafters go from 2x4 to 2x6. A Deluxe is a heavier shed
 underneath and overhead, not a tighter one in between.
+
+The rafter is the one framing member you can see from outside. A 2x6 on edge is 2in
+deeper than a 2x4, so a **Deluxe's roof edge reads 6in where a Standard's reads 4in**,
+and the fascia, the rake, the J-channel and a Barn's corner boards all finish on it. The
+grade changes what a shed looks like, not only what it is built from.
 _Avoid_: taking the rafter spacing from the stud spacing — they are different numbers for
 different reasons, and only one of them is 16
 

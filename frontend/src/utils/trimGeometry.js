@@ -29,14 +29,19 @@ import * as kernel from '../kernel';
  * One Design, in the shape the kernel takes it.
  *
  * @param {string} model `'Barn'` or `'Gable'`
+ * @param {string} tier `'Standard'` or `'Deluxe'`. Required, and not defaulted:
+ *   a Deluxe is framed with 2x6 rafters, so its roof edge reads 6in where a
+ *   Standard's reads 4in, and every board that finishes on that edge moves with
+ *   it. The kernel refuses a Design without one rather than draw the wrong shed.
  * @param {Object} [extra] `pitches` for a Barn, `skylightFt` for a ridge
  *   skylight
  */
-const designOf = (model, shedWidth, shedLength, wallHeight, extra = {}) => ({
+const designOf = (model, shedWidth, shedLength, wallHeight, tier, extra = {}) => ({
 	model,
 	width: shedWidth,
 	length: shedLength,
 	wallHeight,
+	tier,
 	...extra,
 });
 
@@ -52,8 +57,8 @@ const designOf = (model, shedWidth, shedLength, wallHeight, extra = {}) => ({
  *   extrude (`<ExtrudedBand>`), `parts` are boxes (`<boxGeometry>`). Every
  *   piece has an `id` distinct across the whole shed, ready to be a key.
  */
-export function trimSet(model, shedWidth, shedLength, wallHeight, extra = {}) {
-	return kernel.trimSet(designOf(model, shedWidth, shedLength, wallHeight, extra));
+export function trimSet(model, shedWidth, shedLength, wallHeight, tier, extra = {}) {
+	return kernel.trimSet(designOf(model, shedWidth, shedLength, wallHeight, tier, extra));
 }
 
 /**
@@ -69,8 +74,8 @@ export function trimSet(model, shedWidth, shedLength, wallHeight, extra = {}) {
  *   `clampedFrom` is the skylight length asked for when the ridge was too short
  *   to give it — a fact about the request, not about a piece of metal.
  */
-export function roofMetal(model, shedWidth, shedLength, wallHeight, extra = {}) {
-	const metal = kernel.roofMetal(designOf(model, shedWidth, shedLength, wallHeight, extra));
+export function roofMetal(model, shedWidth, shedLength, wallHeight, tier, extra = {}) {
+	const metal = kernel.roofMetal(designOf(model, shedWidth, shedLength, wallHeight, tier, extra));
 	return { ...metal, parts: metal.parts.map(withKind) };
 }
 

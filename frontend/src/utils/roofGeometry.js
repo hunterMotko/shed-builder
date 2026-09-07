@@ -379,12 +379,29 @@ export function roofMaterialSlots(capMaterial, slopeMaterial) {
 // and what `modelSpec.roofRiseFt` has always assumed.
 
 /**
- * How thick the roof reads, in feet.
+ * How thick the roof reads on a **Standard**, in feet.
  *
  * A 2x4 rafter on edge plus sheathing and panel. It is what gives the eave a
  * fascia face to show and the rake an edge to trim.
+ *
+ * Not the whole answer any more: a Deluxe is framed with 2x6 rafters and reads
+ * 6in. Call `roofThicknessFt(tier)` unless you know the grade is Standard.
  */
 export const ROOF_THICKNESS = 0.333;
+
+/**
+ * How thick the roof reads at one grade, in feet.
+ *
+ * The rafter is the one framing member visible from outside the shed: a 2x6 on
+ * edge is 2in deeper than a 2x4, so a Deluxe's roof edge is 6in where a
+ * Standard's is 4in, and the fascia, the rake, the J-channel and a Barn's
+ * corner boards all finish on it.
+ *
+ * @param {string} tier - 'Standard' or 'Deluxe'
+ */
+export function roofThicknessFt(tier) {
+	return kernel.roofThicknessFt(tier);
+}
 
 /**
  * How far the roof projects past the wall, in feet — at the eave and the rake.

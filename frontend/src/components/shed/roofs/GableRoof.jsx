@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import * as THREE from 'three';
 import { makeRoofShader } from '../../../utils/shaders';
-import { gableRoofProfile, roofSlabDepth, ROOF_THICKNESS } from '../../../utils/roofGeometry';
+import { gableRoofProfile, roofSlabDepth, roofThicknessFt } from '../../../utils/roofGeometry';
 import { roofMetal } from '../../../utils/trimGeometry';
 import { ExtrudedBand } from '../../common/ExtrudedBand';
 import { ridgeMaterial } from '../extras/skylightMaterial';
@@ -25,6 +25,7 @@ export const GableRoof = ({
   shedLength,
   wallHeight,
   roofHeight = 4,
+  tier,
   roofColor,
   roofMaterial,
   overhang = 0.5,
@@ -41,13 +42,13 @@ export const GableRoof = ({
     const shape = new THREE.Shape();
     const points = gableRoofProfile(shedWidth, pitchX, {
       overhang,
-      thickness: ROOF_THICKNESS,
+      thickness: roofThicknessFt(tier),
     });
     shape.moveTo(points[0][0], points[0][1]);
     for (const [x, y] of points.slice(1)) shape.lineTo(x, y);
     shape.closePath();
     return shape;
-  }, [shedWidth, pitchX, overhang]);
+  }, [shedWidth, pitchX, overhang, tier]);
 
   const depth = roofSlabDepth(shedLength, overhang);
 
@@ -80,10 +81,10 @@ export const GableRoof = ({
   // metal gave up, so the two cannot drift (issue #42).
   const { parts: ridgeCap, boards: jChannel } = useMemo(
     () =>
-      roofMetal('Gable', shedWidth, shedLength, wallHeight, {
+      roofMetal('Gable', shedWidth, shedLength, wallHeight, tier, {
         skylightFt: skylight?.enabled ? (skylight.runningFt ?? 8) : 0,
       }),
-    [shedWidth, shedLength, wallHeight, skylight]
+    [shedWidth, shedLength, wallHeight, tier, skylight]
   );
 
   return (

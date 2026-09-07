@@ -18,6 +18,8 @@ import {
 	gableRoofProfile,
 	gambrelRoofProfile,
 	roofSlabDepth,
+	roofThicknessFt,
+	ROOF_THICKNESS,
 } from './roofGeometry';
 
 // Expected values here come from trigonometry, not from the implementation:
@@ -223,6 +225,44 @@ describe('roofOverhangFt', () => {
 		for (const width of [10, 12, 14, 16]) {
 			expect(roofOverhangFt('Barn', width)).toBeCloseTo(2 / 12, 10);
 		}
+	});
+});
+
+describe('roofThicknessFt', () => {
+	// The rafter is the one framing member you can see from outside the shed,
+	// and the grade changes it. The roof edge is what the eave fascia shows and
+	// what the rake is trimmed to, so this is a shape on screen and not only a
+	// line on a bill.
+	it('reads two inches deeper on a Deluxe, which is framed with 2x6', () => {
+		// 5.5 in on edge against a 2x4's 3.5, so 6 in against 4.
+		expect(roofThicknessFt('Deluxe')).toBeCloseTo(0.5, 12);
+		expect(roofThicknessFt('Deluxe') - roofThicknessFt('Standard')).toBeCloseTo(2 / 12, 3);
+	});
+
+	it('reads a Standard at the constant this file has always used', () => {
+		// The Standard has to keep its exact bits: 0.333 is what upstream wrote
+		// and what the kernel's conformance vectors are cut against.
+		expect(roofThicknessFt('Standard')).toBe(ROOF_THICKNESS);
+	});
+
+	it('refuses a grade the catalog does not sell', () => {
+		// Rather than draw a Standard's roof on it. CONTEXT.md names Special as
+		// the one to expect, and there is no such grade.
+		expect(() => roofThicknessFt('Special')).toThrow(/Special/);
+	});
+
+	it('deepens the roof slab it is handed to', () => {
+		// The whole point: the profile's underside drops by the extra depth
+		// while its top surface stays exactly where it was, so the ridge and
+		// the pitch do not move — only the edge does.
+		const at = (tier) =>
+			gableRoofProfile(12, 6, { overhang: 6.625 / 12, thickness: roofThicknessFt(tier) });
+		const floor = (p) => p.reduce((lo, [, y]) => Math.min(lo, y), Infinity);
+		const peak = (p) => p.reduce((hi, [, y]) => Math.max(hi, y), -Infinity);
+
+		expect(peak(at('Deluxe'))).toBe(peak(at('Standard')));
+		expect(floor(at('Standard')) - floor(at('Deluxe'))).toBeCloseTo(
+			roofThicknessFt('Deluxe') - roofThicknessFt('Standard'), 12);
 	});
 });
 
