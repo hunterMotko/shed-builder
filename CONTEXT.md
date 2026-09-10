@@ -110,7 +110,18 @@ An Option that cuts through a wall — doors and windows.
 
 **Attachment**:
 An Option that mounts to the shed without cutting a wall — ramp, shutters,
-skylight, porch, loft, workbench.
+skylight, porch, workbench. A **Loft** is an Attachment on a Gable and part of
+the build on a Barn: see below.
+
+**Loft**:
+A half-floor platform, covering half the shed's footprint. On a **Barn** it is
+part of the build — `1/2 loft` is on both Barn sheets in `shed-options.md`, and
+`framing.rs` bills its joists and its OSB deck like any other framing. On a
+**Gable** it is an Attachment, bought at $4 per sq ft, because no Gable sheet
+carries one. Its joists are cut from the *rafter* stock and laid out on the
+*rafter* spacing — a loft is spec'd off the roof, not off the floor it looks
+like.
+_Avoid_: mezzanine, shelf, second floor
 
 **Placement**:
 Where an Option sits on the shed. Constrained by the kind of Option: a door meets

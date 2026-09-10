@@ -22,7 +22,8 @@ Read these before changing anything substantial:
 | **Model** | The product line — `Gable` or `Barn`. Carries roof profile, wall height (84in vs 80.5in studs) and trim set as one bundle. Not a roof toggle. |
 | **Tier** | The build grade — `Standard` or `Deluxe`. Not a height: both stand the same, and Tier is what selects a price alongside width and length. It is also **geometry**: a Deluxe is framed with 2x6 rafters, so its roof edge reads 6in against a Standard's 4in. **A Gable is Deluxe only**; so is any width above 12ft. |
 | **Design** | One complete specification: Model, dimensions, colors, Options with their Placements. |
-| **Option** | A priced catalog item. An **Opening** cuts a wall (doors, windows); an **Attachment** does not (ramp, shutters, skylight, porch, loft). |
+| **Option** | A priced catalog item. An **Opening** cuts a wall (doors, windows); an **Attachment** does not (ramp, shutters, skylight, porch, workbench). |
+| **Loft** | A half-floor platform. On a **Barn** it is part of the build, not an Option — `1/2 loft` is on both Barn sheets in `shed-options.md` and the kernel frames it. On a **Gable** it is an Attachment at $4/sq ft, because no Gable sheet carries one. |
 | **Placement** | Where an Option sits on the shed. |
 | **Quote** | The price the server computes. The client's number is never trusted. |
 | **Runner** | A pressure-treated 4x4 the shed sits on. Five in a standard build. |
@@ -268,6 +269,14 @@ Options are priced per item or per unit (per foot, per sheet, per pair, per sqft
 
 Workbench, pegboard and loft are priced on both sides but are **not yet in the store's
 `options` defaults**, so nothing can enable them from the UI (issue #9).
+
+**A Barn already has half a loft, and the $4/sq ft line does not know that.** The
+sheet calls the Option "add loft/shelving", so on a Barn it can only mean platform
+*beyond* the included half — but `priceOptions` and `getOptionLineItems` take a raw
+`sqft` on either Model, and nothing stops a quote billing the included half at $4.
+No UI can reach it today, which is the only reason this is a note and not a bug.
+Whoever wires issue #9 has to decide what the number means on a Barn; it is not
+decided here.
 
 **The numbers live in exactly one file: `catalog.json` at the repo root.** The frontend imports it and
 the Go server embeds it with `go:embed`, so a price change is a one-line edit to that file and

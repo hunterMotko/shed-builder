@@ -42,6 +42,11 @@ Both Models, and the only grade a gable is sold at.
 - 16x32x11: $13389
 - 16x36x11: $13989
 
+> A **loft joist is spec'd off the roof, not the floor**: it takes the rafter's
+> stock and the rafter's spacing, so a barn framed with 2x6 rafters gets a 2x6
+> loft. The deck is OSB — the floor's PT plywood is a ground-contact spec and a
+> loft is not on the ground.
+
 # 12 wide standard barns
 - 5 4x4 PT runners
 - 3/4 in PT plywood sheathing
@@ -50,7 +55,7 @@ Both Models, and the only grade a gable is sold at.
 - smart siding
 - 24 in on center 2x4 rafters
 - double swing barn doors with lock
-- 1/2 loft
+- 1/2 loft: 2x4 joists, 24 in on center, OSB deck
 - premium steel roof with under laminate
 
 # 14x28 Deluxe Gable garage
@@ -61,6 +66,7 @@ Both Models, and the only grade a gable is sold at.
 - smart siding
 - 24 in on center 2x6 rafters
 - 8x7 roll up door & 36in entry door
+- no loft — a gable is built without one, and buys one as the option below
 - premium steel roof with under laminate
 
 # 16x36 Deluxe Gambrel Barn
@@ -71,7 +77,7 @@ Both Models, and the only grade a gable is sold at.
 - smart siding
 - 24 in on center 2x6 rafters
 - 8x7 roll up door & 36in entry door
-- 1/2 loft
+- 1/2 loft: 2x6 joists, 24 in on center, OSB deck
 - premium steel roof with under laminate
 
 # Other popular options
