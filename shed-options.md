@@ -42,6 +42,15 @@ Both Models, and the only grade a gable is sold at.
 - 16x32x11: $13389
 - 16x36x11: $13989
 
+> Every wall on every sheet below is **a bottom plate and a double top plate**,
+> 2x4 on the flat — 4.5 in of plate, which is why a wall stands 4.5 in taller
+> than its studs. The floor is closed the long way by **two 2x4 PT rim joists**,
+> one down each side, capping the ends of the joists that span the width.
+>
+> **There is no blocking in any of these builds.** Not an omission from the
+> list: the shop does not block, so a sheet that grew a blocking line would be
+> describing a different shed.
+
 > A **loft joist is spec'd off the roof, not the floor**: it takes the rafter's
 > stock and the rafter's spacing, so a barn framed with 2x6 rafters gets a 2x6
 > loft. The deck is OSB — the floor's PT plywood is a ground-contact spec and a
