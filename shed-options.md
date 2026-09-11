@@ -66,7 +66,8 @@ Both Models, and the only grade a gable is sold at.
 - smart siding
 - 24 in on center 2x6 rafters
 - 8x7 roll up door & 36in entry door
-- no loft — a gable is built without one, and buys one as the option below
+- no loft — a gable is built without one, so its first loft is bought by the sq ft
+  under the options below
 - premium steel roof with under laminate
 
 # 16x36 Deluxe Gambrel Barn
@@ -91,7 +92,8 @@ Both Models, and the only grade a gable is sold at.
 - 15in vinyl shutters: $70 
 - 32in heavy duty workbench $35(per running ft - (2x6 fram 3/4in treated plywood top))
 - pegboard 4x8 white per sheet: $70
-- add loft/shelving: $4 per sq ft
+- add loft/shelving: $4 per sq ft (footage *added* — a barn's 1/2 loft above is
+  already in the price, so this is extra lofts and shelving on top of it)
 - heavy duty all treated ramp: $275 (6-7-8 x 4' or $325 8-9-10 x 4')
 - vinyl octagon gable vent 16in: $85
 

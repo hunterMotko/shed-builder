@@ -270,13 +270,13 @@ Options are priced per item or per unit (per foot, per sheet, per pair, per sqft
 Workbench, pegboard and loft are priced on both sides but are **not yet in the store's
 `options` defaults**, so nothing can enable them from the UI (issue #9).
 
-**A Barn already has half a loft, and the $4/sq ft line does not know that.** The
-sheet calls the Option "add loft/shelving", so on a Barn it can only mean platform
-*beyond* the included half — but `priceOptions` and `getOptionLineItems` take a raw
-`sqft` on either Model, and nothing stops a quote billing the included half at $4.
-No UI can reach it today, which is the only reason this is a note and not a bug.
-Whoever wires issue #9 has to decide what the number means on a Barn; it is not
-decided here.
+**The $4/sq ft loft line is for footage on top of what the shed already has.** It
+is `add loft/shelving` on the sheet and it means exactly that — extra lofts, extra
+shelving — so it adds to a Barn's included half rather than replacing or
+double-billing it, and on a Gable it buys the whole platform because a Gable is
+built with none. That is why `priceOptions` and `getOptionLineItems` take a raw
+`sqft` on either Model and are right to: the number is what the customer is adding,
+not what the finished shed ends up with. A UI for issue #9 should ask it that way.
 
 **The numbers live in exactly one file: `catalog.json` at the repo root.** The frontend imports it and
 the Go server embeds it with `go:embed`, so a price change is a one-line edit to that file and

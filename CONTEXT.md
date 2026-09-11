@@ -114,13 +114,18 @@ skylight, porch, workbench. A **Loft** is an Attachment on a Gable and part of
 the build on a Barn: see below.
 
 **Loft**:
-A half-floor platform, covering half the shed's footprint. On a **Barn** it is
-part of the build — `1/2 loft` is on both Barn sheets in `shed-options.md`, and
-`framing.rs` bills its joists and its OSB deck like any other framing. On a
-**Gable** it is an Attachment, bought at $4 per sq ft, because no Gable sheet
-carries one. Its joists are cut from the *rafter* stock and laid out on the
-*rafter* spacing — a loft is spec'd off the roof, not off the floor it looks
-like.
+A half-floor platform. A **Barn** is built with one covering half its footprint —
+`1/2 loft` is on both Barn sheets in `shed-options.md`, and `framing.rs` bills
+its joists and its OSB deck like any other framing. A **Gable** is built with
+none.
+
+The `add loft/shelving` Option at $4 per sq ft is loft **on top of that**: extra
+lofts and shelving, priced by the footage being added. So it is additive on both
+Models — a Gable's first loft is all Option, and a Barn's included half is never
+part of the number.
+
+A loft's joists are cut from the *rafter* stock and laid out on the *rafter*
+spacing: a loft is spec'd off the roof, not off the floor it looks like.
 _Avoid_: mezzanine, shelf, second floor
 
 **Placement**:
