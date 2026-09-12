@@ -108,6 +108,14 @@ _Avoid_: add-on, extra, upgrade, accessory
 **Opening**:
 An Option that cuts through a wall — doors and windows.
 
+**Header**:
+The doubled 2x8 spanning the top of an Opening, carrying the wall above it. Runs
+the rough opening plus 3in, bearing 1.5in on the **jack stud** at each end; a
+**king stud** stands outside each jack and runs the full height of the wall like
+the studs beside it. One spec at every span the catalog sells.
+_Avoid_: lintel, trimmer (a trimmer is the jack, and naming it twice is how the
+count goes wrong)
+
 **Attachment**:
 An Option that mounts to the shed without cutting a wall — ramp, shutters,
 skylight, porch, workbench. A **Loft** is an Attachment on a Gable and part of

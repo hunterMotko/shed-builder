@@ -51,6 +51,16 @@ Both Models, and the only grade a gable is sold at.
 > list: the shop does not block, so a sheet that grew a blocking line would be
 > describing a different shed.
 
+> **Every Opening on every sheet below is framed the same way**, whatever it
+> spans: a **doubled 2x8 header, the rough opening plus 3in**, carried on **one
+> jack stud and one king stud each side**. The 3in is the bearing — a jack at
+> each end, 1.5in apiece. A 24in slide window is framed the way an 8x7 roll-up
+> is, so there is no table of header sizes here and none is wanted.
+>
+> Not stated, and not guessed anywhere: whether a header runs tight to the
+> double top plate (and so whether there are cripples over it), and what a
+> window sill is. Both of those *add* lumber to the list above.
+
 > A **loft joist is spec'd off the roof, not the floor**: it takes the rafter's
 > stock and the rafter's spacing, so a barn framed with 2x6 rafters gets a 2x6
 > loft. The deck is OSB — the floor's PT plywood is a ground-contact spec and a
