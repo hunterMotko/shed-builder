@@ -115,3 +115,7 @@ from `ShedWall` for the roof and trim components that align against the wall fac
 **Related:**
 - **ADR-010** — every Model renders four walls, so all four now carry openings and all four
   rotations matter. Before, a Barn had no front or back wall for a back-facing door to be wrong on.
+
+**Excepted by:**
+- **ADR-015** — the gable end above the eave is not a wall and takes no Placement, so the octagon's
+  position lives in `gableEndOpenings.js` rather than here.

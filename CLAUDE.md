@@ -55,7 +55,7 @@ npm test           # vitest, single run
 npm run test:watch
 npm run test:e2e   # playwright: freeze-frame the reference renders
 npm run build
-npm run lint       # 7 pre-existing errors — don't add more
+npm run lint       # clean — keep it that way
 ```
 
 ## Architecture
@@ -197,19 +197,16 @@ corner lap rather than butt, so the front or back one runs past to cover the sid
 grain. The 4in face is what both components have always defaulted to, and the Reference Photos
 agree with it.
 
-### CSG (cutting openings)
+### Cutting openings
 
-`utils/wallOpenings.js` owns the cut: `cutOpenings(baseGeometry, placements, opts)` subtracts one
-box per Placement in the wall's **local** space (ADR-0001) and returns a new geometry, or `null`
-when the wall has no openings. `ShedWall.jsx` calls it from a `useMemo` and disposes the result —
-the cut geometry reaches the mesh through `<primitive>`, which React Three Fiber never disposes.
-Left and right walls are rotated `[0, -π/2, 0]` so a wall's local X always runs along its own
-width.
-
-**Operands must be `Brush`, not `THREE.Mesh`.** `Evaluator.evaluate` calls `prepareGeometry()` on
-both, which only `Brush` has. Passing a Mesh throws, and for a long time that throw was caught and
-logged while every wall silently rendered solid (issue #25). `evaluator.useGroups = false`, since a
-wall draws with one material.
+**There is no CSG.** `utils/wallOpenings.js`'s `cutOpenings(baseGeometry, placements, opts)` keeps
+its old signature, but it asks the kernel for the wall panel with its Openings already cut —
+generated analytically, never subtracted (kernel ADR-0001) — and wraps the buffers in a
+`THREE.BufferGeometry`, or returns `null` when the wall has no openings. `baseGeometry` is unused.
+`three-bvh-csg`, `Brush` and `Evaluator` are gone; `frontend/src/kernel/README.md` lists what else
+is routed. `ShedWall.jsx` calls it from a `useMemo` and disposes the result — the geometry reaches
+the mesh through `<primitive>`, which React Three Fiber never disposes. Left and right walls are
+rotated `[0, -π/2, 0]` so a wall's local X always runs along its own width.
 
 **`openingTransform` is the only place opening coordinates are worked out.** The cut and every
 visible part of an opening — door slab, window, trim frame, shutters — derive from it, so the two
@@ -222,8 +219,8 @@ Do not recompute a position from `normalizedX`/`normalizedY` inside a component.
 each with its own copy of the formula, and every copy was wrong in at least one way (issues #17,
 #26).
 
-CSG is expensive and has a performance ceiling — read ADR-0005 before adding placements or moving
-this work.
+ADR-0005's CSG performance ceiling no longer applies — there is no boolean left to be slow — and it
+is kept as history.
 
 ### Backend API (Go + Gin)
 
@@ -358,12 +355,15 @@ create a Placement yet, so an enabled parent Option stands in for one. Both fall
 and both come out when reconcile lands — until then, pricing still reads `shutters.pairs` rather
 than counting shuttered windows, because counting would price at zero.
 
-Known gaps, all issue #10:
+Known gaps, all issue #10. A click on a wall places an Opening and the Options tab lists and
+removes Placements, but:
 
-- `PlacementDialog.jsx` and `PlacementList.jsx` are imported nowhere, so a user cannot create a
-  Placement through the UI at all. The only runtime path into `addPlacement` is loading a saved
-  Design.
-- Enabling an Option does not create a Placement, so a garage door adds money and no geometry.
+- Enabling a placeable Option does not create a Placement, so a garage door can still add money
+  and no geometry. The Quote reads Option flags — `shutters.pairs` among them — not the Placements.
+- There is no `reconcile`. A resize runs `snapToValidCombo` and nothing else, so an Opening a resize
+  leaves hanging off its wall is neither revalidated nor reported.
+- The fallbacks marked for issue #10 are still in `dependentOptions.js`, `ShedWall.jsx` and
+  `Ramp.jsx`.
 - `validatePlacement` reports an Opening that hangs off its wall as a *warning*, leaving
   `valid: true`. A test marks this deliberately with `it.fails`.
 
@@ -418,9 +418,6 @@ an Option — `gable-skylight`, `barn-skylight` — exists so the pixel suite ha
 that Option's code path. There is no photograph of one, so each reuses a measured Design whole
 (`GABLE_FRONT_DESIGN`, `BARN_BARNDOORS_DESIGN`) and changes only the Option and the camera. The
 measured-not-guessed rule survives because these invent no dimension, colour or pitch.
-
-A stale fork of the shed components still sits under `pages/reference-match/barn/`; nothing
-imports it, and issue #4 deletes it.
 
 **Click a wall to place an Opening.** `WallPicker` sits inside `App.jsx`'s `<Canvas>`, turns a
 click into `{ wall, normalizedX, normalizedY }` through the kernel's `wallHit`, and `App` opens
@@ -657,11 +654,11 @@ frontend/src/
   components/{Barn,Gable}Shed/    per-Model assembly
   components/shed/                walls, roofs, trim, openings, extras
   components/common/              door/window frames and objects, Runners
-  pages/ReferenceMatch.jsx        photo vs render (its scene is a fork — issue #4)
+  pages/ReferenceMatch.jsx        photo vs render, drawn by the real components (ADR-0012)
   utils/roofGeometry.js           roof math
   utils/modelSpec.js              what a Model bundles: wall height, rise, peak
   utils/design.js                 overlay a fixed Design on the store's (ADR-0012)
-  utils/wallOpenings.js           CSG: cut Openings out of a wall (Brush, local space)
+  utils/wallOpenings.js           openingTransform, wallSpan, and the kernel's cut wall panel
   utils/wallSides.js              the four walls, and routing Placements onto them
   utils/gableEndOpenings.js       the octagon in a gable end: where it sits, which ends carry one
   utils/dependentOptions.js       Options that need a parent Placement: shutters, ramp
@@ -671,6 +668,7 @@ frontend/src/
   pages/referenceTargets.js       the Reference Match fixtures, every number measured
   utils/pricingUtils.js           catalog and Option line items
   services/designApi.js           axios client
+  kernel/                         the wasm kernel, built from KERNEL.pin — see its README
 
 catalog.json                      the catalog: 25 base prices and 15 Option prices, shared
 main.go                           pricing, routes, in-memory store (module root)
