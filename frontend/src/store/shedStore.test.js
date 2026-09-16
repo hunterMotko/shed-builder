@@ -134,3 +134,56 @@ describe('Placements', () => {
 		expect(state().placements).toEqual([]);
 	});
 });
+
+describe('interior Options', () => {
+	// Workbench, pegboard and loft were priced on both sides and reachable from
+	// neither: the catalog priced them, `pricingUtils` had branches for them,
+	// and the store had no keys, so nothing could switch one on (issue #9).
+	it('offers the three the catalog prices', () => {
+		const { options } = state();
+
+		expect(options.workbench).toBeDefined();
+		expect(options.pegboard).toBeDefined();
+		expect(options.loft).toBeDefined();
+		expect(options.workbench.enabled).toBe(false);
+	});
+
+	it('prices a loft by the footage added', () => {
+		const before = state().getPrice();
+		state().setOption('loft', { enabled: true, sqft: 96 });
+
+		// $4 per sq ft. It is footage *added*: a Barn is built with a half loft
+		// already, and this buys more on top of it.
+		expect(state().getPrice()).toBe(before + 384);
+	});
+
+	it('prices a workbench by the running foot and pegboard by the sheet', () => {
+		const before = state().getPrice();
+		state().setOption('workbench', { enabled: true, runningFt: 10 });
+		state().setOption('pegboard', { enabled: true, sheets: 3 });
+
+		// $35 per running ft, $70 per 4x8 sheet.
+		expect(state().getPrice()).toBe(before + 350 + 210);
+	});
+
+	it('puts them back on a reset', () => {
+		state().setOption('loft', { enabled: true, sqft: 200 });
+		state().reset();
+
+		expect(state().options.loft.enabled).toBe(false);
+		expect(state().options.loft.sqft).toBe(96);
+	});
+});
+
+describe('the porch', () => {
+	// It had geometry, store state and no price anywhere — not in the catalog,
+	// not in `pricingUtils`, and not even a field in the server's Design, so a
+	// porch was quoted at nothing and then discarded on save. A shed that can
+	// be drawn but not quoted should not be drawable: it comes back with #45,
+	// recessed, and priced.
+	it('is not something a Design carries', () => {
+		expect(state().porch).toBeUndefined();
+		expect(state().setPorch).toBeUndefined();
+		expect(state().getConfig()).not.toHaveProperty('porch');
+	});
+});

@@ -50,7 +50,7 @@ describe('overlayDesign', () => {
 		expect(base.length).toBe(16);
 	});
 
-	// A falsy value is a real value: black trim, a zero-depth porch.
+	// A falsy value is a real value: black trim, a width of zero.
 	it('keeps a falsy override rather than falling back', () => {
 		const merged = overlayDesign(storeDesign(), { trimColor: '', width: 0 });
 

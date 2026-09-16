@@ -8,7 +8,6 @@ import { GarageDoorPreview }    from '../components/preview/GarageDoorPreview';
 import { SwingBarnDoorPreview } from '../components/preview/SwingBarnDoorPreview';
 import { OctagonWindowPreview } from '../components/preview/OctagonWindowPreview';
 import { RampPreview }          from '../components/preview/RampPreview';
-import { PorchPreview }         from '../components/preview/PorchPreview';
 import { SkylightPreview }      from '../components/preview/SkylightPreview';
 import { ShuttersPreview }      from '../components/preview/ShuttersPreview';
 
@@ -96,19 +95,6 @@ const REGISTRY = [
           { value: 'large', label: 'Large (9 ft wide)' },
         ],
       },
-    ],
-  },
-  {
-    id: 'porch',
-    label: 'Porch',
-    component: PorchPreview,
-    camera: [20, 10, 24],
-    target: [0, 4, 9],
-    defaults: { shedWidth: 12, depth: 6, color: '#8B7355' },
-    controls: [
-      { key: 'shedWidth', label: 'Shed Width (ft)', type: 'range', min: 8, max: 20, step: 2 },
-      { key: 'depth',     label: 'Depth (ft)',      type: 'range', min: 4, max: 10, step: 1 },
-      { key: 'color',     label: 'Post Color',      type: 'color' },
     ],
   },
   {

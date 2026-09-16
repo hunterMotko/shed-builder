@@ -22,7 +22,7 @@ Read these before changing anything substantial:
 | **Model** | The product line — `Gable` or `Barn`. Carries roof profile, wall height (84in vs 80.5in studs) and trim set as one bundle. Not a roof toggle. |
 | **Tier** | The build grade — `Standard` or `Deluxe`. Not a height: both stand the same, and Tier is what selects a price alongside width and length. It is also **geometry**: a Deluxe is framed with 2x6 rafters, so its roof edge reads 6in against a Standard's 4in. **A Gable is Deluxe only**; so is any width above 12ft. |
 | **Design** | One complete specification: Model, dimensions, colors, Options with their Placements. |
-| **Option** | A priced catalog item. An **Opening** cuts a wall (doors, windows); an **Attachment** does not (ramp, shutters, skylight, porch, workbench). |
+| **Option** | A priced catalog item. An **Opening** cuts a wall (doors, windows); an **Attachment** does not (ramp, shutters, skylight, workbench, pegboard, loft). |
 | **Loft** | A half-floor platform. On a **Barn** it is part of the build, not an Option — `1/2 loft` is on both Barn sheets in `shed-options.md` and the kernel frames it. On a **Gable** it is an Attachment at $4/sq ft, because no Gable sheet carries one. |
 | **Placement** | Where an Option sits on the shed. |
 | **Quote** | The price the server computes. The client's number is never trusted. |
@@ -74,8 +74,12 @@ There is no `wallHeight` in the store. The wall is a Model constant in `utils/mo
 (85in Barn, 88.5in Gable) and the Peak Height is derived from it for display only. The
 catalog's third number is a nominal 11 on every size — a label on the SKU, not geometry.
 
-`options` holds nine Options, all disabled by default. `placements` is a flat array. `porch` is
-separate from `options` and currently has **no price** (issue #9).
+`options` holds twelve Options, all disabled by default, and `placements` is a flat array.
+
+**There is no porch.** It had geometry and store state and no price anywhere — not in
+`catalog.json`, not in `pricingUtils.js`, and not even a field in the server's `Design`, so a
+porch was quoted at nothing and then discarded on save. A shed that can be drawn but neither
+quoted nor persisted should not be drawable. Issue #45 brings it back recessed, and priced.
 
 **The store may only ever hold a Design the catalog sells.** `setWidth`, `setLength` and
 `setTier` all run `snapToValidCombo`, which falls back to the nearest sellable combination
@@ -224,14 +228,25 @@ is kept as history.
 
 ### Backend API (Go + Gin)
 
-`main.go`, at the repo root. Storage is an in-memory map behind a `sync.RWMutex`, so **every Design is lost
-on restart**, and `GET /api/designs` returns everything to anyone (issue #12).
+`main.go`, at the repo root. **Designs are stored in SQLite**, through `modernc.org/sqlite` — a
+pure-Go driver, so the server stays one static binary with no C toolchain and runs on any host
+with a writable disk. `SHED_DB` names the file; it defaults to `shed.db` and the tests point it
+at a temporary one. The database opens lazily on first use, so `go test` touches no disk until a
+request is served.
+
+**A Design is stored whole, as JSON in one column** (`id`, `created_at`, `doc`). A column per
+field would be a second description of the `Design` struct to keep in step, and nothing queries
+by field: a Design is written once and read back by its id. That id is a UUID, and it is the
+customer's unguessable handle — what stands in for an account until there is one.
+
+**There is deliberately no route that lists every Design.** The one that did returned every
+customer's design and details to any caller, and it is deleted rather than guarded (issue #12).
+A staff view arrives with authentication, not before it.
 
 | Route | Behaviour |
 |---|---|
 | `POST /api/save-design` | Validates the combination, the Model and every Placement, computes the Quote, returns 201 with a UUID |
 | `GET /api/design/:id` | One Design, or 404 |
-| `GET /api/designs` | Every stored Design |
 
 `newRouter()` builds the router so tests can drive it with `httptest`; `main()` only serves it.
 CORS is wide open (`*`).
@@ -264,8 +279,9 @@ is 11ft, so a height key would collapse all seven Standard sizes onto their Delu
 
 Options are priced per item or per unit (per foot, per sheet, per pair, per sqft).
 
-Workbench, pegboard and loft are priced on both sides but are **not yet in the store's
-`options` defaults**, so nothing can enable them from the UI (issue #9).
+Workbench, pegboard and loft are priced on both sides **and reachable**: they sit in the store's
+`options` defaults and in an **Interior** group on the Options tab, asking for running feet, 4x8
+sheets, and square feet added. They take no Placement — they are quantities, not positions.
 
 **The $4/sq ft loft line is for footage on top of what the shed already has.** It
 is `add loft/shelving` on the sheet and it means exactly that — extra lofts, extra
@@ -273,7 +289,7 @@ shelving — so it adds to a Barn's included half rather than replacing or
 double-billing it, and on a Gable it buys the whole platform because a Gable is
 built with none. That is why `priceOptions` and `getOptionLineItems` take a raw
 `sqft` on either Model and are right to: the number is what the customer is adding,
-not what the finished shed ends up with. A UI for issue #9 should ask it that way.
+not what the finished shed ends up with. The Options tab asks it that way: its loft row is labelled square feet *added*, and says a barn is built with a half loft already.
 
 **The numbers live in exactly one file: `catalog.json` at the repo root.** The frontend imports it and
 the Go server embeds it with `go:embed`, so a price change is a one-line edit to that file and
@@ -671,7 +687,7 @@ frontend/src/
   kernel/                         the wasm kernel, built from KERNEL.pin — see its README
 
 catalog.json                      the catalog: 25 base prices and 15 Option prices, shared
-main.go                           pricing, routes, in-memory store (module root)
+main.go                           pricing, routes, SQLite storage (module root)
 main_test.go                      API tests
 ```
 

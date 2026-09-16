@@ -8,14 +8,13 @@ import { BarnEnd } from '../shed/roofs/BarnEnd';
 import { octagonForEnd } from '../../utils/gableEndOpenings';
 import { carriesAttachment, attachmentValue } from '../../utils/dependentOptions';
 import { roofOverhangFt } from '../../utils/roofGeometry';
-import { Porch } from '../shed/extras/Porch';
 import { Ramp } from '../shed/extras/Ramp';
 import { Runners } from '../common/Runners';
 import { BarnTrim } from '../shed/trim/BarnTrim';
 
 /**
  * BarnShed — composition wrapper.
- * Assembles: 4× ShedWall + GambrelRoof + Runners + optional Porch.
+ * Assembles: 4× ShedWall + GambrelRoof + Runners.
  *
  * The walls run floor to eave on all four sides, the same as GableShed. Above
  * the eave the barn's front and back faces are `BarnEnd` — real siding at
@@ -48,7 +47,6 @@ export const BarnShed = ({
 		// framed with 2x6 rafters, so its roof edge reads 6in where a Standard's
 		// reads 4in, and every board that finishes on that edge moves with it.
 		tier: useShedStore((s) => s.tier),
-		porch: useShedStore((s) => s.porch),
 		options: useShedStore((s) => s.options),
 	};
 
@@ -59,7 +57,7 @@ export const BarnShed = ({
 	const {
 		width, length, wallHeight, color, roofColor,
 		placements, trimColor, sidingTexture, roofMaterial,
-		roofLowerPitch, roofUpperPitch, tier, porch, options,
+		roofLowerPitch, roofUpperPitch, tier, options,
 	} = d;
 	const garageDoorStyle = options.garageDoor.style ?? 'sectional';
 	// A barn has no soffit box: the panel runs 2 in past and finishes in J-channel.
@@ -164,20 +162,6 @@ export const BarnShed = ({
 				width={width}
 				length={length}
 			/>
-
-			{/* Optional porch */}
-			{porch.enabled && (
-				<Porch
-					shedWidth={width}
-					shedLength={length}
-					wallHeight={wallHeight}
-					wall={porch.wall}
-					depth={porch.depth}
-					color={color}
-					roofColor={roofColor}
-					roofMaterial={roofMaterial}
-				/>
-			)}
 		</group>
 	);
 };

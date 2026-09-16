@@ -19,9 +19,7 @@ const GABLE_WALL_HEIGHT = wallHeightFt('Gable'); // 88.5in — the Models differ
 
 // A reference target must not inherit whatever the customer has switched on in
 // the Configurator — the shed components fall back to the store for any field a
-// Design leaves out, and a stray porch would land in the reconstruction.
-const NO_PORCH = { enabled: false, wall: 'front', depth: 6 };
-
+// Design leaves out, and a stray Option would land in the reconstruction.
 const NO_OPTIONS = {
 	garageDoor: { enabled: false, size: '8x7', style: 'rollup' },
 	additionalDoor: { enabled: false, size: '6x7' },
@@ -181,7 +179,6 @@ const BARN_BARNDOORS_DESIGN = {
 	roofLowerPitch: GAMBREL_LOWER_PITCH,
 	roofUpperPitch: GAMBREL_UPPER_PITCH,
 	placements: barnDoors,
-	porch: NO_PORCH,
 	options: NO_OPTIONS,
 };
 
@@ -200,7 +197,6 @@ const GABLE_FRONT_DESIGN = {
 	sidingTexture: 'T1-11',
 	roofMaterial: 'metal',
 	placements: gableOpenings,
-	porch: NO_PORCH,
 	options: NO_OPTIONS,
 };
 

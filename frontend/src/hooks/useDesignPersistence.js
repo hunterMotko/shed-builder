@@ -38,7 +38,6 @@ export const useDesignPersistence = () => {
 		setRoofUpperPitch,
 		setFoundationHeight,
 		setFoundationColor,
-		setPorch,
 		setOption,
 		setPrice,
 		clearPlacements,
@@ -119,7 +118,6 @@ export const useDesignPersistence = () => {
 			if (design.roofUpperPitch != null) setRoofUpperPitch(design.roofUpperPitch);
 			if (design.foundationHeight != null) setFoundationHeight(design.foundationHeight);
 			if (design.foundationColor != null) setFoundationColor(design.foundationColor);
-			if (design.porch != null) setPorch(design.porch);
 			if (design.options != null) {
 				Object.entries(design.options).forEach(([key, cfg]) => setOption(key, cfg));
 			}

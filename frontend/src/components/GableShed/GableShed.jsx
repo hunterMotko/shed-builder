@@ -9,14 +9,13 @@ import { roofOverhangFt } from '../../utils/roofGeometry';
 import { GableEnd } from '../shed/roofs/GableEnd';
 import { octagonForEnd } from '../../utils/gableEndOpenings';
 import { carriesAttachment, attachmentValue } from '../../utils/dependentOptions';
-import { Porch } from '../shed/extras/Porch';
 import { Ramp } from '../shed/extras/Ramp';
 import { Runners } from '../common/Runners';
 import { GableTrim } from '../shed/trim/GableTrim';
 
 /**
  * GableShed — composition wrapper.
- * Assembles: 4× ShedWall + 2× GableEnd + GableRoof + Runners + optional Porch.
+ * Assembles: 4× ShedWall + 2× GableEnd + GableRoof + Runners.
  * All geometry and shader logic lives in the individual components.
  */
 export const GableShed = ({
@@ -44,7 +43,6 @@ export const GableShed = ({
 		// framed with 2x6 rafters, so its roof edge reads 6in where a Standard's
 		// reads 4in, and every board that finishes on that edge moves with it.
 		tier: useShedStore((s) => s.tier),
-		porch: useShedStore((s) => s.porch),
 		options: useShedStore((s) => s.options),
 	};
 
@@ -54,7 +52,7 @@ export const GableShed = ({
 	const d = overlayDesign(storeDesign, design);
 	const {
 		width, length, wallHeight, color, roofColor,
-		placements, trimColor, sidingTexture, roofMaterial, tier, porch, options,
+		placements, trimColor, sidingTexture, roofMaterial, tier, options,
 	} = d;
 	const garageDoorStyle = options.garageDoor.style ?? 'sectional';
 
@@ -169,20 +167,6 @@ export const GableShed = ({
 					placement={rampDoor}
 					wall="front"
 					size={attachmentValue('ramp', rampDoor, options)}
-				/>
-			)}
-
-			{/* Optional porch */}
-			{porch.enabled && (
-				<Porch
-					shedWidth={width}
-					shedLength={length}
-					wallHeight={wallHeight}
-					wall={porch.wall}
-					depth={porch.depth}
-					color={color}
-					roofColor={roofColor}
-					roofMaterial={roofMaterial}
 				/>
 			)}
 		</group>

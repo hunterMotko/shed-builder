@@ -46,12 +46,6 @@ export const useShedStore = create((set) => ({
 	// Foundation Configuration
 	foundationHeight: 1.5, // feet
 	foundationColor: '#8B7355', // brown/tan concrete/timber appearance
-	// Porch configuration
-	porch: {
-		enabled: false,
-		wall: 'front',   // 'front' | 'back' | 'left' | 'right'
-		depth: 6,        // feet the porch extends from the wall
-	},
 	// Add-on options (all disabled by default)
 	options: {
 		garageDoor:     { enabled: false, size: '8x7', style: 'sectional' },
@@ -63,6 +57,12 @@ export const useShedStore = create((set) => ({
 		shutters:       { enabled: false, pairs: 1 },
 		ramp:           { enabled: false, size: 'small' }, // 'small' | 'large'
 		octagonVent:    { enabled: false, ends: 'front' },
+		// Interior Options. Quantities, not positions: none of them takes a
+		// Placement, and `loft.sqft` is footage *added* — a Barn is already
+		// built with a half loft, and this buys more on top of it.
+		workbench:      { enabled: false, runningFt: 8 },
+		pegboard:       { enabled: false, sheets: 2 },
+		loft:           { enabled: false, sqft: 96 },
 	},
 	// Calculated state
 	price: 0,
@@ -106,13 +106,6 @@ export const useShedStore = create((set) => ({
 			[key]: { ...state.options[key], ...config },
 		},
 	})),
-	setPorch: (porchConfig) => set((state) => ({
-		porch: {
-			...state.porch,
-			...porchConfig,
-			depth: porchConfig.depth != null ? Math.max(1, porchConfig.depth) : state.porch.depth,
-		},
-	})),
 
 	// Placement Management Actions
 	addPlacement: (placement) => set((state) => ({
@@ -152,7 +145,6 @@ export const useShedStore = create((set) => ({
 		roofUpperPitch: GAMBREL_UPPER_PITCH,
 		foundationHeight: 1.5,
 		foundationColor: '#8B7355',
-		porch: { enabled: false, wall: 'front', depth: 6 },
 		options: {
 			garageDoor:     { enabled: false, size: '8x7', style: 'sectional' },
 			additionalDoor: { enabled: false, size: '6x7' },
@@ -163,6 +155,9 @@ export const useShedStore = create((set) => ({
 			shutters:       { enabled: false, pairs: 1 },
 			ramp:           { enabled: false, size: 'small' },
 			octagonVent:    { enabled: false, ends: 'front' },
+			workbench:      { enabled: false, runningFt: 8 },
+			pegboard:       { enabled: false, sheets: 2 },
+			loft:           { enabled: false, sqft: 96 },
 		},
 		price: 0,
 		placements: [],
@@ -192,7 +187,6 @@ export const useShedStore = create((set) => ({
 			foundationHeight: state.foundationHeight,
 			foundationColor: state.foundationColor,
 			placements: state.placements,
-			porch: state.porch,
 			options: state.options,
 			price: calculateTotalPrice(state.width, state.length, state.tier, state.options),
 		};

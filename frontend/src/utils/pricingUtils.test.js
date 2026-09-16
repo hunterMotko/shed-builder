@@ -137,7 +137,6 @@ describe('Option line items', () => {
 		expect(line.amount).toBe(384);
 	});
 
-	it.todo('prices a Design with a porch — awaiting a porch price from shed-options.md');
 });
 
 describe('total', () => {

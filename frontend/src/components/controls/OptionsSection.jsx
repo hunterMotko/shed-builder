@@ -150,6 +150,7 @@ export const OptionsSection = () => {
   const doorsCount   = [options.garageDoor, options.additionalDoor, options.entryDoor].filter((o) => o.enabled).length;
   const windowsCount = [options.vinylWindows, options.octagonWindow, options.skylight, options.octagonVent].filter((o) => o.enabled).length;
   const extCount     = [options.shutters, options.ramp].filter((o) => o.enabled).length;
+  const intCount     = [options.workbench, options.pegboard, options.loft].filter((o) => o?.enabled).length;
 
   return (
     <div>
@@ -297,6 +298,81 @@ export const OptionsSection = () => {
                   {label} — ${price}
                 </label>
               ))}
+            </div>
+          )}
+        </Checkbox>
+      </AccordionGroup>
+
+      {/* Interior */}
+      <AccordionGroup title="Interior" selectedCount={intCount}>
+        <Checkbox
+          checked={Boolean(options.workbench?.enabled)}
+          onChange={(v) => set('workbench', { enabled: v })}
+          label="Workbench"
+          price={OPTION_PRICES.workbench_per_ft * (options.workbench?.runningFt || 0)}
+        >
+          {options.workbench?.enabled && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <input
+                type="range" min="2" max="24" step="2"
+                aria-label="Workbench length in running feet"
+                value={options.workbench.runningFt}
+                onChange={(e) => set('workbench', { runningFt: parseInt(e.target.value, 10) })}
+                style={{ flex: 1, accentColor: '#3b82f6' }}
+              />
+              <span style={{ color: '#94a3b8', fontSize: 11, width: 28, textAlign: 'right' }}>
+                {options.workbench.runningFt} ft
+              </span>
+            </div>
+          )}
+        </Checkbox>
+
+        <Checkbox
+          checked={Boolean(options.pegboard?.enabled)}
+          onChange={(v) => set('pegboard', { enabled: v })}
+          label="Pegboard"
+          price={OPTION_PRICES.pegboard_per_sheet * (options.pegboard?.sheets || 0)}
+        >
+          {options.pegboard?.enabled && (
+            <select
+              aria-label="Number of pegboard sheets"
+              style={SUB_SELECT}
+              value={options.pegboard.sheets}
+              onChange={(e) => set('pegboard', { sheets: parseInt(e.target.value, 10) })}
+            >
+              {[1,2,3,4,5,6].map((n) => (
+                <option key={n} value={n}>{n} sheet{n > 1 ? 's' : ''} (4×8) — ${(OPTION_PRICES.pegboard_per_sheet * n).toLocaleString()}</option>
+              ))}
+            </select>
+          )}
+        </Checkbox>
+
+        {/* Footage *added*. A Barn is built with a half loft already, and this
+            buys more on top of it; a Gable is built with none, so its first
+            loft is all of this. */}
+        <Checkbox
+          checked={Boolean(options.loft?.enabled)}
+          onChange={(v) => set('loft', { enabled: v })}
+          label="Loft / Shelving"
+          price={OPTION_PRICES.loft_per_sqft * (options.loft?.sqft || 0)}
+        >
+          {options.loft?.enabled && (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <input
+                  type="range" min="16" max="320" step="16"
+                  aria-label="Loft and shelving area added, in square feet"
+                  value={options.loft.sqft}
+                  onChange={(e) => set('loft', { sqft: parseInt(e.target.value, 10) })}
+                  style={{ flex: 1, accentColor: '#3b82f6' }}
+                />
+                <span style={{ color: '#94a3b8', fontSize: 11, width: 44, textAlign: 'right' }}>
+                  {options.loft.sqft} sq ft
+                </span>
+              </div>
+              <div style={{ marginTop: 4, fontSize: 11, color: '#94a3b8' }}>
+                Square feet added. A barn is built with a half loft already.
+              </div>
             </div>
           )}
         </Checkbox>
