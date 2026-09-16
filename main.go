@@ -1,15 +1,20 @@
 package main
 
 import (
+	"database/sql"
 	_ "embed"
 	"encoding/json"
 	"fmt"
-	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
+	"log"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+	_ "modernc.org/sqlite"
 )
 
 // catalog.json is the one machine-readable copy of shed-options.md. The
@@ -289,11 +294,82 @@ type Design struct {
 	CreatedAt  string       `json:"createdAt"`
 }
 
-// In-memory storage.
+// Storage: SQLite on disk, so a saved Design outlives the process. It used to
+// be a map behind a mutex, which lost every Design on restart — and a quote
+// request that evaporates on the next deploy is worse than no button at all.
+//
+// The driver is `modernc.org/sqlite`: pure Go, no cgo, so the server stays one
+// static binary and any host with a writable disk can run it.
+//
+// **A Design is stored whole, as JSON in one column.** A column per field would
+// be a second description of `Design` to keep in step with the struct, and
+// nothing here queries by field: a Design is written once and read back by its
+// id. The id is the customer's handle — a UUID, unguessable, which is what
+// stands in for an account until there is one.
 var (
-	designStore = make(map[string]*Design)
-	mu          sync.RWMutex
+	db     *sql.DB
+	dbOnce sync.Once
 )
+
+// dbPath is where the database lives. `SHED_DB` lets a deployment put it on a
+// mounted volume, and lets the tests point at a temporary file.
+func dbPath() string {
+	if p := os.Getenv("SHED_DB"); p != "" {
+		return p
+	}
+	return "shed.db"
+}
+
+// database opens the file on first use and creates the schema if it is not
+// there. Opened lazily rather than in init() so that a test can choose the path
+// before the first request, and so that `go test` on a package that never
+// serves a request touches no disk.
+func database() *sql.DB {
+	dbOnce.Do(func() {
+		path := dbPath()
+		handle, err := sql.Open("sqlite", path)
+		if err != nil {
+			log.Fatalf("cannot open the design database at %s: %v", path, err)
+		}
+		if _, err := handle.Exec(`
+			CREATE TABLE IF NOT EXISTS designs (
+				id         TEXT PRIMARY KEY,
+				created_at TEXT NOT NULL,
+				doc        TEXT NOT NULL
+			)
+		`); err != nil {
+			log.Fatalf("cannot create the designs table in %s: %v", path, err)
+		}
+		db = handle
+	})
+	return db
+}
+
+// storeDesign writes one Design, whole.
+func storeDesign(d *Design) error {
+	doc, err := json.Marshal(d)
+	if err != nil {
+		return err
+	}
+	_, err = database().Exec(
+		`INSERT INTO designs (id, created_at, doc) VALUES (?, ?, ?)`,
+		d.ID, d.CreatedAt, string(doc),
+	)
+	return err
+}
+
+// loadDesign reads one back by its id. `sql.ErrNoRows` means no such Design.
+func loadDesign(id string) (*Design, error) {
+	var doc string
+	if err := database().QueryRow(`SELECT doc FROM designs WHERE id = ?`, id).Scan(&doc); err != nil {
+		return nil, err
+	}
+	var d Design
+	if err := json.Unmarshal([]byte(doc), &d); err != nil {
+		return nil, err
+	}
+	return &d, nil
+}
 
 // POST /api/save-design
 func saveDesign(c *gin.Context) {
@@ -361,9 +437,13 @@ func saveDesign(c *gin.Context) {
 		CreatedAt:  time.Now().Format(time.RFC3339),
 	}
 
-	mu.Lock()
-	designStore[design.ID] = design
-	mu.Unlock()
+	if err := storeDesign(design); err != nil {
+		// Saying "saved" over a write that failed is the one answer worse than
+		// refusing: the customer keeps a link to a Design nobody has.
+		log.Printf("saving design %s: %v", design.ID, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not save the design"})
+		return
+	}
 
 	c.JSON(http.StatusCreated, design)
 }
@@ -372,28 +452,18 @@ func saveDesign(c *gin.Context) {
 func getDesign(c *gin.Context) {
 	id := c.Param("id")
 
-	mu.RLock()
-	design, exists := designStore[id]
-	mu.RUnlock()
-
-	if !exists {
+	design, err := loadDesign(id)
+	if err == sql.ErrNoRows {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Design not found"})
+		return
+	}
+	if err != nil {
+		log.Printf("loading design %s: %v", id, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not load the design"})
 		return
 	}
 
 	c.JSON(http.StatusOK, design)
-}
-
-// GET /api/designs
-func listDesigns(c *gin.Context) {
-	mu.RLock()
-	designs := make([]*Design, 0, len(designStore))
-	for _, design := range designStore {
-		designs = append(designs, design)
-	}
-	mu.RUnlock()
-
-	c.JSON(http.StatusOK, designs)
 }
 
 // newRouter builds the HTTP router. Split out from main() so tests can drive
@@ -417,16 +487,23 @@ func newRouter() *gin.Engine {
 	})
 
 	// API Routes
+	//
+	// There is deliberately no route that lists every Design. One returning
+	// them all to any caller is a data leak the moment a Design carries a
+	// customer's name and number, and nothing needs it: a customer reaches
+	// their own Design by its id, which is the unguessable half of the link
+	// they were given. A staff view, when there is one, arrives with
+	// authentication rather than before it.
 	api := router.Group("/api")
 	{
 		api.POST("/save-design", saveDesign)
 		api.GET("/design/:id", getDesign)
-		api.GET("/designs", listDesigns)
 	}
 
 	return router
 }
 
 func main() {
+	log.Printf("designs are stored in %s", dbPath())
 	newRouter().Run(":8080")
 }

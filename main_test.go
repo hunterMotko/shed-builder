@@ -2,16 +2,30 @@ package main
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	_ "modernc.org/sqlite"
 )
 
-func init() { gin.SetMode(gin.TestMode) }
+func init() {
+	gin.SetMode(gin.TestMode)
+	// A file, not `:memory:`, because what these tests are checking is that a
+	// Design outlives the thing that wrote it. It is opened lazily on the first
+	// request, so setting this here is early enough.
+	dir, err := os.MkdirTemp("", "shed-db")
+	if err != nil {
+		panic(err)
+	}
+	os.Setenv("SHED_DB", filepath.Join(dir, "test.db"))
+}
 
 // post sends a Design to the save endpoint and decodes the response.
 func post(t *testing.T, body string) (*httptest.ResponseRecorder, Design) {
@@ -71,6 +85,59 @@ func TestSavedDesignCanBeFetchedByID(t *testing.T) {
 	}
 	if fetched.Price != saved.Price {
 		t.Errorf("fetched Quote %v does not match saved Quote %v", fetched.Price, saved.Price)
+	}
+}
+
+// A Design outlives the process that saved it. The in-memory map this replaced
+// lost every one of them on restart, which made a quote request worth less than
+// the button that sent it.
+func TestASavedDesignIsOnDiskAndSurvivesTheProcess(t *testing.T) {
+	_, saved := post(t, `{"width":12,"length":16,"tier":"Deluxe","model":"Gable"}`)
+
+	// Opened independently of the server's own handle: this is the file as
+	// another process would find it.
+	handle, err := sql.Open("sqlite", os.Getenv("SHED_DB"))
+	if err != nil {
+		t.Fatalf("cannot open the database file: %v", err)
+	}
+	defer handle.Close()
+
+	var doc string
+	if err := handle.QueryRow(`SELECT doc FROM designs WHERE id = ?`, saved.ID).Scan(&doc); err != nil {
+		t.Fatalf("the saved Design is not in the database: %v", err)
+	}
+
+	var onDisk Design
+	if err := json.Unmarshal([]byte(doc), &onDisk); err != nil {
+		t.Fatalf("what is stored is not a Design: %v", err)
+	}
+	if onDisk.Price != saved.Price {
+		t.Errorf("stored Quote %v does not match the one served %v", onDisk.Price, saved.Price)
+	}
+}
+
+// One customer's Design, dimensions and contact details must not be readable by
+// anyone who asks. The route that handed them all over is gone, not guarded.
+func TestThereIsNoRouteListingEveryDesign(t *testing.T) {
+	post(t, `{"width":12,"length":16,"tier":"Deluxe","model":"Gable"}`)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/designs", nil)
+	rec := httptest.NewRecorder()
+	newRouter().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("want 404 for a route that should not exist, got %d: %s", rec.Code, rec.Body.String())
+	}
+}
+
+// An id that was never issued is a miss, not a server error.
+func TestAnUnknownDesignIDIsNotFound(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/api/design/no-such-design", nil)
+	rec := httptest.NewRecorder()
+	newRouter().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("want 404, got %d: %s", rec.Code, rec.Body.String())
 	}
 }
 
