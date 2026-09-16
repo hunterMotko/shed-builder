@@ -58,6 +58,43 @@ export function validatePlacement(placement, shedDimensions) {
 }
 
 /**
+ * Every Opening that no longer sits properly on the wall it was put on.
+ *
+ * Resizing a shed does not move a customer's door, so a 16ft wall taken down to
+ * 12ft can leave one hanging off the corner. ADR-0007 says what to do about it:
+ * surface a visible failure rather than silently relocating or dropping it.
+ *
+ * **A caution counts here, even though the kernel does not stop the build for
+ * one.** The kernel is right about the geometry — a panel clips an Opening that
+ * runs past its wall, and a door crossing the floor becomes a notch rather than
+ * a hole (ADR-0001, as amended), and 144 golden vectors pin that classification.
+ * What blocks a *sale* is a different question, and it is this app's to answer:
+ * a shed nobody could build to the picture is not one to quote.
+ *
+ * Asked rather than stored. Whether an Opening fits is a fact about the Design
+ * as it is now, and a stored answer is one more copy to go stale — which is
+ * what the Option flags were.
+ *
+ * @param {Array} placements
+ * @param {{width: number, length: number, wallHeight: number}} shedDimensions
+ * @returns {Array<{id: string, summary: string}>} empty when every Opening fits
+ */
+export function placementIssues(placements = [], shedDimensions) {
+	if (!shedDimensions || shedDimensions.width === undefined) return [];
+
+	const issues = [];
+	for (const placement of placements) {
+		const { valid, errors, warnings } = validatePlacement(placement, shedDimensions);
+		if (valid && warnings.length === 0) continue;
+		issues.push({
+			id: placement?.id,
+			summary: [...errors, ...warnings].join('; '),
+		});
+	}
+	return issues;
+}
+
+/**
  * Check if two placements overlap
  * @param {Object} placement1 - First placement
  * @param {Object} placement2 - Second placement

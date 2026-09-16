@@ -23,11 +23,11 @@ export const ControlPanel = ({ onClose }) => {
   const [quoteOpen, setQuoteOpen] = useState(false);
 
   const { model, color, roofColor, setModel, setColor, setRoofColor,
-          width, length, tier, options, reset } = useShedStore();
+          width, length, tier, options, placements, reset } = useShedStore();
   const { save, load, isLoading } = useDesignPersistence();
 
   const base     = lookupBasePrice(width, length, tier) ?? 0;
-  const optionAmt = getOptionLineItems(options).reduce((s, i) => s + i.amount, 0);
+  const optionAmt = getOptionLineItems(options, placements).reduce((s, i) => s + i.amount, 0);
   const total    = base + optionAmt;
 
   const handleSave = async () => {

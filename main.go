@@ -116,6 +116,17 @@ type Placement struct {
 	Width       *float64 `json:"width"`
 	Height      *float64 `json:"height"`
 	RotationZ   float64  `json:"rotationZ,omitempty"`
+
+	// What this Opening is, where the catalog prices two of them differently:
+	// a 36in entry door is steel or nine-light, and two doors on one shed can
+	// differ, so it rides on the door rather than on an Option.
+	DoorType string `json:"doorType,omitempty"`
+
+	// What hangs off it. Shutters flank a window; a ramp meets a garage door.
+	// Neither has a position of its own, and neither exists apart from the
+	// Opening it attaches to (issue #44).
+	Shutters bool   `json:"shutters,omitempty"`
+	Ramp     string `json:"ramp,omitempty"`
 }
 
 // wallSides are the four walls every Model renders (ADR-0010).
@@ -196,49 +207,82 @@ func octagonEndCount(oc OptionConfig) float64 {
 }
 
 // Options holds all add-on states.
+// Options are the catalog items that have **no position on the shed**.
+//
+// Doors, windows, shutters and ramps are not here: anything that sits somewhere
+// is a Placement, and the Quote counts Placements. A flag beside them would be a
+// second copy of the same fact, and that is how a garage door came to add $500
+// and no geometry (issue #10).
 type Options struct {
-	GarageDoor     OptionConfig `json:"garageDoor"`
-	AdditionalDoor OptionConfig `json:"additionalDoor"`
-	EntryDoor      OptionConfig `json:"entryDoor"`
-	VinylWindows   OptionConfig `json:"vinylWindows"`
-	OctagonWindow  OptionConfig `json:"octagonWindow"`
-	Skylight       OptionConfig `json:"skylight"`
-	Shutters       OptionConfig `json:"shutters"`
-	Ramp           OptionConfig `json:"ramp"`
-	OctagonVent    OptionConfig `json:"octagonVent"`
-	Workbench      OptionConfig `json:"workbench"`
-	Pegboard       OptionConfig `json:"pegboard"`
-	Loft           OptionConfig `json:"loft"`
+	OctagonWindow OptionConfig `json:"octagonWindow"`
+	Skylight      OptionConfig `json:"skylight"`
+	OctagonVent   OptionConfig `json:"octagonVent"`
+	Workbench     OptionConfig `json:"workbench"`
+	Pegboard      OptionConfig `json:"pegboard"`
+	Loft          OptionConfig `json:"loft"`
 }
 
-// calculateOptionTotal derives total add-on price from the Options state.
-func calculateOptionTotal(ao Options) float64 {
+// calculateOptionTotal derives the add-on price from what is on the shed.
+//
+// **Openings are counted, not ticked** (issue #10). The client shows the same
+// number by the same rule, but this one is the Quote (ADR-0008): a price that
+// followed a checkbox could be paid for a shed with no door in it.
+func calculateOptionTotal(ao Options, placements []*Placement) float64 {
 	total := 0.0
 
-	if ao.GarageDoor.Enabled {
-		if ao.GarageDoor.Size == "8x7" {
+	of := func(kind string) []*Placement {
+		var out []*Placement
+		for _, p := range placements {
+			if p != nil && p.Type == kind {
+				out = append(out, p)
+			}
+		}
+		return out
+	}
+
+	// The first roll-up is priced by its width; every one after it is what the
+	// catalog calls an additional garage door.
+	for i, p := range of("garage_door") {
+		switch {
+		case i > 0:
+			total += optionPrices["garage_door_additional"]
+		case p.Width != nil && *p.Width >= 8:
 			total += optionPrices["garage_door_8x7"]
-		} else {
+		default:
 			total += optionPrices["garage_door_6x7"]
 		}
 	}
-	if ao.AdditionalDoor.Enabled {
-		total += optionPrices["garage_door_additional"]
-	}
-	if ao.EntryDoor.Enabled {
-		if ao.EntryDoor.Type == "nine_light" {
+
+	// An entry door's kind rides on the door: two on one shed can differ.
+	for _, p := range of("door") {
+		if p.DoorType == "nine_light" {
 			total += optionPrices["entry_door_nine_light"]
 		} else {
 			total += optionPrices["entry_door_steel"]
 		}
 	}
-	if ao.VinylWindows.Enabled {
-		count := ao.VinylWindows.Count
-		if count < 1 {
-			count = 1
+
+	// A swing barn door is part of the Standard barn package and adds nothing.
+
+	windows := of("window")
+	total += optionPrices["window_vinyl_slide"] * float64(len(windows))
+
+	// Shutters and ramps hang off the Opening they flank or meet, so the count
+	// of Openings carrying one *is* the quantity.
+	for _, p := range windows {
+		if p.Shutters {
+			total += optionPrices["shutters_per_pair"]
 		}
-		total += optionPrices["window_vinyl_slide"] * float64(count)
 	}
+	for _, p := range of("garage_door") {
+		switch p.Ramp {
+		case "large":
+			total += optionPrices["ramp_large"]
+		case "small":
+			total += optionPrices["ramp_small"]
+		}
+	}
+
 	if n := octagonEndCount(ao.OctagonWindow); n > 0 {
 		total += optionPrices["window_octagon"] * n
 	}
@@ -248,20 +292,6 @@ func calculateOptionTotal(ao Options) float64 {
 			ft = 8
 		}
 		total += optionPrices["skylight_per_ft"] * ft
-	}
-	if ao.Shutters.Enabled {
-		pairs := ao.Shutters.Pairs
-		if pairs < 1 {
-			pairs = 1
-		}
-		total += optionPrices["shutters_per_pair"] * float64(pairs)
-	}
-	if ao.Ramp.Enabled {
-		if ao.Ramp.Size == "large" {
-			total += optionPrices["ramp_large"]
-		} else {
-			total += optionPrices["ramp_small"]
-		}
 	}
 	if n := octagonEndCount(ao.OctagonVent); n > 0 {
 		total += optionPrices["vent_octagon"] * n
@@ -444,7 +474,7 @@ func buildDesign(input Design) (*Design, error) {
 		TrimColor:  input.TrimColor,
 		Placements: input.Placements,
 		Options:    input.Options,
-		Price:      basePrice + calculateOptionTotal(input.Options),
+		Price:      basePrice + calculateOptionTotal(input.Options, input.Placements),
 		CreatedAt:  time.Now().Format(time.RFC3339),
 	}, nil
 }

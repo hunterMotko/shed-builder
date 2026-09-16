@@ -85,13 +85,61 @@ describe('a Gable is sold as a Deluxe only', () => {
 describe('Option line items', () => {
 	it('prices an 8x7 roll-up door at the 6x7 price plus two feet of width', () => {
 		// shed-options.md: 6x7 roll-up is $450, "+$25 per foot wider".
-		const [line] = getOptionLineItems({ garageDoor: { enabled: true, size: '8x7' } });
+		const [line] = getOptionLineItems({}, [{ type: 'garage_door', width: 8 }]);
 		expect(line.amount).toBe(450 + 2 * 25);
 	});
 
-	it('prices vinyl windows per window', () => {
-		const [line] = getOptionLineItems({ vinylWindows: { enabled: true, count: 3 } });
+	it('prices the second roll-up as an additional garage door', () => {
+		// Which is what "additional" has always meant. Counting the doors on
+		// the shed is what makes the two prices fall out on their own.
+		const lines = getOptionLineItems({}, [
+			{ type: 'garage_door', width: 8 },
+			{ type: 'garage_door', width: 6 },
+		]);
+		expect(lines.map((l) => l.amount)).toEqual([500, 600]);
+	});
+
+	it('prices an entry door by the kind of door it is', () => {
+		// Two doors on one shed can be different doors, so the kind rides on
+		// the door rather than on one Option speaking for both.
+		const lines = getOptionLineItems({}, [
+			{ type: 'door', doorType: 'nine_light' },
+			{ type: 'door', doorType: 'steel' },
+		]);
+		expect(lines.map((l) => l.amount)).toEqual([425, 375]);
+	});
+
+	it('prices vinyl windows per window on the shed', () => {
+		const [line] = getOptionLineItems({}, [
+			{ type: 'window' }, { type: 'window' }, { type: 'window' },
+		]);
 		expect(line.amount).toBe(3 * 275);
+	});
+
+	it('prices shutters by the windows carrying them', () => {
+		// Two windows, one shuttered: one pair. There is no `shutters.pairs` to
+		// disagree with the windows.
+		const lines = getOptionLineItems({}, [
+			{ type: 'window', shutters: true },
+			{ type: 'window' },
+		]);
+		expect(lines.find((l) => l.label.includes('Shutter')).amount).toBe(70);
+	});
+
+	it('prices a ramp against the door it meets', () => {
+		const lines = getOptionLineItems({}, [
+			{ type: 'garage_door', width: 6, ramp: 'large' },
+		]);
+		expect(lines.find((l) => l.label.includes('Ramp')).amount).toBe(325);
+	});
+
+	it('charges nothing for a swing barn door, which comes with the build', () => {
+		expect(getOptionLineItems({}, [{ type: 'swing_barn_door', width: 6 }])).toEqual([]);
+	});
+
+	it('charges nothing for an Opening that is not on the shed', () => {
+		// The defect this closes: a ticked box that added $500 and no geometry.
+		expect(getOptionLineItems({}, [])).toEqual([]);
 	});
 
 	it('charges an octagon per end it is fitted to', () => {

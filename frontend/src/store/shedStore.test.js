@@ -81,12 +81,22 @@ describe('the grade a Model is sold at', () => {
 });
 
 describe('Model', () => {
-	it('fits a Barn with a roll-up door and a Gable with a sectional one', () => {
-		state().setModel('Barn');
-		expect(state().options.garageDoor.style).toBe('rollup');
-
+	it('keeps the Design sellable when the Model changes', () => {
+		// A Gable is Deluxe only, so switching to one moves the grade.
+		state().setTier('Standard');
 		state().setModel('Gable');
-		expect(state().options.garageDoor.style).toBe('sectional');
+		expect(state().tier).toBe('Deluxe');
+	});
+
+	it('keeps no door of its own', () => {
+		// A garage door's style used to be an Option that `setModel` rewrote —
+		// a copy of the Model kept somewhere else. A Barn carries a roll-up and
+		// a Gable a sectional, so the assembly that draws one knows which, and
+		// the store holds neither the door nor its style (issue #10).
+		state().setModel('Barn');
+		expect(state().options.garageDoor).toBeUndefined();
+		expect(state().options.vinylWindows).toBeUndefined();
+		expect(state().options.shutters).toBeUndefined();
 	});
 });
 

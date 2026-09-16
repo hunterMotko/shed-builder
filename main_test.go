@@ -298,6 +298,61 @@ func TestAnUnknownDesignIDIsNotFound(t *testing.T) {
 	}
 }
 
+// The Quote counts what is on the shed. A checkbox that added $500 without a
+// door was the defect this closes (issue #10).
+func TestDoorsAndWindowsArePricedFromThePlacements(t *testing.T) {
+	// One 8x7 roll-up with a large ramp, a second roll-up, a nine-light entry
+	// door, and two windows, one of them shuttered.
+	body := `{"width":12,"length":16,"tier":"Deluxe","model":"Gable","placements":[
+		{"id":"a","type":"garage_door","wall":"front","normalizedX":0.3,"normalizedY":0.5,"width":8,"height":7,"ramp":"large"},
+		{"id":"b","type":"garage_door","wall":"back","normalizedX":0.5,"normalizedY":0.5,"width":6,"height":7},
+		{"id":"c","type":"door","wall":"left","normalizedX":0.5,"normalizedY":0.5,"width":3,"height":6.8,"doorType":"nine_light"},
+		{"id":"d","type":"window","wall":"left","normalizedX":0.2,"normalizedY":0.6,"width":2,"height":3,"shutters":true},
+		{"id":"e","type":"window","wall":"right","normalizedX":0.8,"normalizedY":0.6,"width":2,"height":3}
+	]}`
+
+	rec, design := post(t, body)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("want 201, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	// 6389 base + 500 (8x7) + 600 (the second is an additional door)
+	//      + 425 (nine-light) + 275*2 (windows) + 70 (one shuttered)
+	//      + 325 (large ramp)
+	want := 6389.0 + 500 + 600 + 425 + 550 + 70 + 325
+	if design.Price != want {
+		t.Errorf("want %v, got %v", want, design.Price)
+	}
+}
+
+// A shed with nothing on it is the base price, whatever an old client sends in
+// the Options it no longer has a use for.
+func TestATickedOptionWithNoPlacementBuysNothing(t *testing.T) {
+	_, plain := post(t, `{"width":12,"length":16,"tier":"Deluxe","model":"Gable"}`)
+	_, ticked := post(t, `{"width":12,"length":16,"tier":"Deluxe","model":"Gable",`+
+		`"options":{"garageDoor":{"enabled":true,"size":"8x7"},"vinylWindows":{"enabled":true,"count":4},`+
+		`"shutters":{"enabled":true,"pairs":3},"ramp":{"enabled":true,"size":"large"}}}`)
+
+	if ticked.Price != plain.Price {
+		t.Errorf("a flag with no Opening moved the Quote: %v against %v", ticked.Price, plain.Price)
+	}
+	if plain.Price != 6389 {
+		t.Errorf("want the catalog price 6389, got %v", plain.Price)
+	}
+}
+
+// A swing barn door comes with the Standard barn package, so placing one is
+// free — the catalog prices no such line.
+func TestASwingBarnDoorAddsNothing(t *testing.T) {
+	_, design := post(t, `{"width":12,"length":16,"tier":"Standard","model":"Barn","placements":[
+		{"id":"a","type":"swing_barn_door","wall":"front","normalizedX":0.5,"normalizedY":0.5,"width":6,"height":6.5}
+	]}`)
+
+	if design.Price != 6089 {
+		t.Errorf("want the catalog price 6089, got %v", design.Price)
+	}
+}
+
 // Interior Options: workbench $35/running ft, pegboard $70/sheet, loft $4/sqft.
 func TestQuotePricesInteriorOptions(t *testing.T) {
 	_, design := post(t, `{"width":12,"length":16,"tier":"Standard","model":"Barn","options":{

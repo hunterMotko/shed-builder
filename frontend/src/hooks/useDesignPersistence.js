@@ -12,6 +12,8 @@ import {
 	validateDesignConfig,
 	unrenderableReasons,
 } from '../services/designApi';
+import { placementIssues } from '../utils/placementValidator';
+import { wallHeightFt } from '../utils/modelSpec';
 
 /**
  * Hook for managing design persistence operations
@@ -57,6 +59,19 @@ export const useDesignPersistence = () => {
 			const validation = validateDesignConfig(config);
 			if (!validation.isValid) {
 				throw new Error(validation.errors.join(', '));
+			}
+			// An Opening a resize has left hanging off its wall blocks the save
+			// rather than being quietly moved or dropped (ADR-0007). The
+			// Openings list says which one, beside the row it is about.
+			const issues = placementIssues(config.placements, {
+				width: config.width,
+				length: config.length,
+				wallHeight: wallHeightFt(config.model),
+			});
+			if (issues.length > 0) {
+				throw new Error(
+					`Some Openings no longer fit the shed: ${issues.map((i) => i.summary).join('; ')}`
+				);
 			}
 			// Save to backend
 			const savedDesign = await saveDesign(config);

@@ -54,7 +54,9 @@ export const GableShed = ({
 		width, length, wallHeight, color, roofColor,
 		placements, trimColor, sidingTexture, roofMaterial, tier, options,
 	} = d;
-	const garageDoorStyle = options.garageDoor.style ?? 'sectional';
+	// A Gable's garage door is sectional, the way a Barn's is a roll-up: it
+	// follows the Model rather than being stored beside it.
+	const garageDoorStyle = 'sectional';
 
 	// The rafters are cut to one pitch, so the rise follows the span. This was
 	// a flat 4ft, which quietly changed the pitch with the width (issue #29).
@@ -103,7 +105,6 @@ export const GableShed = ({
 					trimColor={trimColor}
 					placements={byWall[side]}
 					doorStyle={garageDoorStyle}
-					options={options}
 				/>
 			))}
 
@@ -159,14 +160,14 @@ export const GableShed = ({
 			/>
 
 			{/* Optional ramp */}
-			{carriesAttachment('ramp', rampDoor, options) && (
+			{carriesAttachment('ramp', rampDoor) && (
 				<Ramp
 					shedWidth={width}
 					shedLength={length}
 					wallHeight={wallHeight}
 					placement={rampDoor}
 					wall="front"
-					size={attachmentValue('ramp', rampDoor, options)}
+					size={attachmentValue('ramp', rampDoor)}
 				/>
 			)}
 		</group>

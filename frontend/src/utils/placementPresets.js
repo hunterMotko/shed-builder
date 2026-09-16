@@ -16,11 +16,12 @@ export const WINDOW_PRESETS = [
   { name: 'Large (4ft × 3ft)',          width: 4, height: 3, type: 'window' },
 ];
 
+// Only the two the catalog prices. A 9×7 and a 10×7 were offered here and
+// priced nowhere, which is a quote the shop cannot honour — the same defect the
+// porch had, in a dropdown.
 export const GARAGE_DOOR_PRESETS = [
-  { name: '6×7 Roll-Up',  width: 6,  height: 7, type: 'garage_door' },
-  { name: '8×7 Roll-Up',  width: 8,  height: 7, type: 'garage_door' },
-  { name: '9×7 Roll-Up',  width: 9,  height: 7, type: 'garage_door' },
-  { name: '10×7 Roll-Up', width: 10, height: 7, type: 'garage_door' },
+  { name: '6×7 Roll-Up — $450',  width: 6,  height: 7, type: 'garage_door' },
+  { name: '8×7 Roll-Up — $500',  width: 8,  height: 7, type: 'garage_door' },
 ];
 
 export const SWING_BARN_DOOR_PRESETS = [
@@ -29,9 +30,11 @@ export const SWING_BARN_DOOR_PRESETS = [
   { name: 'Double Swing 10ft', width: 10, height: 6.5, type: 'swing_barn_door' },
 ];
 
+// An entry door's kind rides on the Placement as `doorType`, because two doors
+// on one shed can be different doors. It is what each is priced by.
 export const ENTRY_DOOR_PRESETS = [
-  { name: '36in Steel Panel',    width: 3, height: 6.8, type: 'door' },
-  { name: '36in Nine-Light',     width: 3, height: 6.8, type: 'door' },
+  { name: '36in Steel Panel — $375', width: 3, height: 6.8, type: 'door', doorType: 'steel' },
+  { name: '36in Nine-Light — $425',  width: 3, height: 6.8, type: 'door', doorType: 'nine_light' },
 ];
 
 export const ALL_PRESETS = [
@@ -46,7 +49,7 @@ export const ALL_PRESETS = [
  * Group presets by placement type for UI display
  */
 export const PRESETS_BY_TYPE = {
-  door:            DOOR_PRESETS,
+  door:            ENTRY_DOOR_PRESETS,
   window:          WINDOW_PRESETS,
   garage_door:     GARAGE_DOOR_PRESETS,
   swing_barn_door: SWING_BARN_DOOR_PRESETS,

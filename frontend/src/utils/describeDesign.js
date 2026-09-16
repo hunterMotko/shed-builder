@@ -41,28 +41,61 @@ function article(next) {
 	return /^[aeiou]/i.test(word) ? 'an' : 'a';
 }
 
-/** "8x7" is a catalog code, not a word — say it as a size. */
-function spokenSize(size) {
-	const match = /^(\d+)x(\d+)$/.exec(String(size ?? ''));
-	return match ? `${match[1]} by ${match[2]} foot` : null;
-}
-
+/** What has no position on the shed, and so is still an Option. */
 const OPTION_PHRASES = {
-	garageDoor: (o) => {
-		const size = spokenSize(o.size);
-		return size
-			? `${article(size)} ${size} roll-up garage door`
-			: 'a roll-up garage door';
-	},
-	additionalDoor: () => 'an additional garage door',
-	entryDoor: (o) => `a ${o.type === 'nine_light' ? 'nine-light' : 'steel panel'} entry door`,
-	vinylWindows: (o) => `${o.count ?? 1} vinyl slide window${(o.count ?? 1) === 1 ? '' : 's'}`,
 	octagonWindow: () => 'an octagon gable window',
 	skylight: (o) => `${article(o.runningFt ?? 0)} ${o.runningFt ?? 0} foot ridge skylight`,
-	shutters: (o) => `${o.pairs ?? 1} pair${(o.pairs ?? 1) === 1 ? '' : 's'} of shutters`,
-	ramp: (o) => `a ${o.size === 'large' ? 'large' : 'small'} treated ramp`,
 	octagonVent: () => 'an octagon gable vent',
+	workbench: (o) => `${article(o.runningFt ?? 0)} ${o.runningFt ?? 0} foot workbench`,
+	pegboard: (o) => `${o.sheets ?? 0} sheet${(o.sheets ?? 0) === 1 ? '' : 's'} of pegboard`,
+	loft: (o) => `${o.sqft ?? 0} square feet of loft`,
 };
+
+/**
+ * What is *on* the shed, said aloud.
+ *
+ * Doors and windows are Placements rather than Options (issue #10), so this
+ * reads the building rather than a set of checkboxes. Without it, a shed with
+ * four windows and a roll-up door announced "with no options selected", which
+ * is the one thing a person listening to this most needs it not to say.
+ */
+function placementPhrases(placements = []) {
+	const of = (type) => placements.filter((p) => p?.type === type);
+	const phrases = [];
+
+	of('garage_door').forEach((p, i) => {
+		if (i > 0) {
+			phrases.push('an additional garage door');
+			return;
+		}
+		// Said as a size, because "8x7" read aloud is "eight ex seven".
+		const size = `${p.width} by ${p.height} foot`;
+		phrases.push(`${article(size)} ${size} roll-up garage door`);
+	});
+
+	for (const p of of('door')) {
+		phrases.push(`a ${p.doorType === 'nine_light' ? 'nine-light' : 'steel panel'} entry door`);
+	}
+
+	const swing = of('swing_barn_door').length;
+	if (swing) phrases.push(`${swing} pair${swing === 1 ? '' : 's'} of swing barn doors`);
+
+	const windows = of('window');
+	if (windows.length) {
+		phrases.push(`${windows.length} vinyl slide window${windows.length === 1 ? '' : 's'}`);
+	}
+
+	const shuttered = windows.filter((p) => p.shutters).length;
+	if (shuttered) {
+		phrases.push(`${shuttered} pair${shuttered === 1 ? '' : 's'} of shutters`);
+	}
+
+	for (const p of of('garage_door')) {
+		if (p.ramp) phrases.push(`a ${p.ramp === 'large' ? 'large' : 'small'} treated ramp`);
+	}
+
+	return phrases;
+}
 
 /** Join a list the way a person reads it: "a, b and c". */
 function readableList(items) {
@@ -81,6 +114,7 @@ export function describeDesign(design = {}) {
 		peakHeightFt, sidingTexture, roofMaterial,
 		priceUsd,
 		options = {},
+		placements = [],
 	} = design;
 
 	const parts = [`${width} by ${length} foot ${model} shed`];
@@ -91,9 +125,12 @@ export function describeDesign(design = {}) {
 	if (SIDING[sidingTexture]) parts.push(SIDING[sidingTexture]);
 	if (ROOFING[roofMaterial]) parts.push(ROOFING[roofMaterial]);
 
-	const chosen = Object.entries(options)
-		.filter(([key, config]) => config?.enabled && OPTION_PHRASES[key])
-		.map(([key, config]) => OPTION_PHRASES[key](config));
+	const chosen = [
+		...placementPhrases(placements),
+		...Object.entries(options)
+			.filter(([key, config]) => config?.enabled && OPTION_PHRASES[key])
+			.map(([key, config]) => OPTION_PHRASES[key](config)),
+	];
 
 	parts.push(chosen.length ? `with ${readableList(chosen)}` : 'with no options selected');
 

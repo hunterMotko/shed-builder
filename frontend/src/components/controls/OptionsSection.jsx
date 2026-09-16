@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useShedStore } from '../../store/shedStore';
 import { OPTION_PRICES } from '../../utils/pricingUtils';
-import { isOptionAvailable } from '../../utils/dependentOptions';
 
 // ── Primitives ────────────────────────────────────────────────────────────────
 
@@ -111,7 +110,6 @@ function AccordionGroup({ title, selectedCount, children }) {
 
 export const OptionsSection = () => {
   const options  = useShedStore((s) => s.options);
-  const placements = useShedStore((s) => s.placements);
   const setOption = useShedStore((s) => s.setOption);
   const set = (key, cfg) => setOption(key, cfg);
 
@@ -136,86 +134,17 @@ export const OptionsSection = () => {
   const octagonPrice = (key, unit) =>
     unit * (options[key].ends === 'both' ? 2 : 1);
 
-  // Some Options cannot stand on their own: a pair of shutters flanks a
-  // window and a ramp meets a garage door (issue #44). Until there is one to
-  // attach to, the row is greyed and says what is missing.
-  const design = { options, placements };
-  const shuttersRequires = isOptionAvailable('shutters', design)
-    ? null
-    : 'Add a window first — shutters flank one.';
-  const rampRequires = isOptionAvailable('ramp', design)
-    ? null
-    : 'Add a garage door first — a ramp meets one.';
-
-  const doorsCount   = [options.garageDoor, options.additionalDoor, options.entryDoor].filter((o) => o.enabled).length;
-  const windowsCount = [options.vinylWindows, options.octagonWindow, options.skylight, options.octagonVent].filter((o) => o.enabled).length;
-  const extCount     = [options.shutters, options.ramp].filter((o) => o.enabled).length;
+  const windowsCount = [options.octagonWindow, options.skylight, options.octagonVent].filter((o) => o.enabled).length;
   const intCount     = [options.workbench, options.pegboard, options.loft].filter((o) => o?.enabled).length;
 
   return (
     <div>
-      {/* Doors & Entry */}
-      <AccordionGroup title="Doors & Entry" selectedCount={doorsCount}>
-        <Checkbox
-          checked={options.garageDoor.enabled}
-          onChange={(v) => set('garageDoor', { enabled: v })}
-          label="Roll-Up Garage Door"
-          price={options.garageDoor.size === '8x7' ? OPTION_PRICES.garage_door_8x7 : OPTION_PRICES.garage_door_6x7}
-        >
-          {options.garageDoor.enabled && (
-            <select aria-label="Roll-up garage door size" style={SUB_SELECT} value={options.garageDoor.size} onChange={(e) => set('garageDoor', { size: e.target.value })}>
-              <option value="6x7">6×7 — $450</option>
-              <option value="8x7">8×7 — $500</option>
-            </select>
-          )}
-        </Checkbox>
-
-        <Checkbox
-          checked={options.additionalDoor.enabled}
-          onChange={(v) => set('additionalDoor', { enabled: v })}
-          label="Additional Garage Door"
-          price={OPTION_PRICES.garage_door_additional}
-        />
-
-        <Checkbox
-          checked={options.entryDoor.enabled}
-          onChange={(v) => set('entryDoor', { enabled: v })}
-          label="36in Pre-Hung Entry Door"
-          price={options.entryDoor.type === 'nine_light' ? OPTION_PRICES.entry_door_nine_light : OPTION_PRICES.entry_door_steel}
-        >
-          {options.entryDoor.enabled && (
-            <select aria-label="Entry door type" style={SUB_SELECT} value={options.entryDoor.type} onChange={(e) => set('entryDoor', { type: e.target.value })}>
-              <option value="steel">Steel Panel — $375</option>
-              <option value="nine_light">Nine-Light — $425</option>
-            </select>
-          )}
-        </Checkbox>
-      </AccordionGroup>
-
+      {/* Doors, windows, shutters and ramps are not here: they are placed on
+          the shed, and the Openings list is where they are managed. An Option
+          is a catalog item with a price; a Placement is a position on a named
+          wall, and pricing a door twice is how a Quote stops being one. */}
       {/* Windows & Light */}
       <AccordionGroup title="Windows & Light" selectedCount={windowsCount}>
-        <Checkbox
-          checked={options.vinylWindows.enabled}
-          onChange={(v) => set('vinylWindows', { enabled: v })}
-          label="Vinyl Slide Windows"
-          price={OPTION_PRICES.window_vinyl_slide * (options.vinylWindows.count || 1)}
-        >
-          {options.vinylWindows.enabled && (
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <select aria-label="Number of vinyl slide windows" style={SUB_SELECT} value={options.vinylWindows.count} onChange={(e) => set('vinylWindows', { count: parseInt(e.target.value, 10) })}>
-                {[1,2,3,4,5,6].map((n) => (
-                  <option key={n} value={n}>{n} window{n > 1 ? 's' : ''}</option>
-                ))}
-              </select>
-              <select aria-label="Vinyl slide window size" style={SUB_SELECT} value={options.vinylWindows.windowSize} onChange={(e) => set('vinylWindows', { windowSize: e.target.value })}>
-                <option value="2x2">24×24</option>
-                <option value="2x3">24×36</option>
-                <option value="3x3">36×36</option>
-              </select>
-            </div>
-          )}
-        </Checkbox>
-
         <Checkbox
           checked={options.octagonWindow.enabled}
           onChange={(v) => set('octagonWindow', { enabled: v })}
@@ -254,52 +183,6 @@ export const OptionsSection = () => {
           price={octagonPrice('octagonVent', OPTION_PRICES.vent_octagon)}
         >
           {options.octagonVent.enabled && endsSelect('octagonVent', 'Octagon gable vent')}
-        </Checkbox>
-      </AccordionGroup>
-
-      {/* Exterior */}
-      <AccordionGroup title="Exterior" selectedCount={extCount}>
-        <Checkbox
-          checked={options.shutters.enabled}
-          onChange={(v) => set('shutters', { enabled: v })}
-          requires={shuttersRequires}
-          label="15in Vinyl Shutters"
-          price={OPTION_PRICES.shutters_per_pair * (options.shutters.pairs || 1)}
-        >
-          {options.shutters.enabled && (
-            <select aria-label="Number of shutter pairs" style={SUB_SELECT} value={options.shutters.pairs} onChange={(e) => set('shutters', { pairs: parseInt(e.target.value, 10) })}>
-              {[1,2,3,4].map((n) => (
-                <option key={n} value={n}>{n} pair{n > 1 ? 's' : ''} — ${(OPTION_PRICES.shutters_per_pair * n).toLocaleString()}</option>
-              ))}
-            </select>
-          )}
-        </Checkbox>
-
-        <Checkbox
-          checked={options.ramp.enabled}
-          onChange={(v) => set('ramp', { enabled: v })}
-          requires={rampRequires}
-          label="Heavy Duty Treated Ramp"
-          price={options.ramp.size === 'large' ? OPTION_PRICES.ramp_large : OPTION_PRICES.ramp_small}
-        >
-          {options.ramp.enabled && (
-            <div style={{ display: 'flex', gap: 10 }}>
-              {[
-                { value: 'small', label: '6–8×4 ft', price: OPTION_PRICES.ramp_small },
-                { value: 'large', label: '8–10×4 ft', price: OPTION_PRICES.ramp_large },
-              ].map(({ value, label, price }) => (
-                <label key={value} style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', color: '#94a3b8', fontSize: 12 }}>
-                  <input
-                    type="radio" name="rampSize" value={value}
-                    checked={options.ramp.size === value}
-                    onChange={() => set('ramp', { size: value })}
-                    style={{ accentColor: '#3b82f6' }}
-                  />
-                  {label} — ${price}
-                </label>
-              ))}
-            </div>
-          )}
         </Checkbox>
       </AccordionGroup>
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { validatePlacement, checkPlacementConflicts } from './placementValidator';
+import { placementIssues, validatePlacement, checkPlacementConflicts } from './placementValidator';
 
 const shed = { width: 12, length: 16, wallHeight: 10 };
 
@@ -31,13 +31,22 @@ describe('Placement validation', () => {
 		expect(result.errors.join(' ')).toMatch(/1\.4/);
 	});
 
-	// KNOWN GAP (issue #10): an Opening that hangs off the end of its wall is
-	// reported as a warning, not an error, so `valid` stays true. The agreed
-	// behaviour is a visible failure instead. Marked `.fails` deliberately —
-	// when #10 lands this flips and the marker must come off.
-	it.fails('rejects an Opening too wide to fit the wall it sits on', () => {
+	// This was marked `.fails` on the expectation that issue #10 would flip it
+	// into an error. It did not, and the expectation was wrong: the kernel calls
+	// this a **caution** deliberately, because the wall panel clips an Opening
+	// that runs past its wall and a door crossing the floor becomes a notch
+	// rather than a hole (ADR-0001, as amended). 144 golden vectors pin that
+	// classification, so it does not move.
+	//
+	// What blocks a sale is a different question, and it is the app's: see
+	// `placementIssues` below, and the save and quote gates that use it.
+	it('cautions an Opening too wide to fit the wall it sits on', () => {
 		// An 8ft door pushed to the far end of a 12ft wall overhangs the corner.
-		expect(validatePlacement(door({ width: 8, normalizedX: 0.95 }), shed).valid).toBe(false);
+		const result = validatePlacement(door({ width: 8, normalizedX: 0.95 }), shed);
+
+		expect(result.warnings.join(' ')).toMatch(/extends beyond the wall/);
+		// The geometry is still buildable: the panel cuts it to the wall.
+		expect(result.valid).toBe(true);
 	});
 
 	it('rejects a Placement missing the fields that identify it', () => {
@@ -78,5 +87,35 @@ describe('Placement conflicts', () => {
 		const existing = [door({ id: 'a', wall: 'back' })];
 		const result = checkPlacementConflicts(door({ id: 'b', wall: 'front' }), existing, shed);
 		expect(result.overlaps).toBe(false);
+	});
+});
+
+// What the app does about an Opening the kernel is content to clip.
+describe('Openings that no longer fit', () => {
+	it('says nothing about a shed whose Openings all fit', () => {
+		expect(placementIssues([door()], shed)).toEqual([]);
+	});
+
+	it('names the Opening that hangs off its wall', () => {
+		const hanging = door({ id: 'p-9', width: 8, normalizedX: 0.95 });
+
+		const issues = placementIssues([hanging], shed);
+
+		expect(issues).toHaveLength(1);
+		expect(issues[0].id).toBe('p-9');
+		expect(issues[0].summary).toMatch(/extends beyond the wall/);
+	});
+
+	it('counts a caution, because a caution is what a resize leaves behind', () => {
+		// The kernel calls this buildable — the panel clips it — and the app
+		// still refuses to sell it. Both are right about different questions.
+		const hanging = door({ width: 8, normalizedX: 0.95 });
+		expect(validatePlacement(hanging, shed).valid).toBe(true);
+		expect(placementIssues([hanging], shed)).toHaveLength(1);
+	});
+
+	it('answers for a shed with no Openings, and for no shed at all', () => {
+		expect(placementIssues([], shed)).toEqual([]);
+		expect(placementIssues([door()], undefined)).toEqual([]);
 	});
 });

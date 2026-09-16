@@ -38,7 +38,7 @@ export default function App() {
   // `isDialogOpen` to fall out of step with it.
   const [pendingPlacement, setPendingPlacement] = useState(null);
 
-  const { width, length, tier, model, color, roofColor, options,
+  const { width, length, tier, model, color, roofColor, options, placements,
           roofLowerPitch, roofUpperPitch, sidingTexture, roofMaterial } = useShedStore();
 
   // The wall is a fixed stud length per Model; the roof sits on top of it, so
@@ -49,12 +49,12 @@ export default function App() {
 
   // Price for canvas overlay
   const base      = lookupBasePrice(width, length, tier) ?? 0;
-  const optionTotal = getOptionLineItems(options).reduce((s, i) => s + i.amount, 0);
+  const optionTotal = getOptionLineItems(options, placements).reduce((s, i) => s + i.amount, 0);
   const total     = base + optionTotal;
 
   const designSummary = describeDesign({
     model, width, length, tier, peakHeightFt: peak,
-    sidingTexture, roofMaterial, priceUsd: total, options,
+    sidingTexture, roofMaterial, priceUsd: total, options, placements,
   });
 
   return (

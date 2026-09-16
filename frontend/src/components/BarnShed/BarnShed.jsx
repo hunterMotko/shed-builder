@@ -59,7 +59,10 @@ export const BarnShed = ({
 		placements, trimColor, sidingTexture, roofMaterial,
 		roofLowerPitch, roofUpperPitch, tier, options,
 	} = d;
-	const garageDoorStyle = options.garageDoor.style ?? 'sectional';
+	// A Barn's roll-up. The style used to be stored on an Option and switched by
+	// `setModel`, which made it a copy of the Model kept in a second place; a
+	// Barn is the Model that carries a roll-up, so this assembly knows it.
+	const garageDoorStyle = 'rollup';
 	// A barn has no soffit box: the panel runs 2 in past and finishes in J-channel.
 	const overhang = roofOverhangFt('Barn', width);
 
@@ -101,19 +104,18 @@ export const BarnShed = ({
 					trimColor={trimColor}
 					placements={byWall[side]}
 					doorStyle={garageDoorStyle}
-					options={options}
 				/>
 			))}
 
 			{/* Optional ramp */}
-			{carriesAttachment('ramp', rampDoor, options) && (
+			{carriesAttachment('ramp', rampDoor) && (
 				<Ramp
 					shedWidth={width}
 					shedLength={length}
 					wallHeight={wallHeight}
 					placement={rampDoor}
 					wall="front"
-					size={attachmentValue('ramp', rampDoor, options)}
+					size={attachmentValue('ramp', rampDoor)}
 				/>
 			)}
 

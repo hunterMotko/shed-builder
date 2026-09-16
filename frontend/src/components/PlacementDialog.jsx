@@ -105,6 +105,9 @@ export const PlacementDialog = ({
 			width,
 			height,
 			rotationZ: 0,
+			// An entry door's kind rides on the door, because two doors on one
+			// shed can be different doors, and it is what each is priced by.
+			...(usePreset && preset?.doorType ? { doorType: preset.doorType } : {}),
 		};
 
 		const conflicts = checkPlacementConflicts(newPlacement, placements, {

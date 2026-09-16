@@ -74,7 +74,13 @@ There is no `wallHeight` in the store. The wall is a Model constant in `utils/mo
 (85in Barn, 88.5in Gable) and the Peak Height is derived from it for display only. The
 catalog's third number is a nominal 11 on every size — a label on the SKU, not geometry.
 
-`options` holds twelve Options, all disabled by default, and `placements` is a flat array.
+`options` holds the six Options that have **no position on the shed** — the two octagons, the
+skylight, and the three interior items — and `placements` is a flat array of everything that does.
+
+**Nothing placeable has a flag.** A door, a window, a pair of shutters and a ramp are Placements
+or fields on one, never an Option beside one. A flag would be a second copy of the same fact, and
+two copies drift: that is precisely how a garage door came to add $500 and no geometry (issue
+#10).
 
 **There is no porch.** It had geometry and store state and no price anywhere — not in
 `catalog.json`, not in `pricingUtils.js`, and not even a field in the server's `Design`, so a
@@ -313,7 +319,15 @@ Barn's 4in roof edge.
 The key is the Tier, not the height: every size
 is 11ft, so a height key would collapse all seven Standard sizes onto their Deluxe twin.
 
-Options are priced per item or per unit (per foot, per sheet, per pair, per sqft).
+**What is on the shed is counted; what has no position is ticked.** Doors and windows are priced
+off the Placements: the first roll-up by its width and each one after it as an additional garage
+door, an entry door by its own `doorType`, windows per window, shutters by the windows carrying
+them, and a ramp by the door it meets. A swing barn door is part of the Standard barn package and
+prices nothing. The rest — octagons, skylight, workbench, pegboard, loft — are Options priced per
+item or per unit (per foot, per sheet, per pair, per sqft).
+
+`getOptionLineItems(options, placements)` and Go's `calculateOptionTotal(options, placements)` are
+the same rule twice, and **the server's is the Quote** (ADR-0008).
 
 Workbench, pegboard and loft are priced on both sides **and reachable**: they sit in the store's
 `options` defaults and in an **Interior** group on the Options tab, asking for running feet, 4x8
@@ -382,7 +396,11 @@ Foundation constants live in `STANDARD_FOUNDATION`: height `1.5 ft`, overhang `0
 
 ## Placements
 
-A Placement is `{ id, type, wall, normalizedX, normalizedY, width, height }`. Position is
+A Placement is `{ id, type, wall, normalizedX, normalizedY, width, height }`, plus what that
+particular Opening *is* and what hangs off it: `doorType` (`steel` | `nine_light`) on an entry
+door, `doorStyle` (`rollup` | `sectional`) on a garage door, `shutters` on a window, `ramp` on a
+garage door. Two doors on one shed can be different doors, which is why these ride here rather
+than on one Option speaking for both. Position is
 normalized `0.0–1.0` across the wall; `(0,0)` is bottom-left — `normalizedY` 0 is the floor, 1 is
 the eave, and `normalizedX` runs across **that wall's** span, which for left and right is
 `shedLength - 2 * WALL_THICKNESS`, not the full length. Size is **absolute feet**, which is why
@@ -392,32 +410,25 @@ Ask `openingTransform` for the position — never rebuild it from the normalized
 
 `ShedWall` renders `door`, `window`, `garage_door`, `barn_door` and `swing_barn_door`.
 
-**Some Options hang off another Option's Placement** (issue #44). A pair of shutters flanks a
-window; a ramp meets a garage door — `ramp_small` is 7 ft wide and `ramp_large` 9 ft, which is a
-door apron, not a doorstep. `utils/dependentOptions.js` owns the rule: `OPTION_PARENTS` names the
-parent, `isOptionAvailable` greys the row until one exists, and the attachment is a **field on the
-parent Placement** (`shutters: true`, `ramp: 'small'`) rather than a Placement of its own, since
-it has no position the parent does not already give it. So a customer can shutter one window and
-leave the next bare, and the count is read off the Placements rather than kept beside them.
-`Ramp` takes the door's Placement and stands where `openingTransform` puts it; it used to hold a
-private copy of the same wall switch and sat centred wherever the door actually was.
+**Some things hang off an Opening** (issue #44). A pair of shutters flanks a window; a ramp meets
+a garage door — `ramp_small` is 7 ft wide and `ramp_large` 9 ft, which is a door apron, not a
+doorstep. Each is a **field on the parent Placement**, never an Option of its own: it has no
+position the parent does not already give it, and no existence apart from it — remove the window
+and its shutters go with it. So a customer can shutter one window and leave the next bare, and the
+count of windows carrying one *is* the price. `utils/dependentOptions.js` holds the rule and the
+Openings list holds the controls.
 
-**`carriesAttachment` and `isOptionAvailable` both carry a bridge for issue #10.** Nothing can
-create a Placement yet, so an enabled parent Option stands in for one. Both fallbacks are marked
-and both come out when reconcile lands — until then, pricing still reads `shutters.pairs` rather
-than counting shuttered windows, because counting would price at zero.
+**A resize does not move a customer's door.** It cannot: an Opening on a 16ft wall taken down to
+12ft is kept exactly where it was put, and `placementIssues` says so — beside the row in the
+Openings list, and again at the save and quote gates, which refuse until it is fixed (ADR-0007).
+It is *asked*, never stored: whether an Opening fits is a fact about the Design as it is now, and
+a stored answer is one more copy to go stale.
 
-Known gaps, all issue #10. A click on a wall places an Opening and the Options tab lists and
-removes Placements, but:
-
-- Enabling a placeable Option does not create a Placement, so a garage door can still add money
-  and no geometry. The Quote reads Option flags — `shutters.pairs` among them — not the Placements.
-- There is no `reconcile`. A resize runs `snapToValidCombo` and nothing else, so an Opening a resize
-  leaves hanging off its wall is neither revalidated nor reported.
-- The fallbacks marked for issue #10 are still in `dependentOptions.js`, `ShedWall.jsx` and
-  `Ramp.jsx`.
-- `validatePlacement` reports an Opening that hangs off its wall as a *warning*, leaving
-  `valid: true`. A test marks this deliberately with `it.fails`.
+**The kernel calls that a caution rather than a problem, and that is right.** A wall panel clips an
+Opening running past its wall, and a door crossing the floor becomes a notch rather than a hole
+(ADR-0001, as amended); 144 golden vectors pin the classification. What blocks a *sale* is a
+different question, and it is this app's to answer. An earlier `it.fails` marker predicted the
+kernel would flip; it did not, and the marker is now a real test of what each side actually says.
 
 ## Materials and light
 
@@ -563,7 +574,7 @@ test:e2e` is Playwright, and it lives in `frontend/e2e/` where vitest's `include
 | Walls and Placement routing | `utils/wallSides.test.js` |
 | Trim placement | `utils/trimGeometry.test.js` |
 | Gable-end openings | `utils/gableEndOpenings.test.js` |
-| Options that need a parent | `utils/dependentOptions.test.js` |
+| What hangs off an Opening | `utils/dependentOptions.test.js` |
 | Store behaviour | `store/shedStore.test.js` |
 | The save gate | `services/designApi.test.js` |
 | The shared catalog file | `utils/catalog.test.js` |
@@ -713,7 +724,7 @@ frontend/src/
   utils/wallOpenings.js           openingTransform, wallSpan, and the kernel's cut wall panel
   utils/wallSides.js              the four walls, and routing Placements onto them
   utils/gableEndOpenings.js       the octagon in a gable end: where it sits, which ends carry one
-  utils/dependentOptions.js       Options that need a parent Placement: shutters, ramp
+  utils/dependentOptions.js       what hangs off an Opening: shutters, ramp
   utils/trimGeometry.js           where every trim board sits: corners, gable fascia, barn rake
   utils/shaders.js                siding and roof GLSL, and SHED_LIGHTING — the one light rig
   components/common/ShedLights.jsx  the scene lights, built from SHED_LIGHTING

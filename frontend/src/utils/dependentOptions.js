@@ -1,5 +1,5 @@
 /**
- * Options that cannot stand on their own.
+ * Options that hang on another Opening.
  *
  * A pair of shutters flanks a window; a ramp meets a garage door. Neither is a
  * thing you can buy for a shed that has nowhere to put it — `shutters_per_pair`
@@ -7,30 +7,30 @@
  * 7 ft wide and `ramp_large` 9 ft, which is a garage-door apron rather than a
  * doorstep (issue #44).
  *
- * So an Option may declare a **parent**, and is unavailable until a Placement
- * of that parent exists. The attachment then lives as a **field on the parent
- * Placement** — `shutters: true`, `ramp: 'small'` — rather than as a Placement
- * of its own, because it has no position to carry that the parent does not
- * already give it. That is what makes the greyed-out checkbox and the
- * unbuildable geometry one condition, checked once.
+ * So an attachment is a **field on the parent Placement** — `shutters: true`,
+ * `ramp: 'small'` — and not an Option of its own. It has no position to carry
+ * that the parent does not already give it, and no existence apart from it:
+ * remove the window and its shutters go with it, because they were never
+ * anywhere else.
  *
- * It also means the count is read off the Placements rather than kept beside
- * them: there is no `shutters.pairs`, because a second copy of a number drifts
- * from the first.
+ * **There is no Option flag to fall back to any more** (issue #10). There used
+ * to be, while nothing in the UI could create a Placement; an enabled Option
+ * stood in for one so shutters were not unbuyable. Placements are the only
+ * answer now, which is what makes the count the price.
  */
 
-/** Which Placement type each dependent Option hangs on. */
+/** Which Placement type each attachment hangs on. */
 export const OPTION_PARENTS = {
 	shutters: 'window',
 	ramp: 'garage_door',
 };
 
 /**
- * Every Placement a dependent Option could hang on.
+ * Every Placement an attachment could hang on.
  *
  * @param {string} optionKey
  * @param {Array} placements
- * @returns {Array} empty for an Option with no parent
+ * @returns {Array} empty for a key that hangs on nothing
  */
 export function parentPlacements(optionKey, placements = []) {
 	const parentType = OPTION_PARENTS[optionKey];
@@ -39,41 +39,8 @@ export function parentPlacements(optionKey, placements = []) {
 }
 
 /**
- * Whether an Option can be offered at all.
- *
- * An Option with no parent is always available. A dependent one needs somewhere
- * to go.
- *
- * **The `options` clause is a bridge, not the rule.** Enabling an Option does
- * not yet create a Placement — nothing in the UI can create one at all, and the
- * only runtime path into `addPlacement` is loading a saved Design (issue #10).
- * Until reconcile lands, an enabled parent Option counts as somewhere to go, or
- * shutters would be unbuyable in the Configurator. Delete this clause with
- * issue #10: once an Option mints its Placement, the Placement is the only
- * answer that matters.
- *
- * @param {string} optionKey
- * @param {{options?: Object, placements?: Array}} design
- * @returns {boolean}
- */
-export function isOptionAvailable(optionKey, { options = {}, placements = [] } = {}) {
-	const parentType = OPTION_PARENTS[optionKey];
-	if (!parentType) return true;
-	if (parentPlacements(optionKey, placements).length > 0) return true;
-
-	// Bridge — see above.
-	if (parentType === 'window') return Boolean(options.vinylWindows?.enabled);
-	if (parentType === 'garage_door') {
-		return Boolean(options.garageDoor?.enabled || options.additionalDoor?.enabled);
-	}
-	return false;
-}
-
-/**
- * How many parents are actually carrying the attachment.
- *
- * This is what the Option is priced on — pairs of shutters, ramps — because the
- * Placements are where the truth is.
+ * How many parents are carrying the attachment — pairs of shutters, ramps.
+ * This is what it is priced on, because the Placements are where the truth is.
  *
  * @param {string} optionKey
  * @param {Array} placements
@@ -86,34 +53,22 @@ export function attachmentCount(optionKey, placements = []) {
 /**
  * Whether one parent Placement carries the attachment.
  *
- * The Placement's own field wins whenever it has one — a customer who
- * shuttered a single window has said something about every other window too.
- *
- * **The fallback is the same bridge as `isOptionAvailable`.** Nothing can put a
- * `shutters` field on a Placement yet, so an enabled Option stands in for one
- * (issue #10). Delete the fallback when reconcile lands.
- *
  * @param {string} optionKey
  * @param {Object} placement
- * @param {Object} options
  * @returns {boolean}
  */
-export function carriesAttachment(optionKey, placement, options = {}) {
-	const own = placement?.[optionKey];
-	if (own !== undefined) return Boolean(own);
-	return Boolean(options?.[optionKey]?.enabled);
+export function carriesAttachment(optionKey, placement) {
+	return Boolean(placement?.[optionKey]);
 }
 
 /**
- * The attachment's value on one parent — a ramp's size, say, rather than a
- * bare yes. Falls back the same way `carriesAttachment` does.
+ * The attachment's value on one parent — a ramp's size, say, rather than a bare
+ * yes.
  *
  * @returns {*} `undefined` when the parent does not carry it at all
  */
-export function attachmentValue(optionKey, placement, options = {}) {
-	if (!carriesAttachment(optionKey, placement, options)) return undefined;
+export function attachmentValue(optionKey, placement) {
 	const own = placement?.[optionKey];
-	if (own !== undefined && own !== true) return own;
-	const cfg = options?.[optionKey] ?? {};
-	return cfg.size ?? true;
+	if (!own) return undefined;
+	return own === true ? true : own;
 }

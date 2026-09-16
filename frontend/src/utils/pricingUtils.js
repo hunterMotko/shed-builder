@@ -167,26 +167,40 @@ export function snapToValidCombo(width, length, tier, model) {
 const endLabel = (name, ends) =>
   ends.length > 1 ? `${name} (front and back)` : `${name} (${ends[0]})`;
 
-export function getOptionLineItems(options) {
+export function getOptionLineItems(options, placements = []) {
   const lines = [];
+  const of = (type) => placements.filter((p) => p?.type === type);
 
-  if (options.garageDoor?.enabled) {
-    const key = options.garageDoor.size === '8x7' ? 'garage_door_8x7' : 'garage_door_6x7';
-    lines.push({ label: `${options.garageDoor.size} Roll-Up Garage Door`, amount: OPTION_PRICES[key] });
-  }
-  if (options.additionalDoor?.enabled) {
-    lines.push({ label: 'Additional Garage Door', amount: OPTION_PRICES.garage_door_additional });
-  }
-  if (options.entryDoor?.enabled) {
-    const key = options.entryDoor.type === 'nine_light' ? 'entry_door_nine_light' : 'entry_door_steel';
-    const label = options.entryDoor.type === 'nine_light' ? '36in Nine-Light Entry Door' : '36in Steel Entry Door';
-    lines.push({ label, amount: OPTION_PRICES[key] });
-  }
-  if (options.vinylWindows?.enabled) {
-    const count = options.vinylWindows.count || 1;
+  // A roll-up is priced by the door on the shed, not by a checkbox. The first
+  // one is priced by its width; every one after that is what the catalog calls
+  // an additional garage door, which is what "additional" has always meant.
+  of('garage_door').forEach((p, i) => {
+    if (i === 0) {
+      const key = p.width >= 8 ? 'garage_door_8x7' : 'garage_door_6x7';
+      lines.push({ label: `${p.width}×7 Roll-Up Garage Door`, amount: OPTION_PRICES[key] });
+    } else {
+      lines.push({ label: 'Additional Garage Door', amount: OPTION_PRICES.garage_door_additional });
+    }
+  });
+
+  // An entry door's kind is a field on the door, because two doors on one shed
+  // can differ and a single Option could only say one thing about both.
+  of('door').forEach((p) => {
+    const nine = p.doorType === 'nine_light';
     lines.push({
-      label: `${count}× Vinyl Slide Window${count > 1 ? 's' : ''}`,
-      amount: OPTION_PRICES.window_vinyl_slide * count,
+      label: nine ? '36in Nine-Light Entry Door' : '36in Steel Entry Door',
+      amount: OPTION_PRICES[nine ? 'entry_door_nine_light' : 'entry_door_steel'],
+    });
+  });
+
+  // A swing barn door is part of the Standard barn package, so it is placed and
+  // drawn and adds nothing: the catalog prices no such line.
+
+  const windows = of('window');
+  if (windows.length) {
+    lines.push({
+      label: `${windows.length}× Vinyl Slide Window${windows.length > 1 ? 's' : ''}`,
+      amount: OPTION_PRICES.window_vinyl_slide * windows.length,
     });
   }
   // Priced per end, not per tick: a shed has two gables and a customer may
@@ -202,18 +216,25 @@ export function getOptionLineItems(options) {
     const ft = options.skylight.runningFt || 0;
     lines.push({ label: `Ridge Skylight (${ft} ft)`, amount: OPTION_PRICES.skylight_per_ft * ft });
   }
-  if (options.shutters?.enabled) {
-    const pairs = options.shutters.pairs || 1;
+  // Shutters and ramps hang off the Opening they flank or meet, so the price
+  // is the count of Openings carrying one. There is no `shutters.pairs`: a
+  // second copy of a number drifts from the first.
+  const shuttered = windows.filter((p) => Boolean(p.shutters)).length;
+  if (shuttered) {
     lines.push({
-      label: `${pairs}× Vinyl Shutter Pair${pairs > 1 ? 's' : ''}`,
-      amount: OPTION_PRICES.shutters_per_pair * pairs,
+      label: `${shuttered}× Vinyl Shutter Pair${shuttered > 1 ? 's' : ''}`,
+      amount: OPTION_PRICES.shutters_per_pair * shuttered,
     });
   }
-  if (options.ramp?.enabled) {
-    const key = options.ramp.size === 'large' ? 'ramp_large' : 'ramp_small';
-    const label = options.ramp.size === 'large' ? 'Access Ramp (8–10×4ft)' : 'Access Ramp (6–8×4ft)';
-    lines.push({ label, amount: OPTION_PRICES[key] });
-  }
+  of('garage_door')
+    .filter((p) => p.ramp)
+    .forEach((p) => {
+      const large = p.ramp === 'large';
+      lines.push({
+        label: large ? 'Access Ramp (8–10×4ft)' : 'Access Ramp (6–8×4ft)',
+        amount: OPTION_PRICES[large ? 'ramp_large' : 'ramp_small'],
+      });
+    });
   if (options.workbench?.enabled) {
     const ft = options.workbench.runningFt || 0;
     lines.push({ label: `Workbench (${ft} ft)`, amount: OPTION_PRICES.workbench_per_ft * ft });
@@ -240,16 +261,16 @@ export function getOptionLineItems(options) {
   return lines;
 }
 
-export function calculateOptionTotal(options) {
-  return getOptionLineItems(options).reduce((sum, item) => sum + item.amount, 0);
+export function calculateOptionTotal(options, placements = []) {
+  return getOptionLineItems(options, placements).reduce((sum, item) => sum + item.amount, 0);
 }
 
 /**
  * Full total price: base lookup + all enabled Options.
  */
-export function calculateTotalPrice(width, length, tier, options = {}) {
+export function calculateTotalPrice(width, length, tier, options = {}, placements = []) {
   const base = lookupBasePrice(width, length, tier) ?? 0;
-  return base + calculateOptionTotal(options);
+  return base + calculateOptionTotal(options, placements);
 }
 
 // ─── Formatting helpers (unchanged API) ─────────────────────────────────────

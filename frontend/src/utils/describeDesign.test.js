@@ -45,25 +45,36 @@ describe('describeDesign', () => {
 		expect(describeDesign(design())).toMatch(/no options/i);
 	});
 
-	it('lists the Options that are enabled and omits the rest', () => {
+	it('says what is on the shed, and omits what is not', () => {
+		// Doors and windows are Placements, so this reads the building rather
+		// than a set of checkboxes (issue #10).
 		const text = describeDesign(design({
-			options: {
-				garageDoor: { enabled: true, size: '8x7' },
-				entryDoor: { enabled: false, type: 'steel' },
-				shutters: { enabled: true, pairs: 2 },
-			},
+			placements: [
+				{ type: 'garage_door', width: 8, height: 7 },
+				{ type: 'window', width: 2, height: 3, shutters: true },
+			],
+			options: { skylight: { enabled: false, runningFt: 8 } },
 		}));
 		expect(text).toMatch(/garage door/i);
 		expect(text).toMatch(/shutters/i);
 		expect(text).not.toMatch(/entry door/i);
+		expect(text).not.toMatch(/skylight/i);
 	});
 
-	it('counts the Options that come in quantities', () => {
+	it('counts what comes in quantities', () => {
 		const text = describeDesign(design({
-			options: { vinylWindows: { enabled: true, count: 3 }, shutters: { enabled: true, pairs: 2 } },
+			placements: [
+				{ type: 'window', width: 2, height: 3, shutters: true },
+				{ type: 'window', width: 2, height: 3, shutters: true },
+				{ type: 'window', width: 2, height: 3 },
+			],
 		}));
 		expect(text).toMatch(/3 vinyl/i);
 		expect(text).toMatch(/2 pairs/i);
+	});
+
+	it('says so plainly when the shed is bare', () => {
+		expect(describeDesign(design({ placements: [], options: {} }))).toMatch(/no options/i);
 	});
 
 	it('reads as one sentence, so a screen reader does not announce fragments', () => {
@@ -74,7 +85,9 @@ describe('describeDesign', () => {
 
 	it('speaks a size as words rather than as a catalog code', () => {
 		// "8x7" is not a word. Read aloud it comes out as "eight ex seven".
-		const text = describeDesign(design({ options: { garageDoor: { enabled: true, size: '8x7' } } }));
+		const text = describeDesign(design({
+			placements: [{ type: 'garage_door', width: 8, height: 7 }],
+		}));
 		expect(text).toMatch(/8 by 7 foot/);
 		expect(text).not.toMatch(/8x7/);
 	});
@@ -82,10 +95,8 @@ describe('describeDesign', () => {
 	it('gets the article right in front of a number', () => {
 		// "a 8 foot skylight" is not how anyone says it.
 		const text = describeDesign(design({
-			options: {
-				skylight: { enabled: true, runningFt: 8 },
-				garageDoor: { enabled: true, size: '8x7' },
-			},
+			options: { skylight: { enabled: true, runningFt: 8 } },
+			placements: [{ type: 'garage_door', width: 8, height: 7 }],
 		}));
 		expect(text).not.toMatch(/\ba 8\b/);
 		expect(text).toMatch(/an 8 foot ridge skylight/);

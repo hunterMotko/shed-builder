@@ -38,7 +38,6 @@ export const ShedWall = forwardRef(function ShedWall(
     trimColor,
     trimWidth = 0.25,
     doorStyle = 'sectional',
-    options = {},
     placements = [],
     castShadow = true,
     receiveShadow = true,
@@ -186,7 +185,12 @@ export const ShedWall = forwardRef(function ShedWall(
               placement={p}
               shedDimensions={shedDimensions}
               trimColor={trimColor}
-              doorStyle={doorStyle}
+              /* The door's own style wins. A Barn carries a roll-up and a
+                 Gable a sectional, which is the Model's default below — but
+                 the catalog sells a Gable garage with an 8x7 roll-up, so the
+                 door has to be able to say which it is. Like `doorType` on an
+                 entry door: what a door *is* rides on the door. */
+              doorStyle={p.doorStyle ?? doorStyle}
             />
           );
         }
@@ -206,10 +210,9 @@ export const ShedWall = forwardRef(function ShedWall(
 
       {/* Shutters belong to the window they flank, not to the wall: they are a
           field on the parent Placement, so a customer can shutter one window
-          and leave the next bare (issue #44). `carriesAttachment` still falls
-          back to the Option while nothing can create a Placement (issue #10). */}
+          and leave the next bare (issue #44). */}
       {placements
-        .filter((p) => p.type === 'window' && carriesAttachment('shutters', p, options))
+        .filter((p) => p.type === 'window' && carriesAttachment('shutters', p))
         .map((p) => (
           <Shutters
             key={`shutters-${p.id}`}

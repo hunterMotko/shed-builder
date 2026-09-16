@@ -46,16 +46,15 @@ export const useShedStore = create((set) => ({
 	// Foundation Configuration
 	foundationHeight: 1.5, // feet
 	foundationColor: '#8B7355', // brown/tan concrete/timber appearance
-	// Add-on options (all disabled by default)
+	// Options that have no position on the shed.
+	//
+	// **Doors, windows, shutters and ramps are not here.** Anything that sits
+	// somewhere is a Placement, and the Quote counts Placements: a flag beside
+	// them would be a second copy of the same fact, and two copies drift. That
+	// is what let a garage door add $500 and no geometry (issue #10).
 	options: {
-		garageDoor:     { enabled: false, size: '8x7', style: 'sectional' },
-		additionalDoor: { enabled: false, size: '6x7' },
-		entryDoor:      { enabled: false, type: 'steel' }, // 'steel' | 'nine_light'
-		vinylWindows:   { enabled: false, count: 1, windowSize: '2x2' },
 		octagonWindow:  { enabled: false, ends: 'front' }, // 'front' | 'back' | 'both'
 		skylight:       { enabled: false, runningFt: 8 },
-		shutters:       { enabled: false, pairs: 1 },
-		ramp:           { enabled: false, size: 'small' }, // 'small' | 'large'
 		octagonVent:    { enabled: false, ends: 'front' },
 		// Interior Options. Quantities, not positions: none of them takes a
 		// Placement, and `loft.sqft` is footage *added* — a Barn is already
@@ -73,6 +72,12 @@ export const useShedStore = create((set) => ({
 	setWidth: (width) => set((s) => snapToValidCombo(width, s.length, s.tier, s.model)),
 	setLength: (length) => set((s) => snapToValidCombo(s.width, length, s.tier, s.model)),
 	setTier: (tier) => set((s) => snapToValidCombo(s.width, s.length, tier, s.model)),
+	// Resizing does not touch the Placements, and does not have to: whether an
+	// Opening still fits is a *question about* the Design rather than a fact
+	// stored beside it, so `placementIssues` asks the kernel on demand. A
+	// stored answer would be one more copy to go stale — the same trap the
+	// Option flags were.
+	//
 	// Changing the Model can change the grade, because a Gable is sold as a
 	// Deluxe only: switching a Standard Barn to a Gable has to move it up a
 	// grade rather than leave it on a combination the catalog does not sell.
@@ -80,13 +85,6 @@ export const useShedStore = create((set) => ({
 	setModel: (model) => set((s) => ({
 		model,
 		...snapToValidCombo(s.width, s.length, s.tier, model),
-		options: {
-			...s.options,
-			garageDoor: {
-				...s.options.garageDoor,
-				style: model === 'Barn' ? 'rollup' : 'sectional',
-			},
-		},
 	})),
 	setColor: (color) => set({ color }),
 	setRoofColor: (roofColor) => set({ roofColor }),
@@ -146,14 +144,8 @@ export const useShedStore = create((set) => ({
 		foundationHeight: 1.5,
 		foundationColor: '#8B7355',
 		options: {
-			garageDoor:     { enabled: false, size: '8x7', style: 'sectional' },
-			additionalDoor: { enabled: false, size: '6x7' },
-			entryDoor:      { enabled: false, type: 'steel' },
-			vinylWindows:   { enabled: false, count: 1, windowSize: '2x2' },
 			octagonWindow:  { enabled: false, ends: 'front' }, // 'front' | 'back' | 'both'
 			skylight:       { enabled: false, runningFt: 8 },
-			shutters:       { enabled: false, pairs: 1 },
-			ramp:           { enabled: false, size: 'small' },
 			octagonVent:    { enabled: false, ends: 'front' },
 			workbench:      { enabled: false, runningFt: 8 },
 			pegboard:       { enabled: false, sheets: 2 },
@@ -165,7 +157,7 @@ export const useShedStore = create((set) => ({
 	// Get calculated price (derived state)
 	getPrice: () => {
 		const state = useShedStore.getState();
-		return calculateTotalPrice(state.width, state.length, state.tier, state.options);
+		return calculateTotalPrice(state.width, state.length, state.tier, state.options, state.placements);
 	},
 	// Get full configuration
 	getConfig: () => {
@@ -188,7 +180,7 @@ export const useShedStore = create((set) => ({
 			foundationColor: state.foundationColor,
 			placements: state.placements,
 			options: state.options,
-			price: calculateTotalPrice(state.width, state.length, state.tier, state.options),
+			price: calculateTotalPrice(state.width, state.length, state.tier, state.options, state.placements),
 		};
 	},
 }));

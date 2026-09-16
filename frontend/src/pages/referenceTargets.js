@@ -20,15 +20,12 @@ const GABLE_WALL_HEIGHT = wallHeightFt('Gable'); // 88.5in — the Models differ
 // A reference target must not inherit whatever the customer has switched on in
 // the Configurator — the shed components fall back to the store for any field a
 // Design leaves out, and a stray Option would land in the reconstruction.
+// Doors, windows, shutters and ramps are not Options any more — they are
+// Placements, and each target lists its own. What is left is what has no
+// position on the shed.
 const NO_OPTIONS = {
-	garageDoor: { enabled: false, size: '8x7', style: 'rollup' },
-	additionalDoor: { enabled: false, size: '6x7' },
-	entryDoor: { enabled: false, type: 'steel' },
-	vinylWindows: { enabled: false, count: 1, windowSize: '2x2' },
 	octagonWindow: { enabled: false },
 	skylight: { enabled: false, runningFt: 8 },
-	shutters: { enabled: false, pairs: 1 },
-	ramp: { enabled: false, size: 'small' },
 	octagonVent: { enabled: false },
 };
 
@@ -140,9 +137,13 @@ const gableOpenings = [
 const GUARD_DOOR_H = 7;
 
 const gableGuardOpenings = [
+	// A roll-up on a Gable: the catalog's 14x28 Deluxe Gable garage carries an
+	// 8x7 roll-up door, so this is a shed the shop sells and not a stray
+	// fixture. It says so on the door, because the Model's default is a
+	// sectional and the door outranks it.
 	{ id: 'guard-gable-garage', type: 'garage_door', wall: 'front', normalizedX: 0.5,
 	  normalizedY: GUARD_DOOR_H / 2 / GABLE_WALL_HEIGHT, width: 8, height: GUARD_DOOR_H,
-	  ramp: 'small' },
+	  ramp: 'small', doorStyle: 'rollup' },
 	{ id: 'guard-gable-window-a', type: 'window', wall: 'left', normalizedX: 0.3,
 	  normalizedY: 0.6, width: 2, height: 3, shutters: true },
 	{ id: 'guard-gable-window-b', type: 'window', wall: 'left', normalizedX: 0.7,

@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useShedStore } from '../store/shedStore';
 import { requestQuote, validateContact, validateDesignConfig } from '../services/designApi';
+import { placementIssues } from '../utils/placementValidator';
+import { wallHeightFt } from '../utils/modelSpec';
 
 /**
  * The terminal action: send this Design to the shop, with a way to reply.
@@ -42,10 +44,20 @@ export const QuoteRequestDialog = ({ isOpen, onClose }) => {
 		const config = getConfig();
 
 		// The Design is checked before the contact details: a request for a shed
-		// that cannot be built is not worth a phone call.
+		// that cannot be built is not worth a phone call. An Opening left
+		// hanging off its wall by a resize is exactly that (ADR-0007).
 		const design = validateDesignConfig(config);
+		const openings = placementIssues(config.placements, {
+			width: config.width,
+			length: config.length,
+			wallHeight: wallHeightFt(config.model),
+		});
 		const contactErrors = validateContact(contact);
-		const all = [...(design.isValid ? [] : design.errors), ...contactErrors];
+		const all = [
+			...(design.isValid ? [] : design.errors),
+			...openings.map((i) => `An Opening no longer fits: ${i.summary}`),
+			...contactErrors,
+		];
 		if (all.length) {
 			setErrors(all);
 			return;
