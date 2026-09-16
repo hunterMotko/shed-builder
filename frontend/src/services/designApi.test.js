@@ -1,7 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { validateDesignConfig,
-	unrenderableReasons,
-} from './designApi';
+import { validateDesignConfig, unrenderableReasons, validateContact } from './designApi';
 
 /**
  * The gate `useDesignPersistence.save()` runs before POSTing a Design.
@@ -207,5 +205,48 @@ describe('What the kernel will refuse to draw', () => {
 	it('reports every reason, not just the first', () => {
 		const bad = design({ model: 'Lean-To', placements: [{ id: 'p1', wall: 'ceiling' }] });
 		expect(unrenderableReasons(bad)).toHaveLength(2);
+	});
+});
+
+
+// The shop has to be able to answer a quote request. This mirrors
+// `validateContact` in main.go: the two gates are the same gate, and neither
+// may be the weaker of them (issue #54).
+describe('what a quote request has to carry', () => {
+	const ok = { name: 'Dana', phone: '555-0100' };
+
+	it('accepts a name with a phone number', () => {
+		expect(validateContact(ok)).toEqual([]);
+	});
+
+	it('accepts a name with an email address instead', () => {
+		expect(validateContact({ name: 'Dana', email: 'dana@example.com' })).toEqual([]);
+	});
+
+	it('asks for a name', () => {
+		expect(validateContact({ phone: '555-0100' })).not.toEqual([]);
+		// Whitespace is not a name.
+		expect(validateContact({ name: '   ', phone: '555-0100' })).not.toEqual([]);
+	});
+
+	it('asks for one way to reply, and does not insist on both', () => {
+		// Demanding both loses the customer who gives one.
+		expect(validateContact({ name: 'Dana' })).not.toEqual([]);
+		expect(validateContact({ name: 'Dana', phone: '555-0100' })).toEqual([]);
+		expect(validateContact({ name: 'Dana', email: 'dana@example.com' })).toEqual([]);
+	});
+
+	it('rejects an email address that cannot receive a reply', () => {
+		expect(validateContact({ name: 'Dana', email: 'dana.example.com' })).not.toEqual([]);
+		expect(validateContact({ name: 'Dana', email: 'dana@' })).not.toEqual([]);
+	});
+
+	it('does not require a ZIP or a note', () => {
+		// Useful to the shop, but not worth refusing a customer over.
+		expect(validateContact(ok)).toEqual([]);
+	});
+
+	it('reports every problem at once rather than only the first', () => {
+		expect(validateContact({ email: 'nope' }).length).toBeGreaterThan(1);
 	});
 });

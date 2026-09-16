@@ -29,6 +29,18 @@ go build -o shed-server . && ./shed-server
 cd frontend && npm install && npm run dev
 ```
 
+## Configuration
+
+All optional — with none of them set, the app runs and quote requests are logged in full
+instead of emailed.
+
+| Variable | Meaning |
+|---|---|
+| `SHED_DB` | Where designs and quote requests are stored. Defaults to `shed.db` |
+| `QUOTE_EMAIL_TO` | Where a quote request is emailed |
+| `QUOTE_EMAIL_FROM` | The verified sender address |
+| `RESEND_API_KEY` | The email provider key |
+
 ## Check it
 
 ```bash

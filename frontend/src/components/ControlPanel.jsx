@@ -8,6 +8,7 @@ import { ColorSection }          from './controls/ColorSection';
 import { OptionsSection }         from './controls/OptionsSection';
 import { PlacementsSection }      from './controls/PlacementsSection';
 import { ActionButtons }         from './controls/ActionButtons';
+import { QuoteRequestDialog }     from './QuoteRequestDialog';
 import { lookupBasePrice, getOptionLineItems } from '../utils/pricingUtils';
 
 const TABS = [
@@ -19,6 +20,7 @@ const TABS = [
 
 export const ControlPanel = ({ onClose }) => {
   const [activeTab, setActiveTab] = useState('dimensions');
+  const [quoteOpen, setQuoteOpen] = useState(false);
 
   const { model, color, roofColor, setModel, setColor, setRoofColor,
           width, length, tier, options, reset } = useShedStore();
@@ -146,12 +148,15 @@ export const ControlPanel = ({ onClose }) => {
         borderTop: '1px solid #334155',
       }}>
         <ActionButtons
+          onRequestQuote={() => setQuoteOpen(true)}
           onSave={handleSave}
           onLoad={handleLoad}
           onReset={reset}
           isLoading={isLoading}
         />
       </div>
+
+      <QuoteRequestDialog isOpen={quoteOpen} onClose={() => setQuoteOpen(false)} />
     </div>
   );
 };

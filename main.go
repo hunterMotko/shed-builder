@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"database/sql"
 	_ "embed"
 	"encoding/json"
@@ -340,6 +341,25 @@ func database() *sql.DB {
 		`); err != nil {
 			log.Fatalf("cannot create the designs table in %s: %v", path, err)
 		}
+		// Columns here, where a Design is one JSON document. The difference is
+		// who reads it: a Design is written by this server and read back by it,
+		// whole, while a quote request is read by a person at the shop — and
+		// eventually sorted, filtered and marked done. Five short fields are
+		// worth naming.
+		if _, err := handle.Exec(`
+			CREATE TABLE IF NOT EXISTS quote_requests (
+				id         TEXT PRIMARY KEY,
+				design_id  TEXT NOT NULL,
+				created_at TEXT NOT NULL,
+				name       TEXT NOT NULL,
+				phone      TEXT NOT NULL,
+				email      TEXT NOT NULL,
+				zip        TEXT NOT NULL,
+				note       TEXT NOT NULL
+			)
+		`); err != nil {
+			log.Fatalf("cannot create the quote_requests table in %s: %v", path, err)
+		}
 		db = handle
 	})
 	return db
@@ -371,18 +391,20 @@ func loadDesign(id string) (*Design, error) {
 	return &d, nil
 }
 
-// POST /api/save-design
-func saveDesign(c *gin.Context) {
-	var input Design
-	if err := c.BindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
-		return
-	}
-
-	// The Model is checked first now, because the Tier's default depends on it.
+// buildDesign turns what a client sent into the Design this server will stand
+// behind: the Model and Tier checked against what is sold, the combination
+// checked against the catalog, every Placement checked as buildable, and **the
+// price computed here** — whatever the client claimed is ignored (ADR-0008).
+//
+// Factored out of the save handler because a quote request has to do exactly
+// this before it does anything else, and two copies of it would be two answers
+// to "what does this shed cost".
+//
+// Every error it returns is a refusal the caller can fix, so callers answer 400.
+func buildDesign(input Design) (*Design, error) {
+	// The Model is checked first, because the Tier's default depends on it.
 	if input.Model != "Gable" && input.Model != "Barn" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Model must be 'Gable' or 'Barn'"})
-		return
+		return nil, fmt.Errorf("Model must be 'Gable' or 'Barn'")
 	}
 
 	// Default the Tier to the grade this Model is sold at, if the client names
@@ -393,36 +415,25 @@ func saveDesign(c *gin.Context) {
 	}
 
 	if !soldAsTier(input.Model, input.Tier) {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": fmt.Sprintf(
-				"A %s is sold as %s only",
-				input.Model, strings.Join(modelTiers[input.Model], " or "),
-			),
-		})
-		return
+		return nil, fmt.Errorf(
+			"A %s is sold as %s only",
+			input.Model, strings.Join(modelTiers[input.Model], " or "),
+		)
 	}
 
-	// Validate combo against price table
 	basePrice, valid := lookupBasePrice(input.Width, input.Length, input.Tier)
 	if !valid {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": fmt.Sprintf(
-				"Invalid combination: %dx%d %s is not in the catalog",
-				input.Width, input.Length, input.Tier,
-			),
-		})
-		return
+		return nil, fmt.Errorf(
+			"Invalid combination: %dx%d %s is not in the catalog",
+			input.Width, input.Length, input.Tier,
+		)
 	}
 
 	if err := validatePlacements(input.Placements); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
+		return nil, err
 	}
 
-	// Server-side price calculation (ignore client price for base)
-	serverPrice := basePrice + calculateOptionTotal(input.Options)
-
-	design := &Design{
+	return &Design{
 		ID:         uuid.New().String(),
 		Width:      input.Width,
 		Length:     input.Length,
@@ -433,8 +444,23 @@ func saveDesign(c *gin.Context) {
 		TrimColor:  input.TrimColor,
 		Placements: input.Placements,
 		Options:    input.Options,
-		Price:      serverPrice,
+		Price:      basePrice + calculateOptionTotal(input.Options),
 		CreatedAt:  time.Now().Format(time.RFC3339),
+	}, nil
+}
+
+// POST /api/save-design
+func saveDesign(c *gin.Context) {
+	var input Design
+	if err := c.BindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
+		return
+	}
+
+	design, err := buildDesign(input)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
 	}
 
 	if err := storeDesign(design); err != nil {
@@ -446,6 +472,214 @@ func saveDesign(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, design)
+}
+
+// Contact is how the shop reaches a customer back. The name is required and so
+// is **one** of phone or email: the shop has to be able to call back, and
+// demanding both loses customers who give one (issue #54).
+type Contact struct {
+	Name  string `json:"name"`
+	Phone string `json:"phone"`
+	Email string `json:"email"`
+	Zip   string `json:"zip"`
+	Note  string `json:"note"`
+
+	// Company is a honeypot. The form hides it, so a customer never fills it
+	// in and a bot filling every field does. A filled one is answered exactly
+	// like a real request and stored nowhere — telling a bot it failed only
+	// teaches it what to change.
+	Company string `json:"company"`
+}
+
+// QuoteRequest is a Design plus the person who wants it built.
+type QuoteRequest struct {
+	ID        string  `json:"id"`
+	DesignID  string  `json:"designId"`
+	Contact   Contact `json:"contact"`
+	Price     float64 `json:"price"`
+	CreatedAt string  `json:"createdAt"`
+}
+
+type quoteRequestInput struct {
+	Design  Design  `json:"design"`
+	Contact Contact `json:"contact"`
+}
+
+// validateContact mirrors `validateContact` in services/designApi.js. Neither
+// may be the weaker of the two.
+func validateContact(k Contact) error {
+	if strings.TrimSpace(k.Name) == "" {
+		return fmt.Errorf("a name is required")
+	}
+	if strings.TrimSpace(k.Phone) == "" && strings.TrimSpace(k.Email) == "" {
+		return fmt.Errorf("a phone number or an email address is required")
+	}
+	if e := strings.TrimSpace(k.Email); e != "" && (!strings.Contains(e, "@") || strings.HasSuffix(e, "@")) {
+		return fmt.Errorf("that email address does not look like one")
+	}
+	return nil
+}
+
+// A quote request is cheap to send and expensive to receive, so one address may
+// only send a few. In memory, which is all a single local process needs: a
+// restart forgiving everyone is not a threat model, it is a Tuesday.
+var (
+	quoteSeen = map[string][]time.Time{}
+	quoteMu   sync.Mutex
+)
+
+const (
+	quoteWindow = time.Hour
+	quoteBurst  = 5
+)
+
+func withinRateLimit(ip string) bool {
+	quoteMu.Lock()
+	defer quoteMu.Unlock()
+
+	cutoff := time.Now().Add(-quoteWindow)
+	kept := quoteSeen[ip][:0]
+	for _, at := range quoteSeen[ip] {
+		if at.After(cutoff) {
+			kept = append(kept, at)
+		}
+	}
+	if len(kept) >= quoteBurst {
+		quoteSeen[ip] = kept
+		return false
+	}
+	quoteSeen[ip] = append(kept, time.Now())
+	return true
+}
+
+// notifyShop tells a human a quote request arrived.
+//
+// Over HTTPS, not SMTP: outbound mail ports are blocked or restricted on most
+// entry-tier hosts, and a blocked port fails silently on the day it matters.
+//
+// **With no provider configured it logs the whole request instead of sending.**
+// That is the local default and it is deliberate — the flow works end to end
+// with no domain, no account and no secret, and nothing is lost, because the
+// request is already in the database before this is called.
+func notifyShop(q *QuoteRequest, d *Design) {
+	summary := fmt.Sprintf(
+		"Quote request %s\n\n%s\n%s%s\nZIP: %s\n\n%dx%d %s %s — $%.2f\nDesign: %s\n\nNote:\n%s\n",
+		q.ID, q.Contact.Name, q.Contact.Phone, q.Contact.Email, q.Contact.Zip,
+		d.Width, d.Length, d.Tier, d.Model, q.Price, d.ID, q.Contact.Note,
+	)
+
+	to, from, key := os.Getenv("QUOTE_EMAIL_TO"), os.Getenv("QUOTE_EMAIL_FROM"), os.Getenv("RESEND_API_KEY")
+	if to == "" || from == "" || key == "" {
+		log.Printf("no email configured; a quote request arrived:\n%s", summary)
+		return
+	}
+
+	body, err := json.Marshal(map[string]any{
+		"from":    from,
+		"to":      []string{to},
+		"subject": fmt.Sprintf("Quote request: %dx%d %s from %s", d.Width, d.Length, d.Model, q.Contact.Name),
+		"text":    summary,
+	})
+	if err != nil {
+		log.Printf("quote request %s: cannot build the notification: %v", q.ID, err)
+		return
+	}
+
+	req, err := http.NewRequest(http.MethodPost, "https://api.resend.com/emails", bytes.NewReader(body))
+	if err != nil {
+		log.Printf("quote request %s: cannot build the notification: %v", q.ID, err)
+		return
+	}
+	req.Header.Set("Authorization", "Bearer "+key)
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	res, err := client.Do(req)
+	if err != nil {
+		// The request is saved either way. A failed notification is a thing to
+		// chase in the log, not a reason to tell the customer it did not send.
+		log.Printf("quote request %s: notification failed: %v", q.ID, err)
+		return
+	}
+	defer res.Body.Close()
+	if res.StatusCode >= 300 {
+		log.Printf("quote request %s: notification refused with %d", q.ID, res.StatusCode)
+	}
+}
+
+// storeQuoteRequest writes one request. The honeypot never reaches it.
+func storeQuoteRequest(q *QuoteRequest) error {
+	_, err := database().Exec(
+		`INSERT INTO quote_requests (id, design_id, created_at, name, phone, email, zip, note)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		q.ID, q.DesignID, q.CreatedAt,
+		q.Contact.Name, q.Contact.Phone, q.Contact.Email, q.Contact.Zip, q.Contact.Note,
+	)
+	return err
+}
+
+// POST /api/quote-request
+//
+// The terminal act (ADR-0008): a Design plus the contact details of whoever
+// wants it built. It saves the Design and the request first and notifies
+// afterwards, so a request survives a notification that does not.
+func requestQuote(c *gin.Context) {
+	var input quoteRequestInput
+	if err := c.BindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
+		return
+	}
+
+	if strings.TrimSpace(input.Contact.Company) != "" {
+		// Answered like any other request, and stored nowhere.
+		log.Printf("a quote request filled the honeypot; dropped")
+		c.JSON(http.StatusCreated, gin.H{"id": uuid.New().String()})
+		return
+	}
+
+	if !withinRateLimit(c.ClientIP()) {
+		c.JSON(http.StatusTooManyRequests, gin.H{
+			"error": "That is a lot of quote requests. Give us a moment, or call the shop.",
+		})
+		return
+	}
+
+	if err := validateContact(input.Contact); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	design, err := buildDesign(input.Design)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := storeDesign(design); err != nil {
+		log.Printf("quote request: saving design %s: %v", design.ID, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not save the design"})
+		return
+	}
+
+	contact := input.Contact
+	contact.Company = ""
+	quote := &QuoteRequest{
+		ID:        uuid.New().String(),
+		DesignID:  design.ID,
+		Contact:   contact,
+		Price:     design.Price,
+		CreatedAt: time.Now().Format(time.RFC3339),
+	}
+
+	if err := storeQuoteRequest(quote); err != nil {
+		log.Printf("quote request %s: %v", quote.ID, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not send the request"})
+		return
+	}
+
+	notifyShop(quote, design)
+
+	c.JSON(http.StatusCreated, quote)
 }
 
 // GET /api/design/:id
@@ -497,6 +731,7 @@ func newRouter() *gin.Engine {
 	api := router.Group("/api")
 	{
 		api.POST("/save-design", saveDesign)
+		api.POST("/quote-request", requestQuote)
 		api.GET("/design/:id", getDesign)
 	}
 

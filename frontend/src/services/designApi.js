@@ -71,15 +71,6 @@ export const loadDesign = async (id) => {
 };
 
 /**
- * List all saved designs
- * @returns {Promise<Array>} Array of all saved designs
- */
-export const listDesigns = async () => {
-	const response = await apiClient.get('/designs');
-	return response.data;
-};
-
-/**
  * The gate `useDesignPersistence.save()` runs before POSTing a Design.
  *
  * This is the only validation a Placement gets. The server checks the
@@ -154,6 +145,50 @@ export const unrenderableReasons = (config) => {
 	}
 
 	return reasons;
+};
+
+/**
+ * Send a Design and the customer's contact details as a quote request.
+ *
+ * The terminal act (ADR-0008): a human at the shop takes it from here. The
+ * server prices the Design again and stores both before it notifies anyone, so
+ * a request outlives a notification that fails.
+ *
+ * @param {Object} config - the Design, as `getConfig()` returns it
+ * @param {Object} contact - `{ name, phone, email, zip, note, company }`
+ * @returns {Promise<Object>} the stored request: `{ id, designId, price }`
+ */
+export const requestQuote = async (config, contact) => {
+	const response = await apiClient.post('/quote-request', { design: config, contact });
+	return response.data;
+};
+
+/**
+ * What the shop needs to answer a quote request.
+ *
+ * Mirrors `validateContact` in `main.go`; neither may be the weaker of the two.
+ * The name is required and **one** of phone or email: the shop has to call
+ * back, and demanding both loses customers who give one (issue #54).
+ *
+ * @param {Object} contact
+ * @returns {string[]} what is missing; empty when it can be sent
+ */
+export const validateContact = (contact) => {
+	const errors = [];
+	const trimmed = (v) => (typeof v === 'string' ? v.trim() : '');
+
+	if (!trimmed(contact?.name)) {
+		errors.push('Tell us your name');
+	}
+	if (!trimmed(contact?.phone) && !trimmed(contact?.email)) {
+		errors.push('Leave a phone number or an email address, so the shop can reply');
+	}
+	const email = trimmed(contact?.email);
+	if (email && (!email.includes('@') || email.endsWith('@'))) {
+		errors.push('That email address does not look like one');
+	}
+
+	return errors;
 };
 
 export const validateDesignConfig = (config) => {

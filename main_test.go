@@ -88,6 +88,163 @@ func TestSavedDesignCanBeFetchedByID(t *testing.T) {
 	}
 }
 
+// quote posts a quote request and decodes what comes back.
+func quote(t *testing.T, body string) (*httptest.ResponseRecorder, QuoteRequest) {
+	t.Helper()
+	req := httptest.NewRequest(http.MethodPost, "/api/quote-request", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.RemoteAddr = fmt.Sprintf("10.0.0.%d:1234", rateLimitIP())
+	rec := httptest.NewRecorder()
+	newRouter().ServeHTTP(rec, req)
+
+	var out QuoteRequest
+	_ = json.Unmarshal(rec.Body.Bytes(), &out)
+	return rec, out
+}
+
+// Each test speaks from its own address, so one test's requests never spend
+// another's rate-limit budget.
+var rateLimitCounter = 0
+
+func rateLimitIP() int {
+	rateLimitCounter++
+	return rateLimitCounter % 250
+}
+
+const aDesign = `"design":{"width":12,"length":16,"tier":"Deluxe","model":"Gable"}`
+
+// The terminal act: a Design and the person who wants it built, saved together
+// and priced by the server.
+func TestAQuoteRequestSavesTheDesignAndTheContact(t *testing.T) {
+	rec, q := quote(t, `{`+aDesign+`,"contact":{"name":"Dana","phone":"555-0100","zip":"17331","note":"gravel pad"}}`)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("want 201, got %d: %s", rec.Code, rec.Body.String())
+	}
+	if q.Price != 6389 {
+		t.Errorf("want the catalog Quote 6389, got %v", q.Price)
+	}
+	if q.DesignID == "" {
+		t.Fatal("the request names no Design")
+	}
+
+	handle, err := sql.Open("sqlite", os.Getenv("SHED_DB"))
+	if err != nil {
+		t.Fatalf("cannot open the database: %v", err)
+	}
+	defer handle.Close()
+
+	var name, phone, designID string
+	err = handle.QueryRow(
+		`SELECT name, phone, design_id FROM quote_requests WHERE id = ?`, q.ID,
+	).Scan(&name, &phone, &designID)
+	if err != nil {
+		t.Fatalf("the request is not in the database: %v", err)
+	}
+	if name != "Dana" || phone != "555-0100" {
+		t.Errorf("stored contact is %q / %q", name, phone)
+	}
+
+	// The Design it names must be fetchable, or the link in the shop's email
+	// leads nowhere.
+	req := httptest.NewRequest(http.MethodGet, "/api/design/"+designID, nil)
+	fetch := httptest.NewRecorder()
+	newRouter().ServeHTTP(fetch, req)
+	if fetch.Code != http.StatusOK {
+		t.Fatalf("the Design the request names is not fetchable: %d", fetch.Code)
+	}
+}
+
+// The shop has to be able to call back.
+func TestAQuoteRequestNeedsANameAndAWayToReply(t *testing.T) {
+	for _, contact := range []string{
+		`{"phone":"555-0100"}`,
+		`{"name":"Dana"}`,
+		`{"name":"   ","phone":"555-0100"}`,
+		`{"name":"Dana","email":"not-an-address"}`,
+	} {
+		rec, _ := quote(t, `{`+aDesign+`,"contact":`+contact+`}`)
+		if rec.Code != http.StatusBadRequest {
+			t.Errorf("contact %s: want 400, got %d", contact, rec.Code)
+		}
+	}
+}
+
+// Either one on its own is enough.
+func TestAPhoneOrAnEmailIsEnough(t *testing.T) {
+	for _, contact := range []string{
+		`{"name":"Dana","phone":"555-0100"}`,
+		`{"name":"Dana","email":"dana@example.com"}`,
+	} {
+		rec, _ := quote(t, `{`+aDesign+`,"contact":`+contact+`}`)
+		if rec.Code != http.StatusCreated {
+			t.Errorf("contact %s: want 201, got %d: %s", contact, rec.Code, rec.Body.String())
+		}
+	}
+}
+
+// A filled honeypot is answered like anything else and stored nowhere. Saying
+// "no" would only teach a bot which field to leave alone.
+func TestAFilledHoneypotIsAnsweredAndDropped(t *testing.T) {
+	before := countQuoteRequests(t)
+
+	rec, _ := quote(t, `{`+aDesign+`,"contact":{"name":"Dana","phone":"555-0100","company":"Acme SEO"}}`)
+
+	if rec.Code != http.StatusCreated {
+		t.Errorf("want a 201 that tells a bot nothing, got %d", rec.Code)
+	}
+	if after := countQuoteRequests(t); after != before {
+		t.Errorf("the honeypot request was stored: %d became %d", before, after)
+	}
+}
+
+// A shed nobody sells cannot be quoted, however good the contact details are.
+func TestAQuoteRequestForAnUnsoldShedIsRefused(t *testing.T) {
+	rec, _ := quote(t, `{"design":{"width":13,"length":16,"tier":"Deluxe","model":"Gable"},`+
+		`"contact":{"name":"Dana","phone":"555-0100"}}`)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("want 400, got %d: %s", rec.Code, rec.Body.String())
+	}
+}
+
+// One address cannot send an unbounded number.
+func TestQuoteRequestsFromOneAddressAreRateLimited(t *testing.T) {
+	body := `{` + aDesign + `,"contact":{"name":"Dana","phone":"555-0100"}}`
+	send := func() int {
+		req := httptest.NewRequest(http.MethodPost, "/api/quote-request", bytes.NewBufferString(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.RemoteAddr = "10.9.9.9:1234"
+		rec := httptest.NewRecorder()
+		newRouter().ServeHTTP(rec, req)
+		return rec.Code
+	}
+
+	for i := 0; i < quoteBurst; i++ {
+		if code := send(); code != http.StatusCreated {
+			t.Fatalf("request %d: want 201, got %d", i+1, code)
+		}
+	}
+	if code := send(); code != http.StatusTooManyRequests {
+		t.Errorf("want 429 once the burst is spent, got %d", code)
+	}
+}
+
+func countQuoteRequests(t *testing.T) int {
+	t.Helper()
+	handle, err := sql.Open("sqlite", os.Getenv("SHED_DB"))
+	if err != nil {
+		t.Fatalf("cannot open the database: %v", err)
+	}
+	defer handle.Close()
+
+	var n int
+	if err := handle.QueryRow(`SELECT COUNT(*) FROM quote_requests`).Scan(&n); err != nil {
+		t.Fatalf("cannot count quote requests: %v", err)
+	}
+	return n
+}
+
 // A Design outlives the process that saved it. The in-memory map this replaced
 // lost every one of them on restart, which made a quote request worth less than
 // the button that sent it.

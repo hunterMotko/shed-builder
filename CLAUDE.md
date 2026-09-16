@@ -243,9 +243,45 @@ customer's unguessable handle — what stands in for an account until there is o
 customer's design and details to any caller, and it is deleted rather than guarded (issue #12).
 A staff view arrives with authentication, not before it.
 
+### The quote request
+
+`POST /api/quote-request` is what a customer's session ends with (ADR-0008): a Design and the
+contact details of whoever wants it built. **It saves the Design and the request before it
+notifies anyone**, so a request outlives a notification that fails — the shop can still find it.
+
+`buildDesign` is shared with `saveDesign` rather than copied. Both have to check the Model, the
+grade, the combination and every Placement, and **compute the price here** — two copies of that
+would be two answers to what a shed costs.
+
+**The contact rule**: a name, and **one** of phone or email. The shop has to be able to call
+back, and demanding both loses customers who give one. `validateContact` in `main.go` mirrors
+`validateContact` in `services/designApi.js`, and neither may be the weaker of the two.
+
+**Spam is handled twice, and neither is a CAPTCHA** — one taxes every real customer to stop a
+problem this form does not have yet. A **honeypot** field (`company`) is hidden from people and
+irresistible to a bot filling every field; a filled one is answered exactly like a real request
+and stored nowhere, because telling a bot it failed only teaches it what to change. A **per-IP
+rate limit** allows five an hour, in memory — a restart forgiving everyone is not a threat
+model.
+
+**The notifier speaks HTTPS, not SMTP.** Outbound mail ports are blocked or restricted on most
+entry-tier hosts, and a blocked port fails silently on the day it matters. With no provider
+configured it **logs the whole request instead of sending**, which is the local default:
+
+| Variable | Meaning |
+|---|---|
+| `SHED_DB` | Where the database lives. Defaults to `shed.db` beside the binary |
+| `QUOTE_EMAIL_TO` | Where a quote request is sent |
+| `QUOTE_EMAIL_FROM` | The verified sender address |
+| `RESEND_API_KEY` | The provider key |
+
+Set all three email variables or none: with any missing, the request is logged in full and the
+customer still gets their confirmation.
+
 | Route | Behaviour |
 |---|---|
 | `POST /api/save-design` | Validates the combination, the Model and every Placement, computes the Quote, returns 201 with a UUID |
+| `POST /api/quote-request` | The terminal action: a Design plus contact details. Saves both, then notifies the shop |
 | `GET /api/design/:id` | One Design, or 404 |
 
 `newRouter()` builds the router so tests can drive it with `httptest`; `main()` only serves it.

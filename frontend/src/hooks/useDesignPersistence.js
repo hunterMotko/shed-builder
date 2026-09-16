@@ -9,7 +9,6 @@ import { useShedStore } from '../store/shedStore';
 import {
 	saveDesign,
 	loadDesign,
-	listDesigns,
 	validateDesignConfig,
 	unrenderableReasons,
 } from '../services/designApi';
@@ -139,24 +138,6 @@ export const useDesignPersistence = () => {
 	};
 
 	/**
-	 * List all available designs
-	 * @returns {Promise<Array>} Array of saved designs
-	 */
-	const list = async () => {
-		setIsLoading(true);
-		setError(null);
-		try {
-			const designs = await listDesigns();
-			return designs;
-		} catch (err) {
-			const errorMessage = err.userMessage || err.message || 'Failed to list designs';
-			setError(errorMessage);
-			throw err;
-		} finally {
-			setIsLoading(false);
-		}
-	};
-	/**
 	 * Clear any error state
 	 */
 	const clearError = () => {
@@ -165,7 +146,6 @@ export const useDesignPersistence = () => {
 	return {
 		save,
 		load,
-		list,
 		isLoading,
 		error,
 		lastSavedId,

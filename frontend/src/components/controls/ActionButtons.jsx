@@ -1,5 +1,28 @@
-export const ActionButtons = ({ onSave, onLoad, onReset, isLoading = false }) => (
+export const ActionButtons = ({ onRequestQuote, onSave, onLoad, onReset, isLoading = false }) => (
   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+    {/* The terminal action, and the only one a customer needs (ADR-0008).
+        Saving is for coming back to a design later. */}
+    <button
+      onClick={onRequestQuote}
+      disabled={isLoading}
+      style={{
+        width: '100%',
+        padding: '10px 0',
+        background: '#2563eb',
+        color: '#fff',
+        border: 'none',
+        borderRadius: 7,
+        fontSize: 13,
+        fontWeight: 700,
+        cursor: isLoading ? 'not-allowed' : 'pointer',
+        transition: 'background 120ms',
+      }}
+      onMouseEnter={(e) => { if (!isLoading) e.currentTarget.style.background = '#1d4ed8'; }}
+      onMouseLeave={(e) => { if (!isLoading) e.currentTarget.style.background = '#2563eb'; }}
+    >
+      Request a Quote
+    </button>
+
     <button
       onClick={onSave}
       disabled={isLoading}
